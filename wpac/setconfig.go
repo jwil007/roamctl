@@ -15,7 +15,7 @@ func SetConfig(c wpas.Client, config WPAConfig) error {
 }
 
 func setBGScan(c wpas.Client, config WPAConfig) error {
-	s := "SET_NETWORK " + config.NetworkID + " bgscan " + `"` + config.BGScan + `"`
+	s := "SET_NETWORK " + config.NetworkID + " bgscan " + config.BGScan
 	out, err := c.Cmd(s)
 	if err != nil {
 		return fmt.Errorf("c.Cmd(%s): %w", s, err)

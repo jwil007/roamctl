@@ -3,12 +3,14 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/jwil007/roamctl/wpac"
 	"github.com/jwil007/roamctl/wpas"
 )
 
 func main() {
+	start := time.Now()
 
 	c, err := wpas.Connect("wlan0")
 	if err != nil {
@@ -39,6 +41,9 @@ func main() {
 	if errR != nil {
 		log.Fatalf("wpac.SetConfig %v", errR)
 	}
+	elapsed := time.Since(start)
+
+	fmt.Printf("Process duration: %v", elapsed)
 
 	defer c.Close()
 }
