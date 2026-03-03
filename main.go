@@ -15,12 +15,30 @@ func main() {
 		log.Fatalf("wpas.Connect %v", err)
 	}
 
-	currentConfig, err := wpac.GetConfig(c)
+	storedConfig, err := wpac.GetConfig(c)
 	if err != nil {
 		log.Fatalf("wpac.GetConfig %v", err)
 	}
+	fmt.Printf("Current wpa_supp config: %+v\n", storedConfig)
 
-	fmt.Printf("Current wpa_supp config: %+v\n", currentConfig)
+	noRoamConfig := wpac.WPAConfig{
+		SSID:      storedConfig.SSID,
+		NetworkID: storedConfig.NetworkID,
+		BGScan:    "",
+		Iface:     storedConfig.Iface,
+	}
+
+	fmt.Println("disabling bgscan")
+	errS := wpac.SetConfig(c, noRoamConfig)
+	if errS != nil {
+		log.Fatalf("wpac.SetConfig %v", errS)
+	}
+
+	fmt.Println("restoring config")
+	errR := wpac.SetConfig(c, storedConfig)
+	if errR != nil {
+		log.Fatalf("wpac.SetConfig %v", errR)
+	}
 
 	defer c.Close()
 }

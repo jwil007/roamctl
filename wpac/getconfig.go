@@ -8,13 +8,6 @@ import (
 	"github.com/jwil007/roamctl/wpas"
 )
 
-type WPAConfig struct {
-	SSID      string
-	NetworkID string
-	BGScan    string
-	Iface     string
-}
-
 func GetConfig(c wpas.Client) (WPAConfig, error) {
 	ssid, err := getSSID(c)
 	if err != nil {
