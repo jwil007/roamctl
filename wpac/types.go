@@ -11,16 +11,16 @@ type BSS struct {
 	BSSID        string
 	SSID         string
 	Freq         int
-	Band         string
-	Channel      int
+	Band         string //derived from freq
+	Channel      int    //derived from freq
 	BeaconInt    int
 	Noise        int
 	RSSI         int
 	Age          int
 	Flags        string
 	EstThruput   int
-	Load         QBSSLoad
-	ChannelWidth string
+	Load         QBSSLoad //derived from IE
+	ChannelWidth string   //derived from IE
 }
 
 type QBSSLoad struct {

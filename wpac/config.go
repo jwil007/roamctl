@@ -8,7 +8,7 @@ import (
 	"github.com/jwil007/roamctl/wpas"
 )
 
-func GetConfig(c wpas.Client) (WPAConfig, error) {
+func GetConfig(c *wpas.Client) (WPAConfig, error) {
 	ssid, err := getSSID(c)
 	if err != nil {
 		return WPAConfig{}, fmt.Errorf("getSSID: %w", err)
@@ -29,7 +29,7 @@ func GetConfig(c wpas.Client) (WPAConfig, error) {
 	}, nil
 }
 
-func getSSID(c wpas.Client) (string, error) {
+func getSSID(c *wpas.Client) (string, error) {
 	out, err := c.Cmd("STATUS")
 	if err != nil {
 		return "", fmt.Errorf("c.Cmd(\"STATUS\"): %w", err)
@@ -38,11 +38,12 @@ func getSSID(c wpas.Client) (string, error) {
 		if line[:5] == "ssid=" {
 			return line[5:], nil
 		}
+		//return "", fmt.Errorf("error parsing ssid, not connected maybe")
 	}
 	return "", fmt.Errorf("ssid field not found")
 }
 
-func getNetworkID(c wpas.Client) (string, error) {
+func getNetworkID(c *wpas.Client) (string, error) {
 	out, err := c.Cmd("LIST_NETWORKS")
 	if err != nil {
 		return "", fmt.Errorf("c.Cmd(\"LIST_NETWORKS\"): %w", err)
@@ -55,7 +56,7 @@ func getNetworkID(c wpas.Client) (string, error) {
 	return "", fmt.Errorf("no connected ssid")
 }
 
-func getBGScan(c wpas.Client, networkID string) (string, error) {
+func getBGScan(c *wpas.Client, networkID string) (string, error) {
 	out, err := c.Cmd("GET_NETWORK " + networkID + " bgscan")
 	if err != nil {
 		return "", fmt.Errorf("c.Cmd(\"GET_NETWORK\""+networkID+"\" bgscan\"): %w", err)
@@ -63,7 +64,7 @@ func getBGScan(c wpas.Client, networkID string) (string, error) {
 	return string(out), nil
 }
 
-func SetConfig(c wpas.Client, config WPAConfig) error {
+func SetConfig(c *wpas.Client, config WPAConfig) error {
 	err := setBGScan(c, config)
 	if err != nil {
 		return fmt.Errorf("setBGScan: %w", err)
@@ -71,7 +72,7 @@ func SetConfig(c wpas.Client, config WPAConfig) error {
 	return nil
 }
 
-func setBGScan(c wpas.Client, config WPAConfig) error {
+func setBGScan(c *wpas.Client, config WPAConfig) error {
 	s := "SET_NETWORK " + config.NetworkID + " bgscan " + config.BGScan
 	out, err := c.Cmd(s)
 	if err != nil {

@@ -3,9 +3,11 @@ package wpas
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,7 +19,7 @@ type Client struct {
 	LocalPath string
 }
 
-func Connect(iface string) (Client, error) {
+func Connect(iface string) (*Client, error) {
 	myUUID := uuid.New()
 	remotePath := "/var/run/wpa_supplicant/" + iface
 	localPath := "/tmp/wpa_ctrl_" + myUUID.String()
@@ -33,10 +35,10 @@ func Connect(iface string) (Client, error) {
 
 	conn, err := net.DialUnix("unixgram", laddr, raddr)
 	if err != nil {
-		return Client{}, fmt.Errorf("net.DialUnix: %w", err)
+		return &Client{}, fmt.Errorf("net.DialUnix: %w", err)
 	}
 
-	return Client{
+	return &Client{
 		Conn:      conn,
 		Iface:     iface,
 		LocalPath: localPath,
@@ -71,33 +73,65 @@ func (c *Client) Close() error {
 	return nil
 }
 
-func (c *Client) ListenEvents(ctx context.Context, events chan string, errc chan error) {
-	_, err := c.Cmd("ATTACH")
-	if err != nil {
-		errc <- err
-	}
-
-	buf := make([]byte, 4096)
-
-	for {
-		errDeadline := c.Conn.SetReadDeadline(time.Now().Add(1 * time.Second))
-		if errDeadline != nil {
-			errc <- errDeadline
-			return
-		}
-		n, err := c.Conn.Read(buf)
+func (c *Client) ListenEvents(ctx context.Context) (<-chan string, <-chan error) {
+	events := make(chan string)
+	errc := make(chan error, 1)
+	go func() {
+		_, err := c.Cmd("ATTACH")
 		if err != nil {
-			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-				continue
-			}
 			errc <- err
-			return
 		}
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			events <- string(buf[:n])
+
+		buf := make([]byte, 4096)
+
+		for {
+			errDeadline := c.Conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+			if errDeadline != nil {
+				errc <- errDeadline
+				return
+			}
+			n, err := c.Conn.Read(buf)
+			if err != nil {
+				if errors.Is(err, os.ErrDeadlineExceeded) {
+					continue
+				}
+				errc <- err
+				return
+			}
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				events <- string(buf[:n])
+			}
 		}
-	}
+	}()
+	return events, errc
+}
+
+func (c *Client) WaitForEvent(ctx context.Context, match string, timeout time.Duration) error {
+	events, errc := c.ListenEvents(ctx)
+	errw := make(chan error, 1)
+	go func() {
+		timer := time.NewTimer(timeout)
+		defer timer.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-timer.C:
+				errw <- fmt.Errorf("timed out waiting for event")
+				return
+			case event := <-events:
+				if strings.Contains(event, match) {
+					errw <- nil
+					return
+				}
+			case err := <-errc:
+				errw <- err
+				return
+			}
+		}
+	}()
+	return <-errw
 }

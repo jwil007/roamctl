@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -10,7 +11,6 @@ import (
 )
 
 func main() {
-	start := time.Now()
 
 	//open unixsocket connection for comamands
 	cc, err := wpas.Connect("wlan0")
@@ -23,60 +23,49 @@ func main() {
 		log.Fatalf("wpas.Connect %v", err)
 	}
 
-	storedConfig, err := wpac.GetConfig(cc)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	config, err := wpac.GetConfig(cc)
 	if err != nil {
-		log.Fatalf("wpac.GetConfig %v", err)
-	}
-	fmt.Printf("Current wpa_supp config: %+v\n", storedConfig)
-
-	noRoamConfig := wpac.WPAConfig{
-		SSID:      storedConfig.SSID,
-		NetworkID: storedConfig.NetworkID,
-		BGScan:    "",
-		Iface:     storedConfig.Iface,
+		log.Fatalf("wpac.GetConfig: %v", err)
 	}
 
-	fmt.Println("disabling bgscan")
-	errS := wpac.SetConfig(cc, noRoamConfig)
-	if errS != nil {
-		log.Fatalf("wpac.SetConfig %v", errS)
-	}
+	//events, errEvents := ce.ListenEvents(ctx)
+	//signalc, errSignal := wpac.PollSignal(ctx, ce, 100*time.Millisecond)
 
-	fmt.Println("restoring config")
-	errR := wpac.SetConfig(cc, storedConfig)
-	if errR != nil {
-		log.Fatalf("wpac.SetConfig %v", errR)
-	}
-	elapsed := time.Since(start)
-
-	signal, err := wpac.GetSignal(cc)
-	if err != nil {
-		log.Fatalf("wpac.GetSignal: %v", err)
-	}
-	fmt.Printf("Signal struct %+v\n", signal)
-
-	fmt.Printf("Process duration: %v", elapsed)
-
-	//ctx, cancel := context.WithCancel(context.Background())
-	//events := make(chan string)
-	//errc := make(chan error)
-	//
 	defer cc.Close()
 	defer ce.Close()
-	//defer cancel()
-	//
-	////attach to wpa_supp event stream
-	//go ce.ListenEvents(ctx, events, errc)
-	//
+	defer cancel()
+	fmt.Printf("Current SSID: %v\n", config.SSID)
+	start := time.Now()
+	errScan := wpac.RunScan(cc)
+	if errScan != nil {
+		log.Fatalf("wpac.RunScan: %v", errScan)
+	}
+	errWait := ce.WaitForEvent(ctx, "CTRL-EVENT-SCAN-RESULTS", 10*time.Second)
+	if errWait != nil {
+		log.Printf("ce.WaitForEvent: %v", errWait)
+	}
+	bssids, err := wpac.GetScanResults(cc, config.SSID)
+	elapsed := time.Since(start)
+	for _, bssid := range bssids {
+		fmt.Println(bssid)
+	}
+	fmt.Printf("Process duration: %v", elapsed)
+
 	//for {
 	//	select {
+	//	case sig := <-signalc:
+	//		fmt.Printf("%v Signal struct %+v\n", time.Now(), sig)
+	//	case err := <-errSignal:
+	//		log.Fatalf("errSignal: %v", err)
 	//	case event := <-events:
 	//		fmt.Println(event)
 	//		if strings.Contains(event, "CTRL-EVENT-CONNECTED") {
 	//			return
 	//		}
-	//	case err := <-errc:
-	//		log.Fatalf("event listener error: %v", err)
+	//	case err := <-errEvents:
+	//		log.Fatalf("errEvents: %v", err)
 	//	}
 	//}
 
