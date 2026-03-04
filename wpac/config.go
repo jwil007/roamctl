@@ -1,4 +1,4 @@
-// Package wpac: Reads and sets wpa_supplicant configuration options
+// Package wpac: wpa_supplicant commands
 package wpac
 
 import (
@@ -61,4 +61,24 @@ func getBGScan(c wpas.Client, networkID string) (string, error) {
 		return "", fmt.Errorf("c.Cmd(\"GET_NETWORK\""+networkID+"\" bgscan\"): %w", err)
 	}
 	return string(out), nil
+}
+
+func SetConfig(c wpas.Client, config WPAConfig) error {
+	err := setBGScan(c, config)
+	if err != nil {
+		return fmt.Errorf("setBGScan: %w", err)
+	}
+	return nil
+}
+
+func setBGScan(c wpas.Client, config WPAConfig) error {
+	s := "SET_NETWORK " + config.NetworkID + " bgscan " + config.BGScan
+	out, err := c.Cmd(s)
+	if err != nil {
+		return fmt.Errorf("c.Cmd(%s): %w", s, err)
+	}
+	if strings.TrimSpace(string(out)) != "OK" {
+		return fmt.Errorf("c.Cmd(%s): %s", s, string(out))
+	}
+	return nil
 }

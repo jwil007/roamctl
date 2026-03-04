@@ -2,10 +2,13 @@
 package wpas
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
-	"strconv"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 type Client struct {
@@ -15,8 +18,9 @@ type Client struct {
 }
 
 func Connect(iface string) (Client, error) {
+	myUUID := uuid.New()
 	remotePath := "/var/run/wpa_supplicant/" + iface
-	localPath := "/tmp/wpa_ctrl_" + strconv.Itoa(os.Getpid())
+	localPath := "/tmp/wpa_ctrl_" + myUUID.String()
 
 	laddr := &net.UnixAddr{
 		Name: localPath,
@@ -65,4 +69,35 @@ func (c *Client) Close() error {
 		return fmt.Errorf("os.Remove %v: %w", c.LocalPath, errRemove)
 	}
 	return nil
+}
+
+func (c *Client) ListenEvents(ctx context.Context, events chan string, errc chan error) {
+	_, err := c.Cmd("ATTACH")
+	if err != nil {
+		errc <- err
+	}
+
+	buf := make([]byte, 4096)
+
+	for {
+		errDeadline := c.Conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+		if errDeadline != nil {
+			errc <- errDeadline
+			return
+		}
+		n, err := c.Conn.Read(buf)
+		if err != nil {
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				continue
+			}
+			errc <- err
+			return
+		}
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			events <- string(buf[:n])
+		}
+	}
 }
