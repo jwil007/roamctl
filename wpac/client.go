@@ -1,5 +1,4 @@
-// Package wpas: UnixSocket interface to wpa_supplicant
-package wpas
+package wpac
 
 import (
 	"context"
@@ -45,22 +44,6 @@ func Connect(iface string) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) Cmd(command string) ([]byte, error) {
-
-	buf := make([]byte, 4096)
-
-	_, wErr := c.Conn.Write([]byte(command))
-	if wErr != nil {
-		return nil, fmt.Errorf("n.Write: %v", wErr)
-	}
-
-	out, err := c.Conn.Read(buf)
-	if err != nil {
-		return nil, fmt.Errorf("conn.Read: %v", err)
-	}
-	return buf[:out], nil
-}
-
 func (c *Client) Close() error {
 	errClose := c.Conn.Close()
 	if errClose != nil {
@@ -77,7 +60,7 @@ func (c *Client) ListenEvents(ctx context.Context) (<-chan string, <-chan error)
 	events := make(chan string)
 	errc := make(chan error, 1)
 	go func() {
-		_, err := c.Cmd("ATTACH")
+		_, err := c.cmd("ATTACH")
 		if err != nil {
 			errc <- err
 		}
@@ -134,4 +117,20 @@ func (c *Client) WaitForEvent(ctx context.Context, match string, timeout time.Du
 		}
 	}()
 	return <-errw
+}
+
+func (c *Client) cmd(command string) ([]byte, error) {
+
+	buf := make([]byte, 4096)
+
+	_, wErr := c.Conn.Write([]byte(command))
+	if wErr != nil {
+		return nil, fmt.Errorf("n.Write: %v", wErr)
+	}
+
+	out, err := c.Conn.Read(buf)
+	if err != nil {
+		return nil, fmt.Errorf("conn.Read: %v", err)
+	}
+	return buf[:out], nil
 }

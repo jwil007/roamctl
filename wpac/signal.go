@@ -6,12 +6,33 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/jwil007/roamctl/wpas"
 )
 
-func GetSignal(c *wpas.Client) (Signal, error) {
-	out, err := c.Cmd("SIGNAL_POLL")
+func (c *Client) PollSignal(ctx context.Context, interval time.Duration) (<-chan Signal, <-chan error) {
+	signal := make(chan Signal)
+	errc := make(chan error, 1)
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				s, err := c.getSignal()
+				if err != nil {
+					errc <- err
+					return
+				}
+				signal <- s
+			}
+		}
+	}()
+	return signal, errc
+}
+
+func (c *Client) getSignal() (Signal, error) {
+	out, err := c.cmd("SIGNAL_POLL")
 	if err != nil {
 		return Signal{}, fmt.Errorf("c.Cmd(\"SIGNAL_POLL\") %w", err)
 	}
@@ -60,27 +81,4 @@ func GetSignal(c *wpas.Client) (Signal, error) {
 		}
 	}
 	return s, nil
-}
-
-func PollSignal(ctx context.Context, c *wpas.Client, interval time.Duration) (<-chan Signal, <-chan error) {
-	signal := make(chan Signal)
-	errc := make(chan error, 1)
-	go func() {
-		ticker := time.NewTicker(interval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				s, err := GetSignal(c)
-				if err != nil {
-					errc <- err
-					return
-				}
-				signal <- s
-			}
-		}
-	}()
-	return signal, errc
 }

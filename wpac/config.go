@@ -1,23 +1,21 @@
-// Package wpac: wpa_supplicant commands
+// Package wpac: APIs to establish unix socket to wpa_supplicant control interface and issue commands
 package wpac
 
 import (
 	"fmt"
 	"strings"
-
-	"github.com/jwil007/roamctl/wpas"
 )
 
-func GetConfig(c *wpas.Client) (WPAConfig, error) {
-	ssid, err := getSSID(c)
+func (c *Client) GetConfig() (WPAConfig, error) {
+	ssid, err := c.getSSID()
 	if err != nil {
 		return WPAConfig{}, fmt.Errorf("getSSID: %w", err)
 	}
-	networkID, err := getNetworkID(c)
+	networkID, err := c.getNetworkID()
 	if err != nil {
 		return WPAConfig{}, fmt.Errorf("getNetworkID: %w", err)
 	}
-	bgscan, err := getBGScan(c, networkID)
+	bgscan, err := c.getBGScan(networkID)
 	if err != nil {
 		return WPAConfig{}, fmt.Errorf("getBGScan: %w", err)
 	}
@@ -29,8 +27,16 @@ func GetConfig(c *wpas.Client) (WPAConfig, error) {
 	}, nil
 }
 
-func getSSID(c *wpas.Client) (string, error) {
-	out, err := c.Cmd("STATUS")
+func (c *Client) SetConfig(config WPAConfig) error {
+	err := c.setBGScan(config)
+	if err != nil {
+		return fmt.Errorf("setBGScan: %w", err)
+	}
+	return nil
+}
+
+func (c *Client) getSSID() (string, error) {
+	out, err := c.cmd("STATUS")
 	if err != nil {
 		return "", fmt.Errorf("c.Cmd(\"STATUS\"): %w", err)
 	}
@@ -43,8 +49,8 @@ func getSSID(c *wpas.Client) (string, error) {
 	return "", fmt.Errorf("ssid field not found")
 }
 
-func getNetworkID(c *wpas.Client) (string, error) {
-	out, err := c.Cmd("LIST_NETWORKS")
+func (c *Client) getNetworkID() (string, error) {
+	out, err := c.cmd("LIST_NETWORKS")
 	if err != nil {
 		return "", fmt.Errorf("c.Cmd(\"LIST_NETWORKS\"): %w", err)
 	}
@@ -56,25 +62,17 @@ func getNetworkID(c *wpas.Client) (string, error) {
 	return "", fmt.Errorf("no connected ssid")
 }
 
-func getBGScan(c *wpas.Client, networkID string) (string, error) {
-	out, err := c.Cmd("GET_NETWORK " + networkID + " bgscan")
+func (c *Client) getBGScan(networkID string) (string, error) {
+	out, err := c.cmd("GET_NETWORK " + networkID + " bgscan")
 	if err != nil {
 		return "", fmt.Errorf("c.Cmd(\"GET_NETWORK\""+networkID+"\" bgscan\"): %w", err)
 	}
 	return string(out), nil
 }
 
-func SetConfig(c *wpas.Client, config WPAConfig) error {
-	err := setBGScan(c, config)
-	if err != nil {
-		return fmt.Errorf("setBGScan: %w", err)
-	}
-	return nil
-}
-
-func setBGScan(c *wpas.Client, config WPAConfig) error {
+func (c *Client) setBGScan(config WPAConfig) error {
 	s := "SET_NETWORK " + config.NetworkID + " bgscan " + config.BGScan
-	out, err := c.Cmd(s)
+	out, err := c.cmd(s)
 	if err != nil {
 		return fmt.Errorf("c.Cmd(%s): %w", s, err)
 	}
