@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -16,25 +15,23 @@ func Scan(iface string, ssid string) ([]RichBSS, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open ctrl_iface unix connection: %w", err)
 	}
+	defer cc.Close()
 	ce, err := Connect(iface)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open ctrl_iface unix connection: %w", err)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-
-	//defer closing of unix connections and cancelling context
-	defer cc.Close()
 	defer ce.Close()
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	//run scan and collect scan results to build bssid list
 	errScan := cc.runScan()
 	if errScan != nil {
-		log.Fatalf("wpac.runScan: %v", errScan)
+		return nil, fmt.Errorf("wpac.runScan: %w", errScan)
 	}
 	errWait := ce.WaitForEvent(ctx, "CTRL-EVENT-SCAN-RESULTS", 10*time.Second)
 	if errWait != nil {
-		log.Printf("ce.WaitForEvent: %v", errWait)
+		return nil, fmt.Errorf("ce.WaitForEvent: %w", errWait)
 	}
 	bssids, err := cc.getScanResults(ssid)
 
