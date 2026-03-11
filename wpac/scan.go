@@ -40,6 +40,7 @@ func Scan(iface string, ssid string) ([]RichBSS, error) {
 
 	//process bssid list
 	var wpasBSSList []WpasBSS
+	var richBSSList []RichBSS
 	for _, bss := range bssids {
 		b, err := cc.parseWpasBSS(bss)
 		if err != nil {
@@ -53,16 +54,34 @@ func Scan(iface string, ssid string) ([]RichBSS, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parseIETLV: %w", err)
 		}
-		for _, tlv := range tlvList {
-			fmt.Printf("tlv: %+v\n", tlv)
-		}
-		parsedTLVs, err := parseTLVs(tlvList)
+		ieBSS, err := parseTLVs(tlvList)
 		if err != nil {
 			return nil, fmt.Errorf("parseTLVs: %w", err)
 		}
-		fmt.Printf("Data parsed from beacon TLVs:\n %+v\n", parsedTLVs)
+		//fmt.Printf("Data parsed from beacon TLVs:\n %+v\n", ieBSS)
+		richBSSList = append(richBSSList, constructRichBSS(wpasBSS, ieBSS))
 	}
-	return nil, nil
+	for _, r := range richBSSList {
+		fmt.Printf("BSSID:%s Freq:%d Band:%s BeaconInt:%d Noise:%d RSSI:%d SNR:%d Age:%d Flags:%s EstThruput:%d SSID:%s Rates:%v CW:%s QBSSUtil:%d QBSSStaCt:%d PHYType:%d\n",
+			r.BSSID,
+			r.Freq,
+			r.Band,
+			r.BeaconInt,
+			r.Noise,
+			r.RSSI,
+			r.SNR,
+			r.Age,
+			r.Flags,
+			r.EstThruput,
+			r.SSID,
+			r.SupportedRates,
+			r.ChannelWidth,
+			r.QBSSUtil,
+			r.QBSSStaCt,
+			r.PHYType,
+		)
+	}
+	return richBSSList, nil
 }
 
 func (c *Client) runScan() error {
@@ -91,6 +110,13 @@ func (c *Client) getScanResults(ssid string) ([]string, error) {
 	return bssids, nil
 }
 
+func constructRichBSS(wpaBSS WpasBSS, ieBSS IEBSS) RichBSS {
+	return RichBSS{
+		WpasBSS: wpaBSS,
+		IEBSS:   ieBSS,
+	}
+}
+
 func (c *Client) parseWpasBSS(bssid string) (WpasBSS, error) {
 	out, err := c.cmd("BSS " + bssid)
 	var b WpasBSS
@@ -101,8 +127,6 @@ func (c *Client) parseWpasBSS(bssid string) (WpasBSS, error) {
 		switch {
 		case strings.HasPrefix(line, "bssid="):
 			b.BSSID = line[6:]
-		case strings.HasPrefix(line, "ssid="):
-			b.SSID = line[5:]
 		case strings.HasPrefix(line, "freq="):
 			b.Freq, err = strconv.Atoi(line[5:])
 			if err != nil {
@@ -179,6 +203,8 @@ func parseIETLV(ieString string) ([]TLV, error) {
 
 func parseTLVs(tlvs []TLV) (IEBSS, error) {
 	var ie IEBSS
+	var htcw = ChannelWidthUnknown
+	var vhtcw = ChannelWidthUnknown
 	for _, tlv := range tlvs {
 		switch tlv.Type {
 		case 0: //SSID
@@ -198,11 +224,19 @@ func parseTLVs(tlvs []TLV) (IEBSS, error) {
 		case 50: //Extended Supported Rates
 		case 45: //HT Capabilities
 		case 61: //HT Operation
+			htcw = parseHTOperation(tlv.Value)
 		case 127: //Extended Capabilities
 		case 191: //VHT Capabilities
 		case 192: //VHT Operation
+			vhtcw = parseVHTOperation(tlv.Value)
 		case 221: //Vendor Specific
 		case 255: //Element ID Extension
+		}
+		//reconcile maximum channel width
+		if vhtcw > htcw {
+			ie.ChannelWidth = vhtcw
+		} else {
+			ie.ChannelWidth = htcw
 		}
 	}
 	return ie, nil
@@ -226,4 +260,29 @@ func parseQBSSLoad(value []byte) qbssLoad {
 	q.channelUtilization = value[2]
 	q.availableAdmissionCapacity = uint16(value[3] | value[4])
 	return q
+}
+
+func parseHTOperation(value []byte) ChannelWidth {
+	b := value[1]
+	bits0and1 := b & 0x3
+	bit2 := (b >> 2) & 0x1
+	switch {
+	case bits0and1 == 0 && bit2 == 0:
+		return ChannelWidth20
+	case bits0and1 != 0 && bit2 == 1:
+		return ChannelWidth40
+	}
+	return ChannelWidthUnknown
+}
+
+func parseVHTOperation(value []byte) ChannelWidth {
+	switch {
+	case value[0] == 1 && value[1] != 0 && value[2] != 0:
+		return ChannelWidth160
+	case value[0] == 1 && value[1] != 0 && value[2] == 0:
+		return ChannelWidth80
+	case value[0] == 0:
+		return ChannelWidthUnknown
+	}
+	return ChannelWidthUnknown
 }

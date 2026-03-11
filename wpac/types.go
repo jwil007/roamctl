@@ -7,9 +7,13 @@ type WPAConfig struct {
 	Iface     string
 }
 
+type RichBSS struct {
+	WpasBSS
+	IEBSS
+}
+
 type WpasBSS struct {
 	BSSID      string // IE?
-	SSID       string // IE?
 	Freq       int    //IE?
 	Band       string //derived from freq
 	BeaconInt  int    //IE?
@@ -26,8 +30,7 @@ type WpasBSS struct {
 type IEBSS struct {
 	SSID           string
 	SupportedRates []string
-	Channel        int
-	ChannelWidth   int
+	ChannelWidth   ChannelWidth
 	QBSSUtil       uint8
 	QBSSStaCt      uint16
 	PHYType        int
@@ -92,11 +95,6 @@ var supportedRates = map[byte]string{
 	0xEC: "54(B)",
 }
 
-type RichBSS struct {
-	WpasBSS
-	IEBSS
-}
-
 type TLV struct {
 	Type   byte
 	Length byte
@@ -107,6 +105,38 @@ type qbssLoad struct {
 	stationCount               uint16
 	channelUtilization         uint8
 	availableAdmissionCapacity uint16
+}
+
+type ChannelWidth int
+
+const (
+	ChannelWidthUnknown ChannelWidth = iota
+	ChannelWidth20
+	ChannelWidth40
+	ChannelWidth80
+	ChannelWidth160
+	ChannelWidth80Plus80
+	ChannelWidth320
+)
+
+func (cw ChannelWidth) String() string {
+	switch cw {
+	case ChannelWidth20:
+		return "20Mhz"
+	case ChannelWidth40:
+		return "40Mhz"
+	case ChannelWidth80:
+		return "80Mhz"
+	case ChannelWidth160:
+		return "160Mhz"
+	case ChannelWidth80Plus80:
+		return "80+80Mhz"
+	case ChannelWidth320:
+		return "320Mhz"
+	case ChannelWidthUnknown:
+		return "Unknown"
+	}
+	return ""
 }
 
 type Signal struct {
