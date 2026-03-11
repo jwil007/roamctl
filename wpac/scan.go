@@ -1,13 +1,71 @@
 package wpac
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
+	"time"
 )
 
-func (c *Client) RunScan() error {
+func Scan(iface string, ssid string) ([]RichBSS, error) {
+	//make unix socket connections for cmd and event streaming
+	cc, err := Connect(iface)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open ctrl_iface unix connection: %w", err)
+	}
+	ce, err := Connect(iface)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open ctrl_iface unix connection: %w", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+
+	//defer closing of unix connections and cancelling context
+	defer cc.Close()
+	defer ce.Close()
+	defer cancel()
+
+	//run scan and collect scan results to build bssid list
+	errScan := cc.runScan()
+	if errScan != nil {
+		log.Fatalf("wpac.runScan: %v", errScan)
+	}
+	errWait := ce.WaitForEvent(ctx, "CTRL-EVENT-SCAN-RESULTS", 10*time.Second)
+	if errWait != nil {
+		log.Printf("ce.WaitForEvent: %v", errWait)
+	}
+	bssids, err := cc.getScanResults(ssid)
+
+	//process bssid list
+	var wpasBSSList []WpasBSS
+	for _, bss := range bssids {
+		b, err := cc.parseWpasBSS(bss)
+		if err != nil {
+			return nil, fmt.Errorf("parseWpasBSS: %w", err)
+		}
+		wpasBSSList = append(wpasBSSList, b)
+	}
+	for _, wpasBSS := range wpasBSSList {
+		//fmt.Printf("wpasBSS: %+v\n", wpasBSS)
+		tlvList, err := parseIETLV(wpasBSS.ProbeIE)
+		if err != nil {
+			return nil, fmt.Errorf("parseIETLV: %w", err)
+		}
+		for _, tlv := range tlvList {
+			fmt.Printf("tlv: %+v\n", tlv)
+		}
+		parsedTLVs, err := parseTLVs(tlvList)
+		if err != nil {
+			return nil, fmt.Errorf("parseTLVs: %w", err)
+		}
+		fmt.Printf("Data parsed from beacon TLVs:\n %+v\n", parsedTLVs)
+	}
+	return nil, nil
+}
+
+func (c *Client) runScan() error {
 	out, err := c.cmd("SCAN")
 	if err != nil {
 		return fmt.Errorf("c.Cmd(\"SCAN\"): %w", err)
@@ -18,7 +76,7 @@ func (c *Client) RunScan() error {
 	return nil
 }
 
-func (c *Client) GetScanResults(ssid string) ([]string, error) {
+func (c *Client) getScanResults(ssid string) ([]string, error) {
 	var bssids []string
 	out, err := c.cmd("SCAN_RESULTS")
 	if err != nil {
@@ -33,7 +91,7 @@ func (c *Client) GetScanResults(ssid string) ([]string, error) {
 	return bssids, nil
 }
 
-func (c *Client) ParseWpasBSS(bssid string) (WpasBSS, error) {
+func (c *Client) parseWpasBSS(bssid string) (WpasBSS, error) {
 	out, err := c.cmd("BSS " + bssid)
 	var b WpasBSS
 	if err != nil {
@@ -91,7 +149,7 @@ func (c *Client) ParseWpasBSS(bssid string) (WpasBSS, error) {
 	return b, nil
 }
 
-func ParseIETLV(ieString string) ([]TLV, error) {
+func parseIETLV(ieString string) ([]TLV, error) {
 	ie, err := hex.DecodeString(ieString)
 	if err != nil {
 		return nil, fmt.Errorf("hex.DecodeString: %w", err)
@@ -119,7 +177,7 @@ func ParseIETLV(ieString string) ([]TLV, error) {
 	return tlvs, nil
 }
 
-func ParseTLVs(tlvs []TLV) (IEBSS, error) {
+func parseTLVs(tlvs []TLV) (IEBSS, error) {
 	var ie IEBSS
 	for _, tlv := range tlvs {
 		switch tlv.Type {
