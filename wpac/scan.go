@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -15,12 +16,22 @@ func Scan(iface string, ssid string) ([]RichBSS, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open ctrl_iface unix connection: %w", err)
 	}
-	defer cc.Close()
+	defer func() {
+		err := cc.Close()
+		if err != nil {
+			log.Fatalf("failed to close unix connection: %v", err)
+		}
+	}()
 	ce, err := Connect(iface)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open ctrl_iface unix connection: %w", err)
 	}
-	defer ce.Close()
+	defer func() {
+		err := ce.Close()
+		if err != nil {
+			log.Fatalf("failed to close unix connection: %v", err)
+		}
+	}()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

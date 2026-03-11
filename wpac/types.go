@@ -36,22 +36,6 @@ type IEBSS struct {
 	PHYType        int
 }
 
-var ieNames = map[byte]string{
-	0:   "SSID",
-	1:   "Supported Rates",
-	3:   "DS Parameter Set",
-	11:  "QBSS Load",
-	48:  "RSN Information",
-	50:  "Extended Supported Rates",
-	45:  "HT Capabilities",
-	61:  "HT Operation",
-	127: "Extended Capabilities",
-	191: "VHT Capabilities",
-	192: "VHT Operation",
-	221: "Vendor Specific",
-	255: "Element ID Extension", // HE and EHT live behind this
-}
-
 var supportedRates = map[byte]string{
 	0x02: "1",
 	0x03: "1.5",
@@ -122,15 +106,15 @@ const (
 func (cw ChannelWidth) String() string {
 	switch cw {
 	case ChannelWidth20:
-		return "20Mhz"
+		return "20MHz"
 	case ChannelWidth40:
-		return "40Mhz"
+		return "40MHz"
 	case ChannelWidth80:
-		return "80Mhz"
+		return "80MHz"
 	case ChannelWidth160:
-		return "160Mhz"
+		return "160MHz"
 	case ChannelWidth80Plus80:
-		return "80+80Mhz"
+		return "80+80MHz"
 	case ChannelWidth320:
 		return "320Mhz"
 	case ChannelWidthUnknown:
