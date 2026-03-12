@@ -3,8 +3,8 @@ package wpac
 import "fmt"
 
 // This file contains functions to parse raw ie hex dump from beacon/probe response frames
-func parseIETLV(ie []byte) ([]TLV, error) {
-	var tlvs []TLV
+func parseIETLV(ie []byte) ([]tlv, error) {
+	var tlvs []tlv
 	i := 0
 	for i < len(ie) {
 		t := ie[i]
@@ -16,17 +16,17 @@ func parseIETLV(ie []byte) ([]TLV, error) {
 		}
 		v := ie[i : i+int(l)]
 		i += len(v)
-		tlv := TLV{
-			Type:   t,
-			Length: l,
-			Value:  v,
+		tlv := tlv{
+			t: t,
+			l: l,
+			v: v,
 		}
 		tlvs = append(tlvs, tlv)
 	}
 	return tlvs, nil
 }
 
-func parseTLVs(tlvs []TLV) (IEBSS, error) {
+func parseTLVs(tlvs []tlv) (IEBSS, error) {
 	var ie IEBSS
 	var htcw = ChannelWidthUnknown
 	var vhtcw = ChannelWidthUnknown
@@ -34,18 +34,18 @@ func parseTLVs(tlvs []TLV) (IEBSS, error) {
 	var ehtcw = ChannelWidthUnknown
 	var phy = PHYLegacy
 	for _, tlv := range tlvs {
-		switch tlv.Type {
+		switch tlv.t {
 		case 0: //SSID
-			ie.SSID = string(tlv.Value)
+			ie.SSID = string(tlv.v)
 		case 1: //Supported Rates
-			sr, err := parseSupportedRates(tlv.Value)
+			sr, err := parseSupportedRates(tlv.v)
 			if err != nil {
 				return IEBSS{}, fmt.Errorf("parseSupportedRates: %w", err)
 			}
 			ie.SupportedRates = sr
 		//case 3: //DS Parameter Set
 		case 11: //QBSS Load
-			q := parseQBSSLoad(tlv.Value)
+			q := parseQBSSLoad(tlv.v)
 			ie.QBSSStaCt = q.stationCount
 			ie.QBSSUtil = q.channelUtilization
 		//case 48: //RSN Information
@@ -53,22 +53,22 @@ func parseTLVs(tlvs []TLV) (IEBSS, error) {
 		//case 45: //HT Capabilities
 		case 61: //HT Operation
 			phy = PHY80211n
-			htcw = parseHTOperation(tlv.Value)
+			htcw = parseHTOperation(tlv.v)
 		//case 127: //Extended Capabilities
 		//case 191: //VHT Capabilities
 		case 192: //VHT Operation
 			phy = PHY80211ac
-			vhtcw = parseVHTOperation(tlv.Value)
+			vhtcw = parseVHTOperation(tlv.v)
 		//case 221: //Vendor Specific
 		case 255: //Element ID Extension. Nested, with tlv.Value[0] indicating type
-			switch tlv.Value[0] {
+			switch tlv.v[0] {
 			//case 35: //HE Capabilities
 			case 36: //HE Operation
 				phy = PHY80211ax
-				ehtcw = parseHEOperation(tlv.Value[1:])
+				ehtcw = parseHEOperation(tlv.v[1:])
 			case 108: //EHT Capabilities
 				phy = PHY80211be
-				ehtcw = parseEHTCapabilities(tlv.Value[1:])
+				ehtcw = parseEHTCapabilities(tlv.v[1:])
 			}
 		}
 		//reconcile channel width

@@ -1,5 +1,14 @@
 package wpac
 
+import "net"
+
+type Client struct {
+	CC             *net.UnixConn //CommandConnection
+	EC             *net.UnixConn //EventConnection
+	Iface          string
+	LocalPathCmd   string
+	LocalPathEvent string
+}
 type WPAConfig struct {
 	SSID      string
 	NetworkID string
@@ -17,10 +26,10 @@ type Signal struct {
 	AvgRSSIBeacon int
 }
 
-type TLV struct {
-	Type   byte
-	Length byte
-	Value  []byte
+type tlv struct {
+	t byte
+	l byte
+	v []byte
 }
 
 type qbssLoad struct {

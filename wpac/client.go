@@ -1,30 +1,23 @@
 package wpac
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"net"
 	"os"
-	"strings"
-	"time"
-
-	"github.com/google/uuid"
+	"strconv"
 )
 
-type Client struct {
-	Conn      *net.UnixConn
-	Iface     string
-	LocalPath string
-}
-
 func Connect(iface string) (*Client, error) {
-	myUUID := uuid.New()
 	remotePath := "/var/run/wpa_supplicant/" + iface
-	localPath := "/tmp/wpa_ctrl_" + myUUID.String()
+	localPathCmd := "/tmp/wpa_ctrl_" + strconv.Itoa(os.Getpid()) + "command"
+	localPathEvent := "/tmp/wpa_ctrl_" + strconv.Itoa(os.Getpid()) + "event"
 
-	laddr := &net.UnixAddr{
-		Name: localPath,
+	laddrC := &net.UnixAddr{
+		Name: localPathCmd,
+		Net:  "unixgram",
+	}
+	laddrE := &net.UnixAddr{
+		Name: localPathEvent,
 		Net:  "unixgram",
 	}
 	raddr := &net.UnixAddr{
@@ -32,105 +25,45 @@ func Connect(iface string) (*Client, error) {
 		Net:  "unixgram",
 	}
 
-	conn, err := net.DialUnix("unixgram", laddr, raddr)
+	cc, err := net.DialUnix("unixgram", laddrC, raddr)
 	if err != nil {
-		return &Client{}, fmt.Errorf("net.DialUnix: %w", err)
+		return nil, fmt.Errorf("net.DialUnix: %w", err)
+	}
+
+	ec, err := net.DialUnix("unixgram", laddrE, raddr)
+	if err != nil {
+		errClose := cc.Close()
+		if errClose != nil {
+			return nil, fmt.Errorf("cc.Close: %w", err)
+		}
+		return nil, fmt.Errorf("net.DialUnix: %w", err)
 	}
 
 	return &Client{
-		Conn:      conn,
-		Iface:     iface,
-		LocalPath: localPath,
+		CC:             cc,
+		EC:             ec,
+		Iface:          iface,
+		LocalPathCmd:   localPathCmd,
+		LocalPathEvent: localPathEvent,
 	}, nil
 }
 
 func (c *Client) Close() error {
-	errClose := c.Conn.Close()
-	if errClose != nil {
-		return fmt.Errorf("c.Conn.Close: %w", errClose)
+	errCloseC := c.CC.Close()
+	if errCloseC != nil {
+		return fmt.Errorf("c.CC.Close: %w", errCloseC)
 	}
-	errRemove := os.Remove(c.LocalPath)
-	if errRemove != nil {
-		return fmt.Errorf("os.Remove %v: %w", c.LocalPath, errRemove)
+	errCloseE := c.EC.Close()
+	if errCloseE != nil {
+		return fmt.Errorf("c.EC.Close: %w", errCloseE)
+	}
+	errRemoveC := os.Remove(c.LocalPathCmd)
+	if errRemoveC != nil {
+		return fmt.Errorf("os.Remove %v: %w", c.LocalPathCmd, errRemoveC)
+	}
+	errRemoveE := os.Remove(c.LocalPathEvent)
+	if errRemoveE != nil {
+		return fmt.Errorf("os.Remove %v: %w", c.LocalPathEvent, errRemoveE)
 	}
 	return nil
-}
-
-func (c *Client) ListenEvents(ctx context.Context) (<-chan string, <-chan error) {
-	events := make(chan string)
-	errc := make(chan error, 1)
-	go func() {
-		_, err := c.cmd("ATTACH")
-		if err != nil {
-			errc <- err
-		}
-
-		buf := make([]byte, 4096)
-
-		for {
-			errDeadline := c.Conn.SetReadDeadline(time.Now().Add(1 * time.Second))
-			if errDeadline != nil {
-				errc <- errDeadline
-				return
-			}
-			n, err := c.Conn.Read(buf)
-			if err != nil {
-				if errors.Is(err, os.ErrDeadlineExceeded) {
-					continue
-				}
-				errc <- err
-				return
-			}
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				events <- string(buf[:n])
-			}
-		}
-	}()
-	return events, errc
-}
-
-func (c *Client) WaitForEvent(ctx context.Context, match string, timeout time.Duration) error {
-	events, errc := c.ListenEvents(ctx)
-	errw := make(chan error, 1)
-	go func() {
-		timer := time.NewTimer(timeout)
-		defer timer.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-timer.C:
-				errw <- fmt.Errorf("timed out waiting for event")
-				return
-			case event := <-events:
-				if strings.Contains(event, match) {
-					errw <- nil
-					return
-				}
-			case err := <-errc:
-				errw <- err
-				return
-			}
-		}
-	}()
-	return <-errw
-}
-
-func (c *Client) cmd(command string) ([]byte, error) {
-
-	buf := make([]byte, 4096)
-
-	_, wErr := c.Conn.Write([]byte(command))
-	if wErr != nil {
-		return nil, fmt.Errorf("n.Write: %v", wErr)
-	}
-
-	out, err := c.Conn.Read(buf)
-	if err != nil {
-		return nil, fmt.Errorf("conn.Read: %v", err)
-	}
-	return buf[:out], nil
 }

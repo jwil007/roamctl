@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/jwil007/roamctl/wpac"
@@ -8,17 +9,24 @@ import (
 
 func main() {
 	//open unixsocket connection for commands
-	cc, err := wpac.Connect("wlan0")
+	c, err := wpac.Connect("wlan0")
 	if err != nil {
 		log.Fatalf("wpac.Connect %v", err)
 	}
-	config, err := cc.GetConfig()
+	config, err := c.GetConfig()
 	if err != nil {
 		log.Fatalf("wpac.GetConfig: %v", err)
 	}
-	defer cc.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer func() {
+		err := c.Close()
+		if err != nil {
+			log.Fatalf("failed to close unix connection: %v", err)
+		}
+	}()
+	defer cancel()
 
-	_, errScan := wpac.Scan("wlan0", config.SSID)
+	_, errScan := c.Scan(ctx, config.SSID)
 	if errScan != nil {
 		log.Fatalf("wpac.Scan: %v", errScan)
 	}
