@@ -7,24 +7,47 @@ type WPAConfig struct {
 	Iface     string
 }
 
+type Signal struct {
+	RSSI          int
+	LinkSpeed     int
+	Noise         int
+	Freq          int
+	ChannelWidth  string
+	AvgRSSI       int
+	AvgRSSIBeacon int
+}
+
+type TLV struct {
+	Type   byte
+	Length byte
+	Value  []byte
+}
+
+type qbssLoad struct {
+	stationCount               uint16
+	channelUtilization         uint8
+	availableAdmissionCapacity uint16
+}
+
 type RichBSS struct {
 	WpasBSS
 	IEBSS
+	Band       Band
+	ChannelNum int
 }
 
 type WpasBSS struct {
-	BSSID      string // IE?
-	Freq       int    //IE?
-	Band       string //derived from freq
-	BeaconInt  int    //IE?
+	BSSID      string
+	Freq       int
+	BeaconInt  int
 	Noise      int
 	RSSI       int
 	SNR        int
 	Age        int
 	Flags      string
 	EstThruput int
-	ProbeIE    string
-	BeaconIE   string
+	ProbeIE    []byte
+	BeaconIE   []byte
 }
 
 type IEBSS struct {
@@ -33,7 +56,7 @@ type IEBSS struct {
 	ChannelWidth   ChannelWidth
 	QBSSUtil       uint8
 	QBSSStaCt      uint16
-	PHYType        int
+	PHYType        PHYType
 }
 
 var supportedRates = map[byte]string{
@@ -77,18 +100,13 @@ var supportedRates = map[byte]string{
 	0xC8: "36(B)",
 	0xE0: "48(B)",
 	0xEC: "54(B)",
-}
-
-type TLV struct {
-	Type   byte
-	Length byte
-	Value  []byte
-}
-
-type qbssLoad struct {
-	stationCount               uint16
-	channelUtilization         uint8
-	availableAdmissionCapacity uint16
+	//bss membership selectors
+	0xFA: "HE PHY",
+	0xFB: "SAE Hash to Element Only",
+	0xFC: "EPD", /* 802.11ak */
+	0xFD: "GLK", /* 802.11ak */
+	0xFE: "VHT PHY",
+	0xFF: "HT PHY",
 }
 
 type ChannelWidth int
@@ -123,12 +141,54 @@ func (cw ChannelWidth) String() string {
 	return ""
 }
 
-type Signal struct {
-	RSSI          int
-	LinkSpeed     int
-	Noise         int
-	Freq          int
-	ChannelWidth  string
-	AvgRSSI       int
-	AvgRSSIBeacon int
+type PHYType int
+
+const (
+	PHYUnknown PHYType = iota
+	PHYLegacy
+	PHY80211n
+	PHY80211ac
+	PHY80211ax
+	PHY80211be
+)
+
+func (ph PHYType) String() string {
+	switch ph {
+	case PHYLegacy:
+		return "Legacy a/b/g"
+	case PHY80211n:
+		return "802.11n"
+	case PHY80211ac:
+		return "802.11ac"
+	case PHY80211ax:
+		return "802.11ax"
+	case PHY80211be:
+		return "802.11be"
+	case PHYUnknown:
+		return "Unknown"
+	}
+	return ""
+}
+
+type Band int
+
+const (
+	BandUnknown Band = iota
+	Band2point4
+	Band5
+	Band6
+)
+
+func (b Band) String() string {
+	switch b {
+	case Band2point4:
+		return "2.4GHz"
+	case Band5:
+		return "5GHz"
+	case Band6:
+		return "6GHz"
+	case BandUnknown:
+		return "Unknown"
+	}
+	return ""
 }

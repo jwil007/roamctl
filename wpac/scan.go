@@ -57,7 +57,6 @@ func Scan(iface string, ssid string) ([]RichBSS, error) {
 		wpasBSSList = append(wpasBSSList, b)
 	}
 	for _, wpasBSS := range wpasBSSList {
-		//fmt.Printf("wpasBSS: %+v\n", wpasBSS)
 		tlvList, err := parseIETLV(wpasBSS.ProbeIE)
 		if err != nil {
 			return nil, fmt.Errorf("parseIETLV: %w", err)
@@ -70,10 +69,12 @@ func Scan(iface string, ssid string) ([]RichBSS, error) {
 		richBSSList = append(richBSSList, constructRichBSS(wpasBSS, ieBSS))
 	}
 	for _, r := range richBSSList {
-		fmt.Printf("BSSID:%s Freq:%d Band:%s BeaconInt:%d Noise:%d RSSI:%d SNR:%d Age:%d Flags:%s EstThruput:%d SSID:%s Rates:%v CW:%s QBSSUtil:%d QBSSStaCt:%d PHYType:%d\n",
+		fmt.Printf("BSSID:%s Freq:%d Band:%s Channel:%d BeaconInt:%d Noise:%d RSSI:%d SNR:%d Age:%d"+
+			" Flags:%s EstThruput:%d SSID:%s Rates:%v CW:%s QBSSUtil:%d QBSSStaCt:%d PHYType:%s\n",
 			r.BSSID,
 			r.Freq,
 			r.Band,
+			r.ChannelNum,
 			r.BeaconInt,
 			r.Noise,
 			r.RSSI,
@@ -119,9 +120,15 @@ func (c *Client) getScanResults(ssid string) ([]string, error) {
 }
 
 func constructRichBSS(wpaBSS WpasBSS, ieBSS IEBSS) RichBSS {
+	band, channel, err := getBandandChanfromFreq(wpaBSS.Freq)
+	if err != nil {
+		log.Printf("getBandandChanfromFreq: %v", err)
+	}
 	return RichBSS{
-		WpasBSS: wpaBSS,
-		IEBSS:   ieBSS,
+		WpasBSS:    wpaBSS,
+		IEBSS:      ieBSS,
+		Band:       band,
+		ChannelNum: channel,
 	}
 }
 
@@ -173,124 +180,38 @@ func (c *Client) parseWpasBSS(bssid string) (WpasBSS, error) {
 				return WpasBSS{}, fmt.Errorf("strconv.Atoi: %w", err)
 			}
 		case strings.HasPrefix(line, "ie="):
-			b.ProbeIE = line[3:]
+			probeIE, err := hex.DecodeString(line[3:])
+			if err != nil {
+				return WpasBSS{}, fmt.Errorf("hex.DecodeString: %w", err)
+			}
+			b.ProbeIE = probeIE
 		case strings.HasPrefix(line, "beacon_ie="):
-			b.BeaconIE = line[10:]
+			beaconIE, err := hex.DecodeString(line[10:])
+			if err != nil {
+				return WpasBSS{}, fmt.Errorf("hex.DecodeString: %w", err)
+			}
+			b.BeaconIE = beaconIE
+
 		}
 	}
 	return b, nil
 }
 
-func parseIETLV(ieString string) ([]TLV, error) {
-	ie, err := hex.DecodeString(ieString)
-	if err != nil {
-		return nil, fmt.Errorf("hex.DecodeString: %w", err)
-	}
-	var tlvs []TLV
-
-	i := 0
-	for i < len(ie) {
-		t := ie[i]
-		i += 1
-		l := ie[i]
-		i += 1
-		if i+int(l) > len(ie) {
-			return nil, fmt.Errorf("length parsed in tlv exceeds total ie length")
-		}
-		v := ie[i : i+int(l)]
-		i += len(v)
-		tlv := TLV{
-			Type:   t,
-			Length: l,
-			Value:  v,
-		}
-		tlvs = append(tlvs, tlv)
-	}
-	return tlvs, nil
-}
-
-func parseTLVs(tlvs []TLV) (IEBSS, error) {
-	var ie IEBSS
-	var htcw = ChannelWidthUnknown
-	var vhtcw = ChannelWidthUnknown
-	for _, tlv := range tlvs {
-		switch tlv.Type {
-		case 0: //SSID
-			ie.SSID = string(tlv.Value)
-		case 1: //Supported Rates
-			sr, err := parseSupportedRates(tlv.Value)
-			if err != nil {
-				return IEBSS{}, fmt.Errorf("parseSupportedRates: %w", err)
-			}
-			ie.SupportedRates = sr
-		case 3: //DS Parameter Set
-		case 11: //QBSS Load
-			q := parseQBSSLoad(tlv.Value)
-			ie.QBSSStaCt = q.stationCount
-			ie.QBSSUtil = q.channelUtilization
-		case 48: //RSN Information
-		case 50: //Extended Supported Rates
-		case 45: //HT Capabilities
-		case 61: //HT Operation
-			htcw = parseHTOperation(tlv.Value)
-		case 127: //Extended Capabilities
-		case 191: //VHT Capabilities
-		case 192: //VHT Operation
-			vhtcw = parseVHTOperation(tlv.Value)
-		case 221: //Vendor Specific
-		case 255: //Element ID Extension
-		}
-		//reconcile maximum channel width
-		if vhtcw > htcw {
-			ie.ChannelWidth = vhtcw
-		} else {
-			ie.ChannelWidth = htcw
-		}
-	}
-	return ie, nil
-}
-
-func parseSupportedRates(value []byte) ([]string, error) {
-	var rates []string
-	for _, b := range value {
-		rate, ok := supportedRates[b]
-		if !ok {
-			return nil, fmt.Errorf("unknown rate detected at byte: %v", b)
-		}
-		rates = append(rates, rate)
-	}
-	return rates, nil
-}
-
-func parseQBSSLoad(value []byte) qbssLoad {
-	var q qbssLoad
-	q.stationCount = uint16(value[0] | value[1])
-	q.channelUtilization = value[2]
-	q.availableAdmissionCapacity = uint16(value[3] | value[4])
-	return q
-}
-
-func parseHTOperation(value []byte) ChannelWidth {
-	b := value[1]
-	bits0and1 := b & 0x3
-	bit2 := (b >> 2) & 0x1
+func getBandandChanfromFreq(freq int) (Band, int, error) {
+	var channel int
 	switch {
-	case bits0and1 == 0 && bit2 == 0:
-		return ChannelWidth20
-	case bits0and1 != 0 && bit2 == 1:
-		return ChannelWidth40
+	case freq == 2484:
+		channel = 14
+		return Band2point4, channel, nil
+	case freq >= 2412 && freq <= 2472:
+		channel = (freq - 2407) / 5
+		return Band2point4, channel, nil
+	case freq >= 5180 && freq <= 5825:
+		channel = (freq - 5000) / 5
+		return Band5, channel, nil
+	case freq >= 5955 && freq <= 7115:
+		channel = (freq - 5950) / 5
+		return Band6, channel, nil
 	}
-	return ChannelWidthUnknown
-}
-
-func parseVHTOperation(value []byte) ChannelWidth {
-	switch {
-	case value[0] == 1 && value[1] != 0 && value[2] != 0:
-		return ChannelWidth160
-	case value[0] == 1 && value[1] != 0 && value[2] == 0:
-		return ChannelWidth80
-	case value[0] == 0:
-		return ChannelWidthUnknown
-	}
-	return ChannelWidthUnknown
+	return BandUnknown, channel, fmt.Errorf("failed to determine channel/band from freq: %v", freq)
 }

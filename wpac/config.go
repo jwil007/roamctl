@@ -41,12 +41,11 @@ func (c *Client) getSSID() (string, error) {
 		return "", fmt.Errorf("c.Cmd(\"STATUS\"): %w", err)
 	}
 	for _, line := range strings.Split(string(out), "\n") {
-		if line[:5] == "ssid=" {
+		if strings.HasPrefix(line, "ssid=") {
 			return line[5:], nil
 		}
-		//return "", fmt.Errorf("error parsing ssid, not connected maybe")
 	}
-	return "", fmt.Errorf("ssid field not found")
+	return "", fmt.Errorf("ssid field not found - check if wifi iface connected")
 }
 
 func (c *Client) getNetworkID() (string, error) {
