@@ -1,1 +1,7 @@
 roamctl
+autoroam-amd64
+autoroam-armv7
+roamSeqDebug
+roamSequence
+roamctl-ARM64
+roamctl-amd64
