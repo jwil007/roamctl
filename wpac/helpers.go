@@ -36,3 +36,21 @@ func getBandandChanfromFreq(freq int) (Band, int, error) {
 	}
 	return BandUnknown, channel, fmt.Errorf("failed to determine channel/band from freq: %v", freq)
 }
+
+func isMACAddress(s string) bool {
+	if len(s) != 17 {
+		return false
+	}
+	for i, c := range s {
+		if i%3 == 2 {
+			if c != ':' {
+				return false
+			}
+		} else {
+			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+				return false
+			}
+		}
+	}
+	return true
+}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/jwil007/roamctl/wpac"
@@ -25,10 +26,20 @@ func main() {
 		}
 	}()
 	defer cancel()
-
-	_, errScan := c.Scan(ctx, config.SSID)
+	aps, errScan := c.Scan(ctx, config.SSID)
 	if errScan != nil {
 		log.Fatalf("wpac.Scan: %v", errScan)
 	}
-
+	fmt.Println("\nRoaming to all BSSIDs in sequence")
+	for _, bss := range aps {
+		result, err := c.Roam(ctx, bss.BSSID)
+		if err != nil {
+			log.Printf("error roaming to BSSID %v: %v", bss.BSSID, err)
+		}
+		fmt.Printf("Success:%v TargetBSSID:%v FinalBSSID:%v Duration:%v\n",
+			result.Success,
+			result.TargetBSSID,
+			result.FinalBSSID,
+			result.Duration)
+	}
 }

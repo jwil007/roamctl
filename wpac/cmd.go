@@ -9,19 +9,27 @@ import (
 )
 
 func (c *Client) cmd(command string) ([]byte, error) {
-
 	buf := make([]byte, 4096)
-
 	_, wErr := c.CC.Write([]byte(command))
 	if wErr != nil {
 		return nil, fmt.Errorf("n.Write: %v", wErr)
 	}
-
 	out, err := c.CC.Read(buf)
 	if err != nil {
 		return nil, fmt.Errorf("conn.Read: %v", err)
 	}
 	return buf[:out], nil
+}
+
+func (c *Client) runRoam(bssid string) error {
+	out, err := c.cmd("ROAM " + bssid)
+	if err != nil {
+		return fmt.Errorf("c.runRoam(%v): %w", bssid, err)
+	}
+	if strings.TrimSpace(string(out)) != "OK" {
+		return fmt.Errorf("c.runRoam(%v): output not \"OK\": %v", bssid, string(out))
+	}
+	return nil
 }
 
 func (c *Client) getSSID() (string, error) {
@@ -155,7 +163,6 @@ func (c *Client) parseWpasBSS(bssid string) (WpasBSS, error) {
 				return WpasBSS{}, fmt.Errorf("hex.DecodeString: %w", err)
 			}
 			b.BeaconIE = beaconIE
-
 		}
 	}
 	return b, nil

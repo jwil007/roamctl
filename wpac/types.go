@@ -1,6 +1,9 @@
 package wpac
 
-import "net"
+import (
+	"net"
+	"time"
+)
 
 type Client struct {
 	CC             *net.UnixConn //CommandConnection
@@ -24,6 +27,13 @@ type Signal struct {
 	ChannelWidth  string
 	AvgRSSI       int
 	AvgRSSIBeacon int
+}
+
+type RoamStats struct {
+	Success     bool
+	TargetBSSID string
+	FinalBSSID  string
+	Duration    time.Duration
 }
 
 type tlv struct {

@@ -10,6 +10,33 @@ import (
 	"time"
 )
 
+func (c *Client) Roam(ctx context.Context, bssid string) (RoamStats, error) {
+	var r RoamStats
+	r.TargetBSSID = bssid
+	start := time.Now()
+	errRoam := c.runRoam(bssid)
+	if errRoam != nil {
+		return RoamStats{}, fmt.Errorf("c.runRoam(%v): %w", bssid, errRoam)
+	}
+	ev, err := c.WaitForEvent(ctx, "CTRL-EVENT-CONNECTED", 15*time.Second)
+	if err != nil {
+		return RoamStats{}, fmt.Errorf("c.WaitForEvent: %w", err)
+	}
+	r.Duration = time.Since(start)
+	evs := strings.Fields(ev)
+	for _, e := range evs {
+		if isMACAddress(e) {
+			r.FinalBSSID = e
+		}
+	}
+	if r.FinalBSSID == bssid {
+		r.Success = true
+	} else {
+		r.Success = false
+	}
+	return r, nil
+}
+
 func (c *Client) GetConfig() (WPAConfig, error) {
 	ssid, err := c.getSSID()
 	if err != nil {
@@ -45,7 +72,7 @@ func (c *Client) Scan(ctx context.Context, ssid string) ([]RichBSS, error) {
 	if errScan != nil {
 		return nil, fmt.Errorf("wpac.runScan: %w", errScan)
 	}
-	errWait := c.WaitForEvent(ctx, "CTRL-EVENT-SCAN-RESULTS", 10*time.Second)
+	_, errWait := c.WaitForEvent(ctx, "CTRL-EVENT-SCAN-RESULTS", 10*time.Second)
 	if errWait != nil {
 		return nil, fmt.Errorf("c.WaitForEvent: %w", errWait)
 	}
@@ -158,8 +185,9 @@ func (c *Client) ListenEvents(ctx context.Context) (<-chan string, <-chan error)
 	return events, errc
 }
 
-func (c *Client) WaitForEvent(ctx context.Context, match string, timeout time.Duration) error {
+func (c *Client) WaitForEvent(ctx context.Context, match string, timeout time.Duration) (string, error) {
 	events, errc := c.ListenEvents(ctx)
+	evch := make(chan string)
 	errw := make(chan error, 1)
 	go func() {
 		timer := time.NewTimer(timeout)
@@ -173,6 +201,7 @@ func (c *Client) WaitForEvent(ctx context.Context, match string, timeout time.Du
 				return
 			case event := <-events:
 				if strings.Contains(event, match) {
+					evch <- event
 					errw <- nil
 					return
 				}
@@ -182,5 +211,5 @@ func (c *Client) WaitForEvent(ctx context.Context, match string, timeout time.Du
 			}
 		}
 	}()
-	return <-errw
+	return <-evch, <-errw
 }
