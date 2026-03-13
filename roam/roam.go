@@ -9,9 +9,9 @@ import (
 	"github.com/jwil007/roamctl/wpac"
 )
 
-func Autoroam() error {
+func Autoroam(iface string) error {
 	//open unixsocket connection for commands
-	c, err := wpac.Connect("wlan0")
+	c, err := wpac.Connect(iface)
 	if err != nil {
 		return fmt.Errorf("wpac.Connect %v", err)
 	}
@@ -26,7 +26,18 @@ func Autoroam() error {
 	//retrive current wpa_supplicant configuration
 	config, err := c.GetConfig()
 	if err != nil {
-		return fmt.Errorf("wpac.GetConfig: %v", err)
+		return fmt.Errorf("c.GetConfig: %v", err)
+	}
+	//shut off bgscan
+	bgscanOffConfig := wpac.WPAConfig{
+		SSID:      config.SSID,
+		NetworkID: config.NetworkID,
+		BGScan:    "",
+		Iface:     config.Iface,
+	}
+	errBG := c.SetConfig(bgscanOffConfig)
+	if errBG != nil {
+		return fmt.Errorf("c.SetConfig: %w", errBG)
 	}
 	//run scan
 	aps, errScan := c.Scan(ctx, config.SSID)
@@ -46,6 +57,11 @@ func Autoroam() error {
 			result.FinalBSSID,
 			result.Duration,
 			result.Message)
+	}
+	//restore original bgscan config
+	errRes := c.SetConfig(config)
+	if errRes != nil {
+		return fmt.Errorf("c.SetConfig: %w", err)
 	}
 	return nil
 }
