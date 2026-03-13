@@ -2,10 +2,14 @@ package wpac
 
 //This file contains functions to run and process output from wpa_supplicant control interface commands
 import (
+	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func (c *Client) cmd(command string) ([]byte, error) {
@@ -24,10 +28,10 @@ func (c *Client) cmd(command string) ([]byte, error) {
 func (c *Client) runRoam(bssid string) error {
 	out, err := c.cmd("ROAM " + bssid)
 	if err != nil {
-		return fmt.Errorf("c.runRoam(%v): %w", bssid, err)
+		return fmt.Errorf("c.cmd(ROAM %v): %w", bssid, err)
 	}
 	if strings.TrimSpace(string(out)) != "OK" {
-		return fmt.Errorf("c.runRoam(%v): output not \"OK\": %v", bssid, string(out))
+		return fmt.Errorf("c.cmd(ROAM %v): output not \"OK\": %v", bssid, string(out))
 	}
 	return nil
 }
@@ -35,7 +39,7 @@ func (c *Client) runRoam(bssid string) error {
 func (c *Client) getSSID() (string, error) {
 	out, err := c.cmd("STATUS")
 	if err != nil {
-		return "", fmt.Errorf("c.Cmd(\"STATUS\"): %w", err)
+		return "", fmt.Errorf("c.cmd(\"STATUS\"): %w", err)
 	}
 	for _, line := range strings.Split(string(out), "\n") {
 		if strings.HasPrefix(line, "ssid=") {
@@ -218,4 +222,70 @@ func (c *Client) getSignal() (Signal, error) {
 		}
 	}
 	return s, nil
+}
+
+func (c *Client) listenEvents(ctx context.Context) (<-chan string, <-chan error) {
+	events := make(chan string)
+	errc := make(chan error, 1)
+	go func() {
+		_, err := c.EC.Write([]byte("ATTACH"))
+		if err != nil {
+			errc <- err
+		}
+		buf := make([]byte, 4096)
+		for {
+			errDeadline := c.EC.SetReadDeadline(time.Now().Add(1 * time.Second))
+			if errDeadline != nil {
+				errc <- errDeadline
+				return
+			}
+			n, err := c.EC.Read(buf)
+			if err != nil {
+				if errors.Is(err, os.ErrDeadlineExceeded) {
+					continue
+				}
+				errc <- err
+				return
+			}
+			//fmt.Printf("[event] %q\n", string(buf[:n])) //debug print
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				events <- string(buf[:n])
+			}
+		}
+	}()
+	return events, errc
+}
+
+func (c *Client) waitForEvent(ctx context.Context, match []string, timeout time.Duration) (string, error) {
+	events, errc := c.listenEvents(ctx)
+	evch := make(chan string)
+	errw := make(chan error, 1)
+	go func() {
+		timer := time.NewTimer(timeout)
+		defer timer.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-timer.C:
+				errw <- fmt.Errorf("timed out waiting for event")
+				return
+			case event := <-events:
+				for _, s := range match { //return on first event matching
+					if strings.Contains(event, s) {
+						evch <- event
+						errw <- nil
+						return
+					}
+				}
+			case err := <-errc:
+				errw <- err
+				return
+			}
+		}
+	}()
+	return <-evch, <-errw
 }

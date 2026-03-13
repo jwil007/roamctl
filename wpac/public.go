@@ -3,9 +3,7 @@ package wpac
 // This file contains the API surface
 import (
 	"context"
-	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 )
@@ -13,26 +11,57 @@ import (
 func (c *Client) Roam(ctx context.Context, bssid string) (RoamStats, error) {
 	var r RoamStats
 	r.TargetBSSID = bssid
+	eventMatch := []string{
+		"CTRL-EVENT-AUTH-REJECT",
+		"CTRL-EVENT-ASSOC-REJECT",
+		"CTRL-EVENT-DISCONNECTED",
+		"CTRL-EVENT-CONNECTED",
+	}
 	start := time.Now()
 	errRoam := c.runRoam(bssid)
 	if errRoam != nil {
 		return RoamStats{}, fmt.Errorf("c.runRoam(%v): %w", bssid, errRoam)
 	}
-	ev, err := c.WaitForEvent(ctx, "CTRL-EVENT-CONNECTED", 15*time.Second)
+	ev, err := c.waitForEvent(ctx, eventMatch, 15*time.Second)
 	if err != nil {
-		return RoamStats{}, fmt.Errorf("c.WaitForEvent: %w", err)
+		return RoamStats{}, fmt.Errorf("c.waitForEvent: %w", err)
 	}
 	r.Duration = time.Since(start)
-	evs := strings.Fields(ev)
-	for _, e := range evs {
-		if isMACAddress(e) {
-			r.FinalBSSID = e
+	switch {
+	case strings.Contains(ev, "CTRL-EVENT-AUTH-REJECT"):
+		sc, errSt := extractStatusCode(ev)
+		if errSt != nil {
+			return RoamStats{}, fmt.Errorf("extractStatusCode(%v): %w", ev, errSt)
 		}
-	}
-	if r.FinalBSSID == bssid {
-		r.Success = true
-	} else {
 		r.Success = false
+		r.Message = "Auth rejected - " + sc
+	case strings.Contains(ev, "CTRL-EVENT-ASSOC-REJECT"):
+		sc, errSt := extractStatusCode(ev)
+		if errSt != nil {
+			return RoamStats{}, fmt.Errorf("extractStatusCode(%v): %w", ev, errSt)
+		}
+		r.Success = false
+		r.Message = "Assoc rejected - " + sc
+	case strings.Contains(ev, "CTRL-EVENT-DISCONNECTED"):
+		rc, errEx := extractReasonCode(ev)
+		if errEx != nil {
+			return RoamStats{}, fmt.Errorf("extractReasonCode(%v): %w", ev, errEx)
+		}
+		r.Success = false
+		r.Message = "Disconnected - " + rc
+	case strings.Contains(ev, "CTRL-EVENT-CONNECTED"):
+		f := strings.Fields(ev)
+		for _, e := range f {
+			if isMACAddress(e) {
+				r.FinalBSSID = e
+			}
+		}
+		if r.FinalBSSID == bssid {
+			r.Success = true
+		} else {
+			r.Success = false
+			r.Message = "Target and final BSSID do not match"
+		}
 	}
 	return r, nil
 }
@@ -72,9 +101,9 @@ func (c *Client) Scan(ctx context.Context, ssid string) ([]RichBSS, error) {
 	if errScan != nil {
 		return nil, fmt.Errorf("wpac.runScan: %w", errScan)
 	}
-	_, errWait := c.WaitForEvent(ctx, "CTRL-EVENT-SCAN-RESULTS", 10*time.Second)
+	_, errWait := c.waitForEvent(ctx, []string{"CTRL-EVENT-SCAN-RESULTS"}, 10*time.Second)
 	if errWait != nil {
-		return nil, fmt.Errorf("c.WaitForEvent: %w", errWait)
+		return nil, fmt.Errorf("c.waitForEvent: %w", errWait)
 	}
 	bssids, err := c.getScanResults(ssid)
 	if err != nil {
@@ -149,67 +178,4 @@ func (c *Client) PollSignal(ctx context.Context, interval time.Duration) (<-chan
 		}
 	}()
 	return signal, errc
-}
-
-func (c *Client) ListenEvents(ctx context.Context) (<-chan string, <-chan error) {
-	events := make(chan string)
-	errc := make(chan error, 1)
-	go func() {
-		_, err := c.EC.Write([]byte("ATTACH"))
-		if err != nil {
-			errc <- err
-		}
-		buf := make([]byte, 4096)
-		for {
-			errDeadline := c.EC.SetReadDeadline(time.Now().Add(1 * time.Second))
-			if errDeadline != nil {
-				errc <- errDeadline
-				return
-			}
-			n, err := c.EC.Read(buf)
-			if err != nil {
-				if errors.Is(err, os.ErrDeadlineExceeded) {
-					continue
-				}
-				errc <- err
-				return
-			}
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				events <- string(buf[:n])
-			}
-		}
-	}()
-	return events, errc
-}
-
-func (c *Client) WaitForEvent(ctx context.Context, match string, timeout time.Duration) (string, error) {
-	events, errc := c.ListenEvents(ctx)
-	evch := make(chan string)
-	errw := make(chan error, 1)
-	go func() {
-		timer := time.NewTimer(timeout)
-		defer timer.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-timer.C:
-				errw <- fmt.Errorf("timed out waiting for event")
-				return
-			case event := <-events:
-				if strings.Contains(event, match) {
-					evch <- event
-					errw <- nil
-					return
-				}
-			case err := <-errc:
-				errw <- err
-				return
-			}
-		}
-	}()
-	return <-evch, <-errw
 }

@@ -3,6 +3,8 @@ package wpac
 import (
 	"fmt"
 	"log"
+	"strconv"
+	"strings"
 )
 
 func constructRichBSS(wpaBSS WpasBSS, ieBSS IEBSS) RichBSS {
@@ -16,6 +18,42 @@ func constructRichBSS(wpaBSS WpasBSS, ieBSS IEBSS) RichBSS {
 		Band:       band,
 		ChannelNum: channel,
 	}
+}
+
+func extractReasonCode(ev string) (string, error) {
+	f := strings.Fields(ev)
+	for _, e := range f {
+		if strings.HasPrefix(e, "reason=") {
+			rci, err := strconv.Atoi(e[7:])
+			if err != nil {
+				return "", fmt.Errorf("strconv.Atoi(%v): %w", e[7:], err)
+			}
+			rc, ok := reasonCodes[rci]
+			if !ok {
+				return fmt.Sprintf("unknown reason code %v", rci), nil
+			}
+			return rc, nil
+		}
+	}
+	return "", fmt.Errorf("reason code not found in event: %v", ev)
+}
+
+func extractStatusCode(ev string) (string, error) {
+	f := strings.Fields(ev)
+	for _, e := range f {
+		if strings.HasPrefix(e, "status_code=") {
+			sci, err := strconv.Atoi(e[12:])
+			if err != nil {
+				return "", fmt.Errorf("strconv.Atoi(%v): %w", e[12:], err)
+			}
+			sc, ok := statusCodes[sci]
+			if !ok {
+				return fmt.Sprintf("unknown status code %v", sci), nil
+			}
+			return sc, nil
+		}
+	}
+	return "", fmt.Errorf("reason code not found in event: %v", ev)
 }
 
 func getBandandChanfromFreq(freq int) (Band, int, error) {

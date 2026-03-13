@@ -152,7 +152,6 @@ func parseHEOperation(value []byte) ChannelWidth {
 
 func parseEHTCapabilities(value []byte) ChannelWidth {
 	b := value[2]
-	fmt.Printf("EHT Cap Byte2: bin: %0b hex: %0x\n", b, b)
 	bit1 := (b >> 1) & 0x1
 	if bit1 == 1 {
 		return ChannelWidth320
