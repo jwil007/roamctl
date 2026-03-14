@@ -164,6 +164,7 @@ func (c *Client) PollSignal(ctx context.Context, interval time.Duration) (<-chan
 		for {
 			select {
 			case <-ctx.Done():
+				errc <- ctx.Err()
 				return
 			case <-ticker.C:
 				s, err := c.getSignal()

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/jwil007/roamctl/wpac"
 )
@@ -52,9 +53,58 @@ func Autoroam(c *wpac.Client, ctx context.Context) error {
 	return nil
 }
 
-//func AlertForRSSI(rssi int, iface string) (string, error) {
-//	c, err := wpac.Connect(iface)
-//	if err != nil {
-//		return fmt.Errorf("wpac.Connect %v", err)
-//	}
-//}
+func ProcessLoop(c *wpac.Client, ctx context.Context, thr RoamThresholds) error {
+	//Get Current wpa_supplicant status
+	storedConf, err := c.GetConfig()
+	if err != nil {
+		return fmt.Errorf("c.GetConfig: %v", err)
+	}
+	//Disable bgscan to prevent autonomous roaming
+	bgscanOffConfig := wpac.WPAConfig{
+		SSID:      storedConf.SSID,
+		NetworkID: storedConf.NetworkID,
+		BGScan:    "",
+	}
+	err = c.SetConfig(bgscanOffConfig)
+	if err != nil {
+		return fmt.Errorf("c.SetConfig: %w", err)
+	}
+	//restore original config when process stops
+	defer func() {
+		err = c.SetConfig(storedConf)
+		if err != nil {
+			log.Printf("error restoring wpa_supplicant config: %v", err)
+		}
+	}()
+	//Start polling signal stats
+	sigCh, sigErrCh := c.PollSignal(ctx, 1*time.Second)
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case sig := <-sigCh:
+			switch {
+
+			case sig.RSSI <= thr.RSSI:
+				err = roamDecisionLoop(c, ctx, sig)
+				if err != nil {
+					return fmt.Errorf("makeRoamDecision %w", err)
+				}
+			case sig.LinkSpeed <= thr.DataRate:
+				err = roamDecisionLoop(c, ctx, sig)
+				if err != nil {
+					return fmt.Errorf("makeRoamDecision %w", err)
+				}
+			}
+		case err = <-sigErrCh:
+			return fmt.Errorf("c.PollSignal: %w", err)
+		}
+	}
+}
+
+func roamDecisionLoop(c *wpac.Client, ctx context.Context, sig wpac.Signal) error {
+	fmt.Printf("congrats, roam decision loop entered with the following signal stats\n%+v\n", sig)
+	fmt.Println("sleeping for 5 seconds...")
+	time.Sleep(5 * time.Second)
+	return nil
+}

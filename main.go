@@ -3,13 +3,24 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/jwil007/roamctl/roam"
 	"github.com/jwil007/roamctl/wpac"
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Printf("%v", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	iface := flag.String("i", "wlan0", "specify wireless interface")
 	flag.Parse()
 	ifaceName := *iface
@@ -17,19 +28,24 @@ func main() {
 	//open unixsocket connection for commands
 	c, err := wpac.Connect(ifaceName)
 	if err != nil {
-		log.Fatalf("wpac.Connect %v", err)
+		return fmt.Errorf("wpac.Connect %v", err)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer func() {
-		err := c.Close()
+		err = c.Close()
 		if err != nil {
-			log.Fatalf("failed to close unix connection: %v", err)
+			log.Printf("failed to close unix connection: %v", err)
 		}
 	}()
 	defer cancel()
-
-	errA := roam.Autoroam(c, ctx)
-	if errA != nil {
-		log.Fatalf("roam.Autoroam: %v", errA)
+	//manually set roam thresholds during testing
+	thr := roam.RoamThresholds{
+		RSSI:     -65,
+		DataRate: 54,
 	}
+	err = roam.ProcessLoop(c, ctx, thr)
+	if err != nil {
+		return fmt.Errorf("roam.ProcessLoop: %v", err)
+	}
+	return nil
 }
