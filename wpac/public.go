@@ -83,7 +83,6 @@ func (c *Client) GetConfig() (WPAConfig, error) {
 		SSID:      ssid,
 		NetworkID: networkID,
 		BGScan:    bgscan,
-		Iface:     c.Iface,
 	}, nil
 }
 
@@ -109,7 +108,6 @@ func (c *Client) Scan(ctx context.Context, ssid string) ([]RichBSS, error) {
 	if err != nil {
 		return nil, fmt.Errorf("c.getScanResults: %w", err)
 	}
-
 	//process bssid list
 	var wpasBSSList []WpasBSS
 	var richBSSList []RichBSS
@@ -133,8 +131,9 @@ func (c *Client) Scan(ctx context.Context, ssid string) ([]RichBSS, error) {
 		richBSSList = append(richBSSList, constructRichBSS(wpasBSS, ieBSS))
 	}
 	for _, r := range richBSSList {
-		fmt.Printf("BSSID:%s Freq:%d Band:%s Channel:%d BeaconInt:%d Noise:%d RSSI:%d SNR:%d Age:%d"+
-			" Flags:%s EstThruput:%d SSID:%s Rates:%v CW:%s QBSSUtil:%d QBSSStaCt:%d PHYType:%s\n",
+		fmt.Printf("SSID:%s BSSID:%s Freq:%d Band:%s Channel:%d BeaconInt:%d Noise:%d RSSI:%d SNR:%d Age:%d"+
+			" EstThruput:%d CW:%s QBSSUtil:%d QBSSStaCt:%d PHYType:%s Flags:%s Rates:%v\n",
+			r.SSID,
 			r.BSSID,
 			r.Freq,
 			r.Band,
@@ -144,14 +143,13 @@ func (c *Client) Scan(ctx context.Context, ssid string) ([]RichBSS, error) {
 			r.RSSI,
 			r.SNR,
 			r.Age,
-			r.Flags,
 			r.EstThruput,
-			r.SSID,
-			r.SupportedRates,
 			r.ChannelWidth,
 			r.QBSSUtil,
 			r.QBSSStaCt,
 			r.PHYType,
+			r.Flags,
+			r.SupportedRates,
 		)
 	}
 	return richBSSList, nil

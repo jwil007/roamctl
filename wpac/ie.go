@@ -5,8 +5,7 @@ import "fmt"
 // This file contains functions to parse raw ie hex dump from beacon/probe response frames
 func parseIETLV(ie []byte) ([]tlv, error) {
 	var tlvs []tlv
-	i := 0
-	for i < len(ie) {
+	for i := 0; i < len(ie); {
 		t := ie[i]
 		i += 1
 		l := ie[i]
