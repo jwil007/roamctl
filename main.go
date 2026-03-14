@@ -41,7 +41,7 @@ func run() error {
 	}()
 	defer cancel()
 	//manually set roam thresholds during testing
-	thr := roam.RoamThresholds{
+	thr := roam.Thresholds{
 		RSSI:     rssiThr,
 		DataRate: 54,
 	}

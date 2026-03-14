@@ -54,7 +54,7 @@ func Autoroam(c *wpac.Client, ctx context.Context) error {
 	return nil
 }
 
-func ProcessLoop(c *wpac.Client, ctx context.Context, thr RoamThresholds) error {
+func ProcessLoop(c *wpac.Client, ctx context.Context, thr Thresholds) error {
 	fmt.Println("Starting roamctl... exit with ctrl+c")
 	//Get Current wpa_supplicant status
 	storedConf, err := c.GetConfig()
