@@ -22,8 +22,10 @@ func main() {
 
 func run() error {
 	iface := flag.String("i", "wlan0", "specify wireless interface")
+	rssi := flag.Int("r", -65, "specify rssi for roaming threshold")
 	flag.Parse()
 	ifaceName := *iface
+	rssiThr := *rssi
 
 	//open unixsocket connection for commands
 	c, err := wpac.Connect(ifaceName)
@@ -40,7 +42,7 @@ func run() error {
 	defer cancel()
 	//manually set roam thresholds during testing
 	thr := roam.RoamThresholds{
-		RSSI:     -65,
+		RSSI:     rssiThr,
 		DataRate: 54,
 	}
 	err = roam.ProcessLoop(c, ctx, thr)

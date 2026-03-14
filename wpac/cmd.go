@@ -36,17 +36,26 @@ func (c *Client) runRoam(bssid string) error {
 	return nil
 }
 
-func (c *Client) getSSID() (string, error) {
+func (c *Client) getSSID() (string, string, error) {
 	out, err := c.cmd("STATUS")
 	if err != nil {
-		return "", fmt.Errorf("c.cmd(\"STATUS\"): %w", err)
+		return "", "", fmt.Errorf("c.cmd(\"STATUS\"): %w", err)
 	}
+	var bssid string
+	var ssid string
 	for _, line := range strings.Split(string(out), "\n") {
-		if strings.HasPrefix(line, "ssid=") {
-			return line[5:], nil
+		fmt.Println(line) //debug print
+		switch {
+		case strings.HasPrefix(line, "bssid="):
+			bssid = line[6:]
+		case strings.HasPrefix(line, "ssid="):
+			ssid = line[5:]
 		}
 	}
-	return "", fmt.Errorf("ssid field not found - check if wifi iface connected")
+	if ssid == "" || bssid == "" {
+		return "", "", fmt.Errorf("ssid or bssid field not found - check if wifi iface connected")
+	}
+	return ssid, bssid, nil
 }
 
 func (c *Client) getNetworkID() (string, error) {
@@ -222,6 +231,21 @@ func (c *Client) getSignal() (Signal, error) {
 		}
 	}
 	return s, nil
+}
+func (c *Client) constructConnStatus() (ConnectionStatus, error) {
+	s, err := c.getSignal()
+	if err != nil {
+		return ConnectionStatus{}, fmt.Errorf("c.getSignal(): %w", err)
+	}
+	ssid, bssid, err := c.getSSID()
+	if err != nil {
+		return ConnectionStatus{}, fmt.Errorf("c.getSSID(): %w", err)
+	}
+	return ConnectionStatus{
+		Signal: s,
+		SSID:   ssid,
+		BSSID:  bssid,
+	}, nil
 }
 
 func (c *Client) listenEvents(ctx context.Context) (<-chan string, <-chan error) {

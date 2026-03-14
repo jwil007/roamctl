@@ -28,6 +28,12 @@ type Signal struct {
 	AvgRSSIBeacon int
 }
 
+type ConnectionStatus struct {
+	Signal
+	SSID  string
+	BSSID string
+}
+
 type RoamStats struct {
 	Success     bool
 	TargetBSSID string
