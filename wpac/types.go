@@ -78,11 +78,6 @@ type IEBSS struct {
 	PHYType        PHYType
 }
 
-type eventResult struct {
-	event string
-	err   error
-}
-
 var supportedRates = map[byte]string{
 	0x02: "1",
 	0x03: "1.5",

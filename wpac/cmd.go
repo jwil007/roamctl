@@ -261,31 +261,22 @@ func (c *Client) listenEvents(ctx context.Context) (<-chan string, <-chan error)
 
 func (c *Client) waitForEvent(ctx context.Context, match []string, timeout time.Duration) (string, error) {
 	events, errc := c.listenEvents(ctx)
-	resultch := make(chan eventResult, 1)
-	go func() {
-		timer := time.NewTimer(timeout)
-		defer timer.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				resultch <- eventResult{err: ctx.Err()}
-				return
-			case <-timer.C:
-				resultch <- eventResult{err: fmt.Errorf("timed out waiting for event")}
-				return
-			case event := <-events:
-				for _, s := range match { //return on first event matching
-					if strings.Contains(event, s) {
-						resultch <- eventResult{event: event}
-						return
-					}
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-timer.C:
+			return "", fmt.Errorf("timed out waiting for event")
+		case event := <-events:
+			for _, s := range match { //return on first event matching
+				if strings.Contains(event, s) {
+					return event, nil
 				}
-			case err := <-errc:
-				resultch <- eventResult{err: err}
-				return
 			}
+		case err := <-errc:
+			return "", err
 		}
-	}()
-	r := <-resultch
-	return r.event, r.err
+	}
 }
