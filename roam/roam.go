@@ -96,7 +96,7 @@ func ProcessLoop(c *wpac.Client, ctx context.Context, thr Thresholds) error {
 			}
 			switch {
 			case lastKnown.AvgRSSI <= thr.RSSI:
-				if time.Since(lastRoam) < 5*time.Second {
+				if time.Since(lastRoam) < 5*time.Second { //timer to wait before attemtping to roam again
 					continue
 				}
 				bssid, err := roamDecisionLoop(c, ctx, storedConf.SSID, lastKnown)
@@ -154,7 +154,6 @@ func roamDecisionLoop(c *wpac.Client, ctx context.Context, ssid string, con *wpa
 			}
 		}
 		fmt.Println("No better APs found, returning to signal monitoring...")
-		time.Sleep(2 * time.Second)
 		return "", nil
 	}
 }
