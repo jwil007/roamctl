@@ -113,13 +113,13 @@ func ProcessLoop(c *wpac.Client, ctx context.Context, thr Thresholds) error {
 }
 
 func roamDecisionLoop(c *wpac.Client, ctx context.Context, ssid string, con *wpac.ConnectionStatus) (string, error) {
-	fmt.Printf("Roam decision loop entered with the following signal stats\n%+v\n", con)
-	fmt.Println("Running scan...")
+	fmt.Printf("\nRoam decision loop entered with the following signal stats\n%+v\n", con)
+	fmt.Println("\nRunning scan...")
 	for {
 		aps, err := c.Scan(ctx, ssid)
 		if err != nil {
 			if strings.Contains(err.Error(), "FAIL-BUSY") {
-				fmt.Println("interface busy, retrying scan in 2 seconds")
+				fmt.Println("\ninterface busy, retrying scan in 2 seconds")
 				time.Sleep(2 * time.Second)
 				continue
 			}
@@ -131,17 +131,23 @@ func roamDecisionLoop(c *wpac.Client, ctx context.Context, ssid string, con *wpa
 				if err != nil {
 					return "", fmt.Errorf("c.Roam(%v): %w", ap.BSSID, err)
 				}
-				fmt.Printf("Better AP found BSSID: %v RSSI: %v\n", ap.BSSID, ap.RSSI)
-				fmt.Printf("Success:%v TargetBSSID:%v FinalBSSID:%v Duration:%v Message:%v\n",
+				fmt.Printf("\nBetter AP found BSSID: %v RSSI: %v\n", ap.BSSID, ap.RSSI)
+				fmt.Printf("\nRoam Result // Success:%v TargetBSSID:%v FinalBSSID:%v Duration:%v Message:%v\n",
 					result.Success,
 					result.TargetBSSID,
 					result.FinalBSSID,
 					result.Duration,
 					result.Message)
 				if result.Success == true {
-					fmt.Printf("\n\n\n******** Successful Roam to BSSID: %v RSSI: %v ********\n\n\n",
-						ap.BSSID, ap.RSSI)
-					fmt.Println("Waiting for next trigger...")
+					fmt.Printf("\n## Successful Roam to BSSID:%v RSSI:%v Band:%v Channel:%v\n",
+						ap.BSSID, ap.RSSI, ap.Band, ap.ChannelNum)
+					fmt.Println("\nWaiting for next trigger...")
+					return result.FinalBSSID, nil
+				}
+				if result.Success == false {
+					fmt.Printf("\n## Failed Roam to BSSID:%v RSSI:%v Band:%v Channel:%v\nReason:%v\n",
+						ap.BSSID, ap.RSSI, ap.Band, ap.ChannelNum, result.Message)
+					fmt.Println("\nWaiting for next trigger...")
 					return result.FinalBSSID, nil
 				}
 				return "", nil

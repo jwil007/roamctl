@@ -4,6 +4,7 @@ package wpac
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 )
@@ -130,28 +131,31 @@ func (c *Client) Scan(ctx context.Context, ssid string) ([]RichBSS, error) {
 		//fmt.Printf("Data parsed from beacon TLVs:\n %+v\n", ieBSS)
 		richBSSList = append(richBSSList, constructRichBSS(wpasBSS, ieBSS))
 	}
-	for _, r := range richBSSList {
-		fmt.Printf("SSID:%s BSSID:%s Freq:%d Band:%s Channel:%d BeaconInt:%d Noise:%d RSSI:%d SNR:%d Age:%d"+
-			" EstThruput:%d CW:%s QBSSUtil:%d QBSSStaCt:%d PHYType:%s Flags:%s Rates:%v\n",
-			r.SSID,
-			r.BSSID,
-			r.Freq,
-			r.Band,
-			r.ChannelNum,
-			r.BeaconInt,
-			r.Noise,
-			r.RSSI,
-			r.SNR,
-			r.Age,
-			r.EstThruput,
-			r.ChannelWidth,
-			r.QBSSUtil,
-			r.QBSSStaCt,
-			r.PHYType,
-			r.Flags,
-			r.SupportedRates,
-		)
-	}
+	slices.SortFunc(richBSSList, func(a, b RichBSS) int {
+		return b.RSSI - a.RSSI
+	})
+	//for _, r := range richBSSList {
+	//	fmt.Printf("SSID:%s BSSID:%s Freq:%d Band:%s Channel:%d BeaconInt:%d Noise:%d RSSI:%d SNR:%d Age:%d"+
+	//		" EstThruput:%d CW:%s QBSSUtil:%d QBSSStaCt:%d PHYType:%s Flags:%s Rates:%v\n",
+	//		r.SSID,
+	//		r.BSSID,
+	//		r.Freq,
+	//		r.Band,
+	//		r.ChannelNum,
+	//		r.BeaconInt,
+	//		r.Noise,
+	//		r.RSSI,
+	//		r.SNR,
+	//		r.Age,
+	//		r.EstThruput,
+	//		r.ChannelWidth,
+	//		r.QBSSUtil,
+	//		r.QBSSStaCt,
+	//		r.PHYType,
+	//		r.Flags,
+	//		r.SupportedRates,
+	//	)
+	//}
 	return richBSSList, nil
 }
 

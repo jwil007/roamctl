@@ -109,12 +109,12 @@ func (c *Client) setBGScan(config WPAConfig) error {
 }
 
 func (c *Client) runScan() error {
-	out, err := c.cmd("SCAN")
+	out, err := c.cmd("SCAN TYPE=ONLY")
 	if err != nil {
-		return fmt.Errorf("c.Cmd(\"SCAN\"): %w", err)
+		return fmt.Errorf("c.Cmd(\"SCAN TYPE=ONLY\"): %w", err)
 	}
 	if strings.TrimSpace(string(out)) != "OK" {
-		return fmt.Errorf("c.Cmd(\"SCAN\"): %s", string(out))
+		return fmt.Errorf("c.Cmd(\"SCAN TYPE=ONLY\"): %s", string(out))
 	}
 	return nil
 }
