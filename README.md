@@ -2,4 +2,4 @@ This project uses wpa_supplicant gymnastics (via the Unix Socket ctrl interface 
 
 Right now just RSSI but it'll be better soon.......
 
-To use, clone the repo, install Golang, and run go build. Then run ./roamctl -i *interface name* -r *RSSI cutoff* Default vals are -i: wlan0 and -r: -65
+To use, clone the repo, install Golang, and run go build. Then run ./roamctl -i *interface name* -r *RSSI cutoff*. Default vals are -i: wlan0 and -r: -65
