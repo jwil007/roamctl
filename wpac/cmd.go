@@ -25,6 +25,19 @@ func (c *Client) cmd(command string) ([]byte, error) {
 	return buf[:out], nil
 }
 
+func (c *Client) cmdP(command string) ([]byte, error) {
+	buf := make([]byte, 4096)
+	_, wErr := c.PC.Write([]byte(command))
+	if wErr != nil {
+		return nil, fmt.Errorf("n.Write: %v", wErr)
+	}
+	out, err := c.PC.Read(buf)
+	if err != nil {
+		return nil, fmt.Errorf("conn.Read: %v", err)
+	}
+	return buf[:out], nil
+}
+
 func (c *Client) runRoam(bssid string) error {
 	out, err := c.cmd("ROAM " + bssid)
 	if err != nil {
@@ -36,26 +49,30 @@ func (c *Client) runRoam(bssid string) error {
 	return nil
 }
 
-func (c *Client) getSSID() (string, string, error) {
+func (c *Client) getSSID() (string, error) {
 	out, err := c.cmd("STATUS")
 	if err != nil {
-		return "", "", fmt.Errorf("c.cmd(\"STATUS\"): %w", err)
+		return "", fmt.Errorf("c.cmd(\"STATUS\"): %w", err)
 	}
-	var bssid string
-	var ssid string
 	for _, line := range strings.Split(string(out), "\n") {
-		fmt.Println(line) //debug print
-		switch {
-		case strings.HasPrefix(line, "bssid="):
-			bssid = line[6:]
-		case strings.HasPrefix(line, "ssid="):
-			ssid = line[5:]
+		if strings.HasPrefix(line, "ssid=") {
+			return line[5:], nil
 		}
 	}
-	if ssid == "" || bssid == "" {
-		return "", "", fmt.Errorf("ssid or bssid field not found - check if wifi iface connected")
+	return "", fmt.Errorf("ssid field not found - check if wifi iface connected")
+}
+
+func (c *Client) getBSSID() (string, error) {
+	out, err := c.cmdP("STATUS")
+	if err != nil {
+		return "", fmt.Errorf("c.cmd(\"STATUS\"): %w", err)
 	}
-	return ssid, bssid, nil
+	for _, line := range strings.Split(string(out), "\n") {
+		if strings.HasPrefix(line, "bssid=") {
+			return line[6:], nil
+		}
+	}
+	return "", fmt.Errorf("bssid field not found - check if wifi iface connected")
 }
 
 func (c *Client) getNetworkID() (string, error) {
@@ -237,13 +254,12 @@ func (c *Client) constructConnStatus() (ConnectionStatus, error) {
 	if err != nil {
 		return ConnectionStatus{}, fmt.Errorf("c.getSignal(): %w", err)
 	}
-	ssid, bssid, err := c.getSSID()
+	bssid, err := c.getBSSID()
 	if err != nil {
-		return ConnectionStatus{}, fmt.Errorf("c.getSSID(): %w", err)
+		return ConnectionStatus{}, fmt.Errorf("c.getBSSID(): %w", err)
 	}
 	return ConnectionStatus{
 		Signal: s,
-		SSID:   ssid,
 		BSSID:  bssid,
 	}, nil
 }

@@ -67,7 +67,7 @@ func (c *Client) Roam(ctx context.Context, bssid string) (RoamStats, error) {
 }
 
 func (c *Client) GetConfig() (WPAConfig, error) {
-	ssid, _, err := c.getSSID()
+	ssid, err := c.getSSID()
 	if err != nil {
 		return WPAConfig{}, fmt.Errorf("getSSID: %w", err)
 	}
@@ -168,7 +168,7 @@ func (c *Client) PollSignal(ctx context.Context, interval time.Duration) (<-chan
 				return
 			case <-ticker.C:
 				s, err := c.constructConnStatus()
-				if err != nil && !strings.Contains(err.Error(), "ssid or bssid field not found") {
+				if err != nil && !strings.Contains(err.Error(), "bssid field not found") {
 					errc <- err
 					return
 				}

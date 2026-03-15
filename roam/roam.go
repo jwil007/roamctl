@@ -79,24 +79,32 @@ func ProcessLoop(c *wpac.Client, ctx context.Context, thr Thresholds) error {
 		}
 	}()
 	//Start polling signal stats
-	var lastKnown wpac.ConnectionStatus
-	sigCh, sigErrCh := c.PollSignal(ctx, 100*time.Millisecond)
+	fmt.Println("Waiting for trigger to enter roam decision loop...")
+	var lastKnown *wpac.ConnectionStatus
+	var lastRoam time.Time
+	sigCh, sigErrCh := c.PollSignal(ctx, 500*time.Millisecond)
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case con := <-sigCh:
-			if con.BSSID != "" && con.SSID != "" {
-				lastKnown = con
+			if con.BSSID != "" {
+				lastKnown = &con
+			}
+			if lastKnown == nil {
+				continue
 			}
 			switch {
 			case lastKnown.AvgRSSI <= thr.RSSI:
-				err = roamDecisionLoop(c, ctx, storedConf.SSID, lastKnown)
+				if time.Since(lastRoam) < 5*time.Second {
+					continue
+				}
+				bssid, err := roamDecisionLoop(c, ctx, storedConf.SSID, lastKnown)
 				if err != nil {
 					return fmt.Errorf("makeRoamDecision %w", err)
 				}
-			default:
-				fmt.Println("Waiting for trigger to enter roam decision loop...")
+				lastKnown.BSSID = bssid
+				lastRoam = time.Now()
 			}
 		case err = <-sigErrCh:
 			return fmt.Errorf("c.PollSignal: %w", err)
@@ -104,23 +112,24 @@ func ProcessLoop(c *wpac.Client, ctx context.Context, thr Thresholds) error {
 	}
 }
 
-func roamDecisionLoop(c *wpac.Client, ctx context.Context, ssid string, con wpac.ConnectionStatus) error {
+func roamDecisionLoop(c *wpac.Client, ctx context.Context, ssid string, con *wpac.ConnectionStatus) (string, error) {
 	fmt.Printf("Roam decision loop entered with the following signal stats\n%+v\n", con)
 	fmt.Println("Running scan...")
 	for {
 		aps, err := c.Scan(ctx, ssid)
 		if err != nil {
 			if strings.Contains(err.Error(), "FAIL-BUSY") {
+				fmt.Println("interface busy, retrying scan in 2 seconds")
 				time.Sleep(2 * time.Second)
 				continue
 			}
-			return fmt.Errorf("c.Scan: %w", err)
+			return "", fmt.Errorf("c.Scan: %w", err)
 		}
 		for _, ap := range aps {
 			if ap.RSSI-con.AvgRSSI >= 5 && ap.BSSID != con.BSSID {
 				result, err := c.Roam(ctx, ap.BSSID)
 				if err != nil {
-					return fmt.Errorf("c.Roam(%v): %w", ap.BSSID, err)
+					return "", fmt.Errorf("c.Roam(%v): %w", ap.BSSID, err)
 				}
 				fmt.Printf("Better AP found BSSID: %v RSSI: %v\n", ap.BSSID, ap.RSSI)
 				fmt.Printf("Success:%v TargetBSSID:%v FinalBSSID:%v Duration:%v Message:%v\n",
@@ -132,11 +141,14 @@ func roamDecisionLoop(c *wpac.Client, ctx context.Context, ssid string, con wpac
 				if result.Success == true {
 					fmt.Printf("\n\n\n******** Successful Roam to BSSID: %v RSSI: %v ********\n\n\n",
 						ap.BSSID, ap.RSSI)
+					fmt.Println("Waiting for next trigger...")
+					return result.FinalBSSID, nil
 				}
-				return nil
+				return "", nil
 			}
 		}
-		fmt.Println("No better APs found")
-		return nil
+		fmt.Println("No better APs found, returning to signal monitoring...")
+		time.Sleep(2 * time.Second)
+		return "", nil
 	}
 }

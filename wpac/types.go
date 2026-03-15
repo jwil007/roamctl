@@ -8,10 +8,13 @@ import (
 type Client struct {
 	CC             *net.UnixConn //CommandConnection
 	EC             *net.UnixConn //EventConnection
+	PC             *net.UnixConn //PollConnection
 	Iface          string
 	LocalPathCmd   string
 	LocalPathEvent string
+	LocalPathPoll  string
 }
+
 type WPAConfig struct {
 	SSID      string
 	NetworkID string
@@ -30,7 +33,6 @@ type Signal struct {
 
 type ConnectionStatus struct {
 	Signal
-	SSID  string
 	BSSID string
 }
 
