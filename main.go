@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/jwil007/roamctl/roam"
 	"github.com/jwil007/roamctl/wpac"
@@ -27,6 +28,37 @@ func run() error {
 	ifaceName := *iface
 	rssiThr := *rssi
 
+	//manually define config during testing
+	thresholds := roam.Thresholds{
+		RSSI:       rssiThr,
+		DataRate:   0,
+		ScoreDelta: 5,
+	}
+	timing := roam.Timing{
+		RoamBackoffTime: 5 * time.Second,
+		SigPollInterval: 500 * time.Millisecond,
+		BGScanInterval:  30 * time.Second,
+	}
+	scoreWeights := roam.ScoreWeights{
+		RSSI:         100,
+		MinRSSI:      -80,
+		MaxRSSI:      -40,
+		SNR:          0,
+		MinSNR:       0,
+		MaxSNR:       0,
+		Band:         50,
+		ChannelWidth: 0,
+		EstThruput:   0,
+		QBSSUtil:     25,
+		QBSSStaCt:    0,
+		PHYType:      15,
+	}
+	cfg := roam.Config{
+		Thresholds:   thresholds,
+		ScoreWeights: scoreWeights,
+		Timing:       timing,
+	}
+
 	//open unixsocket connection for commands
 	c, err := wpac.Connect(ifaceName)
 	if err != nil {
@@ -40,12 +72,7 @@ func run() error {
 		}
 	}()
 	defer cancel()
-	//manually set roam thresholds during testing
-	thr := roam.Thresholds{
-		RSSI:     rssiThr,
-		DataRate: 54,
-	}
-	err = roam.ProcessLoop(c, ctx, thr)
+	err = cfg.ProcessLoop(c, ctx)
 	if err != nil {
 		return fmt.Errorf("roam.ProcessLoop: %v", err)
 	}

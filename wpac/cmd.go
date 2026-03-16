@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -119,6 +120,23 @@ func (c *Client) runScan() error {
 	return nil
 }
 
+func (c *Client) runScanWithRetry() error {
+	maxRetries := 3
+	for range maxRetries {
+		err := c.runScan()
+		if err != nil {
+			if strings.Contains(err.Error(), "FAIL-BUSY") {
+				log.Println("interface busy, retrying scan in 2 seconds")
+				time.Sleep(2 * time.Second)
+				continue
+			}
+			return fmt.Errorf("wpac.runScan: %w", err)
+		}
+		return nil
+	}
+	return fmt.Errorf("wpac.runScanWithRetry: max retries exceeded")
+}
+
 func (c *Client) getScanResults(ssid string) ([]string, error) {
 	var bssids []string
 	out, err := c.cmd("SCAN_RESULTS")
@@ -199,7 +217,7 @@ func (c *Client) parseWpasBSS(bssid string) (WpasBSS, error) {
 }
 
 func (c *Client) getSignal() (Signal, error) {
-	out, err := c.cmd("SIGNAL_POLL")
+	out, err := c.cmdP("SIGNAL_POLL")
 	if err != nil {
 		return Signal{}, fmt.Errorf("c.Cmd(\"SIGNAL_POLL\") %w", err)
 	}

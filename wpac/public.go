@@ -95,16 +95,20 @@ func (c *Client) SetConfig(config WPAConfig) error {
 	return nil
 }
 
-func (c *Client) Scan(ctx context.Context, ssid string) ([]RichBSS, error) {
+func (c *Client) Scan(ctx context.Context) error {
 	//run scan and collect scan results to build bssid list
-	errScan := c.runScan()
-	if errScan != nil {
-		return nil, fmt.Errorf("wpac.runScan: %w", errScan)
+	err := c.runScanWithRetry()
+	if err != nil {
+		return fmt.Errorf("runScanWithRetry: %w", err)
 	}
-	_, errWait := c.waitForEvent(ctx, []string{"CTRL-EVENT-SCAN-RESULTS"}, 10*time.Second)
-	if errWait != nil {
-		return nil, fmt.Errorf("c.waitForEvent: %w", errWait)
+	_, err = c.waitForEvent(ctx, []string{"CTRL-EVENT-SCAN-RESULTS"}, 10*time.Second)
+	if err != nil {
+		return fmt.Errorf("c.waitForEvent: %w", err)
 	}
+	return nil
+}
+
+func (c *Client) ScanResults(ssid string) ([]RichBSS, error) {
 	bssids, err := c.getScanResults(ssid)
 	if err != nil {
 		return nil, fmt.Errorf("c.getScanResults: %w", err)
