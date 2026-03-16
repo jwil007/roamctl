@@ -10,9 +10,9 @@ import (
 	"github.com/jwil007/roamctl/wpac"
 )
 
-func (cfg Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
+func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 	log.Println("Starting roamctl... exit with ctrl+c")
-	ssid, cleanup, err := handleWpaSuppConfig(c)
+	cleanup, err := cfg.handleWpaSuppConfig(c)
 	if err != nil {
 		return fmt.Errorf("handleWpaSuppConfig: %w", err)
 	}
@@ -54,7 +54,7 @@ func (cfg Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 					continue
 				}
 				log.Printf("Entering roam decision loop with stats: %+v", lastKnown)
-				success, errR := cfg.roamDecisionLoop(c, ctx, ssid, lastKnown.BSSID)
+				success, errR := cfg.roamDecisionLoop(c, ctx, lastKnown.BSSID)
 				if errR != nil {
 					return fmt.Errorf("makeRoamDecision %w", errR)
 				}
@@ -72,8 +72,8 @@ func (cfg Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 	}
 }
 
-func (cfg Config) roamDecisionLoop(c *wpac.Client, ctx context.Context, ssid string, currBSSID string) (bool, error) {
-	scoredAPs, currAP, err := cfg.prepareScoredAPs(c, ctx, ssid, currBSSID)
+func (cfg *Config) roamDecisionLoop(c *wpac.Client, ctx context.Context, currBSSID string) (bool, error) {
+	scoredAPs, currAP, err := cfg.prepareScoredAPs(c, ctx, cfg.SSID, currBSSID)
 	if err != nil {
 		return false, fmt.Errorf("prepareScoredAPs: %w", err)
 	}
@@ -108,7 +108,7 @@ func (cfg Config) roamDecisionLoop(c *wpac.Client, ctx context.Context, ssid str
 	return false, nil
 }
 
-func (cfg Config) roamReadyCheck(candidate scoredBSS, current scoredBSS) bool {
+func (cfg *Config) roamReadyCheck(candidate scoredBSS, current scoredBSS) bool {
 	if candidate.finalScore-current.finalScore > cfg.ScoreDelta &&
 		candidate.bssid != current.bssid &&
 		candidate.age < cfg.MaxScanAge {
@@ -117,7 +117,7 @@ func (cfg Config) roamReadyCheck(candidate scoredBSS, current scoredBSS) bool {
 	return false
 }
 
-func (cfg Config) prepareScoredAPs(
+func (cfg *Config) prepareScoredAPs(
 	c *wpac.Client,
 	ctx context.Context,
 	ssid string,
@@ -175,7 +175,7 @@ func (cfg Config) prepareScoredAPs(
 	return scoredAPs, currAP, nil
 }
 
-func (cfg Config) rescan(c *wpac.Client, ctx context.Context, ssid string) ([]scoredBSS, error) {
+func (cfg *Config) rescan(c *wpac.Client, ctx context.Context, ssid string) ([]scoredBSS, error) {
 	if err := c.Scan(ctx); err != nil {
 		return nil, fmt.Errorf("c.Scan: %w", err)
 	}
@@ -187,11 +187,11 @@ func (cfg Config) rescan(c *wpac.Client, ctx context.Context, ssid string) ([]sc
 	return scoredAPs, nil
 }
 
-func handleWpaSuppConfig(c *wpac.Client) (string, func(), error) {
+func (cfg *Config) handleWpaSuppConfig(c *wpac.Client) (func(), error) {
 	//Get Current wpa_supplicant status
 	storedConf, err := c.GetConfig()
 	if err != nil {
-		return "", nil, fmt.Errorf("c.GetConfig: %v", err)
+		return nil, fmt.Errorf("c.GetConfig: %v", err)
 	}
 	//Disable bgscan to prevent autonomous roaming
 	bgscanOffConfig := wpac.WPAConfig{
@@ -201,13 +201,15 @@ func handleWpaSuppConfig(c *wpac.Client) (string, func(), error) {
 	}
 	err = c.SetConfig(bgscanOffConfig)
 	if err != nil {
-		return "", nil, fmt.Errorf("c.SetConfig: %w", err)
+		return nil, fmt.Errorf("c.SetConfig: %w", err)
 	}
+	cfg.SSID = storedConf.SSID
+
 	cleanup := func() {
 		err = c.SetConfig(storedConf)
 		if err != nil {
 			log.Printf("error restoring wpa_supplicant config: %v", err)
 		}
 	}
-	return storedConf.SSID, cleanup, nil
+	return cleanup, nil
 }

@@ -10,6 +10,7 @@ type Config struct {
 	Thresholds
 	ScoreWeights
 	Timing
+	SSID string
 }
 
 type Timing struct {
