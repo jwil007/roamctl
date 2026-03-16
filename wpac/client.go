@@ -37,22 +37,13 @@ func Connect(iface string) (*Client, error) {
 
 	ec, err := net.DialUnix("unixgram", laddrE, raddr)
 	if err != nil {
-		if err = cc.Close(); err != nil {
-			return nil, fmt.Errorf("cc.Close: %w", err)
-		}
+		_ = cc.Close()
 		return nil, fmt.Errorf("net.DialUnix: %w", err)
 	}
 	pc, err := net.DialUnix("unixgram", laddrP, raddr)
 	if err != nil {
-		if err = ec.Close(); err != nil {
-			if err = cc.Close(); err != nil {
-				return nil, fmt.Errorf("cc.Close: %w", err)
-			}
-			return nil, fmt.Errorf("cc.Close: %w", err)
-		}
-		if err = cc.Close(); err != nil {
-			return nil, fmt.Errorf("cc.Close: %w", err)
-		}
+		_ = ec.Close()
+		_ = cc.Close()
 		return nil, fmt.Errorf("net.DialUnix: %w", err)
 	}
 	return &Client{

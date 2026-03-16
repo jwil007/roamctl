@@ -36,11 +36,12 @@ func run() error {
 		ScoreDelta: 5,
 	}
 	timing := roam.Timing{
-		SuccessBackoffTime: 5 * time.Second,
-		FailureBackoffTime: 7 * time.Second,
-		SigPollInterval:    500 * time.Millisecond,
-		BGScanInterval:     30 * time.Second,
-		MaxScanAge:         10 * time.Second,
+		SuccessBackoffTime:      5 * time.Second,
+		FailureBackoffTime:      2 * time.Second,
+		NoCandidatesBackoffTime: 7 * time.Second,
+		SigPollInterval:         500 * time.Millisecond,
+		BGScanInterval:          30 * time.Second,
+		MaxScanAge:              10 * time.Second,
 	}
 
 	scoreWeights := roam.ScoreWeights{

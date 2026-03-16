@@ -1,6 +1,7 @@
 package roam
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/jwil007/roamctl/wpac"
@@ -14,11 +15,12 @@ type Config struct {
 }
 
 type Timing struct {
-	SuccessBackoffTime time.Duration
-	FailureBackoffTime time.Duration
-	SigPollInterval    time.Duration
-	BGScanInterval     time.Duration
-	MaxScanAge         time.Duration
+	SuccessBackoffTime      time.Duration
+	FailureBackoffTime      time.Duration
+	NoCandidatesBackoffTime time.Duration
+	SigPollInterval         time.Duration
+	BGScanInterval          time.Duration
+	MaxScanAge              time.Duration
 }
 type Thresholds struct {
 	RSSI       int
@@ -58,3 +60,27 @@ type scoredBSS struct {
 	phy        wpac.PHYType
 	age        time.Duration
 }
+
+func (s scoredBSS) String() string {
+	return fmt.Sprintf(
+		"bssid:%s score:%d rssi:%d(scr:%d) snr:%d(scr:%d) band:%s(scr:%d) cw:%s(scr:%d) util:%d(scr:%d) phy:%s(scr:%d) age:%s",
+		s.bssid,
+		s.finalScore,
+		s.rssi, s.rssiScore,
+		s.snr, s.snrScore,
+		s.band, s.bandScore,
+		s.cw, s.cwScore,
+		s.util, s.utilScore,
+		s.phy, s.phyScore,
+		s.age,
+	)
+}
+
+type roamResultFlag int
+
+const (
+	success roamResultFlag = iota
+	failure
+	noCandidates
+	unknown
+)

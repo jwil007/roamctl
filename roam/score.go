@@ -54,7 +54,16 @@ func (w ScoreWeights) score(bss wpac.RichBSS) scoredBSS {
 
 func scoreRSSI(rssi int, minRSSI int, maxRSSI int) int {
 	var score int
+	if maxRSSI-minRSSI == 0 {
+		return 0
+	}
 	score = (rssi - minRSSI) * 100 / (maxRSSI - minRSSI)
+	if score > 100 {
+		score = 100
+	}
+	if score < 0 {
+		score = 0
+	}
 	return score
 }
 
@@ -64,6 +73,12 @@ func scoreSNR(snr int, minSNR int, maxSNR int) int {
 		return 0
 	}
 	score = (snr - minSNR) * 100 / (maxSNR - minSNR)
+	if score > 100 {
+		score = 100
+	}
+	if score < 0 {
+		score = 0
+	}
 	return score
 }
 
