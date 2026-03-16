@@ -188,10 +188,11 @@ func (c *Client) parseWpasBSS(bssid string) (WpasBSS, error) {
 				return WpasBSS{}, fmt.Errorf("strconv.Atoi: %w", err)
 			}
 		case strings.HasPrefix(line, "age="):
-			b.Age, err = strconv.Atoi(line[4:])
-			if err != nil {
-				return WpasBSS{}, fmt.Errorf("strconv.Atoi: %w", err)
+			ageInt, errA := strconv.Atoi(line[4:])
+			if errA != nil {
+				return WpasBSS{}, fmt.Errorf("strconv.Atoi: %w", errA)
 			}
+			b.Age = time.Duration(ageInt) * time.Second
 		case strings.HasPrefix(line, "flags="):
 			b.Flags = line[6:]
 		case strings.HasPrefix(line, "est_throughput="):

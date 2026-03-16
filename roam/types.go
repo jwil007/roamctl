@@ -13,9 +13,11 @@ type Config struct {
 }
 
 type Timing struct {
-	RoamBackoffTime time.Duration
-	SigPollInterval time.Duration
-	BGScanInterval  time.Duration
+	SuccessBackoffTime time.Duration
+	FailureBackoffTime time.Duration
+	SigPollInterval    time.Duration
+	BGScanInterval     time.Duration
+	MaxScanAge         time.Duration
 }
 type Thresholds struct {
 	RSSI       int
@@ -53,5 +55,5 @@ type scoredBSS struct {
 	util       uint8
 	phyScore   int
 	phy        wpac.PHYType
-	age        int
+	age        time.Duration
 }

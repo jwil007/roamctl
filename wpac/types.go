@@ -70,7 +70,7 @@ type WpasBSS struct {
 	Noise      int
 	RSSI       int
 	SNR        int
-	Age        int
+	Age        time.Duration
 	Flags      string
 	EstThruput int
 	ProbeIE    []byte

@@ -22,6 +22,7 @@ func main() {
 }
 
 func run() error {
+	log.SetFlags(log.Ltime | log.Lmicroseconds)
 	iface := flag.String("i", "wlan0", "specify wireless interface")
 	rssi := flag.Int("r", -65, "specify rssi for roaming threshold")
 	flag.Parse()
@@ -35,10 +36,13 @@ func run() error {
 		ScoreDelta: 5,
 	}
 	timing := roam.Timing{
-		RoamBackoffTime: 5 * time.Second,
-		SigPollInterval: 500 * time.Millisecond,
-		BGScanInterval:  30 * time.Second,
+		SuccessBackoffTime: 5 * time.Second,
+		FailureBackoffTime: 7 * time.Second,
+		SigPollInterval:    500 * time.Millisecond,
+		BGScanInterval:     30 * time.Second,
+		MaxScanAge:         10 * time.Second,
 	}
+
 	scoreWeights := roam.ScoreWeights{
 		RSSI:         100,
 		MinRSSI:      -80,
