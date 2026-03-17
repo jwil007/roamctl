@@ -4,16 +4,22 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 )
 
-func HandleConfig(resetDefaults *bool) (*Config, error) {
-	path, err := initConfigFile(resetDefaults)
+func HandleConfig(reset *bool, edit *bool) (*Config, error) {
+	path, err := initConfigFile(reset)
 	if err != nil {
 		return nil, fmt.Errorf("initConfigFile: %w", err)
+	}
+	if *edit {
+		if err = editConfig(path); err != nil {
+			return nil, fmt.Errorf("editConfig: %w", err)
+		}
 	}
 	log.Printf("Config file path: %s", path)
 	cfg, err := parseConfig(path)
@@ -21,6 +27,28 @@ func HandleConfig(resetDefaults *bool) (*Config, error) {
 		return nil, fmt.Errorf("parseConfig: %w", err)
 	}
 	return cfg, nil
+}
+
+func editConfig(path string) error {
+	editors := []string{
+		os.Getenv("EDITOR"),
+		os.Getenv("VISUAL"),
+		"nano",
+		"vi",
+	}
+	for _, editor := range editors {
+		if editor != "" {
+			cmd := exec.Command(editor, path)
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			if err := cmd.Run(); err != nil {
+				return fmt.Errorf("cmd.Run: %w", err)
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("no text editor found, edit file manually at %s", path)
 }
 
 func getConfigDir() (string, error) {

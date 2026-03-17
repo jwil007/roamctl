@@ -23,36 +23,23 @@ func main() {
 
 func run() error {
 	log.SetFlags(log.Ltime | log.Lmicroseconds)
-	iface := flag.String("i", "", "specify wireless interface")
-	rssi := flag.Int("r", 0, "specify rssi for roaming threshold")
-	resetDefaults := flag.Bool("reset-defaults", false, "reset default config")
+	edit := flag.Bool("edit", false, "edit config file")
+	reset := flag.Bool("reset", false, "reset default config")
 	flag.Parse()
-	ifaceName := *iface
-	rssiThr := *rssi
 
-	cfg, err := roam.HandleConfig(resetDefaults)
+	cfg, err := roam.HandleConfig(reset, edit)
 	if err != nil {
 		return fmt.Errorf("roam.HandleConfig: %w", err)
 	}
-
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("cfg.Validate: %w", err)
 	}
-
-	if ifaceName != "" {
-		cfg.Interface = ifaceName
-	}
-
-	if rssiThr != 0 {
-		cfg.Thresholds.RSSI = rssiThr
-	}
-
 	//open unixsocket connection for commands
 	c, err := wpac.Connect(cfg.Interface)
 	if err != nil {
 		if strings.Contains(err.Error(), "no such file or directory") {
-			return fmt.Errorf("wpac.Connect: %w\nInterface name %s may be wrong. Check config file "+
-				"or run with -i <ifaceName>", err, cfg.Interface)
+			return fmt.Errorf("wpac.Connect: %w\nInterface name %s may be wrong. "+
+				"Rerun with -edit flag to edit interface name.", err, cfg.Interface)
 		}
 		return fmt.Errorf("wpac.Connect %w", err)
 	}

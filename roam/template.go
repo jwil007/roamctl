@@ -41,8 +41,8 @@ const defaultConfigTemplate = `
 # Weights for band (2.4/5/6GHz), chan width, and PHY type (wifi version)
 # Scores for each value within these categories are defined below
   band = 50
-  channel_width = 0
-  phy_type = 15
+  channel_width = 10
+  phy_type = 25
 
 [timing]
 # Times must use the format ms for millisecond, s for second, m for minute

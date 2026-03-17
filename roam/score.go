@@ -19,7 +19,7 @@ func (cfg *Config) scoreAll(aps []wpac.RichBSS) []scoredBSS {
 }
 
 func (cfg *Config) score(bss wpac.RichBSS) scoredBSS {
-	rs := cfg.Thresholds.RSSI * cfg.scoreRSSI(bss.RSSI) / 100
+	rs := cfg.ScoreWeights.RSSI * cfg.scoreRSSI(bss.RSSI) / 100
 	ss := cfg.SNR * cfg.scoreSNR(bss.SNR) / 100
 	bs := cfg.Band * cfg.scoreBand(bss.Band) / 100
 	cws := cfg.ChannelWidth * cfg.scoreCW(bss.ChannelWidth) / 100
@@ -27,7 +27,7 @@ func (cfg *Config) score(bss wpac.RichBSS) scoredBSS {
 	us := cfg.QBSSUtil * cfg.scoreUtil(bss.QBSSUtil) / 100
 	//sts := cfg.QBSSStaCt * cfg.scoreStaCt(bss.QBSSStaCt) / 100
 	ps := cfg.PHYType * cfg.scorePhy(bss.PHYType) / 100
-	totalWeight := cfg.Thresholds.RSSI + cfg.SNR + cfg.Band + cfg.ChannelWidth + cfg.QBSSUtil + cfg.PHYType
+	totalWeight := cfg.ScoreWeights.RSSI + cfg.SNR + cfg.Band + cfg.ChannelWidth + cfg.QBSSUtil + cfg.PHYType
 	scoreSum := rs + ss + bs + cws + us + ps
 	if totalWeight == 0 {
 		return scoredBSS{}
