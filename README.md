@@ -1,13 +1,11 @@
 # roamctl
 This is a Linux utility with the goal of providing a fully configurable Wi-Fi roaming algorithm. It is written in Go, and exclusively utilizes the wpa_supplicant control interface for all Wi-Fi operations. For more info on the wpa_supplicant control interface, check out the official docs https://w1.fi/wpa_supplicant/devel/ctrl_iface_page.html.
 
-
-
-The program works by first disabling wpa_supplicant's autonomous roaming, and then utilizing a configurable algorithm, which primarily uses a per-BSSID scoring mechanism to make roaming decisions. When the program exists, the devices original wpa_supplicant configuration is restored.
+The program works by first disabling wpa_supplicant's autonomous roaming, and then utilizing a configurable algorithm, which primarily uses a per-BSSID scoring mechanism to make roaming decisions. When the program exits, the devices original wpa_supplicant configuration is restored.
 
 Useful primitives in the ctrl interface such as `ROAM`, `SCAN`, `SIGNAL_POLL`, and `SCAN_RESULTS` make this type of program possible.
 
-Output is logged to terminal with microsecond timestamp precision and color coding for important events.
+Output is logged to the terminal timestamps and color coding for important events.
 
 > [!IMPORTANT]
 > This is not a battle tested roaming algorithm. It is meant primarily to be a tool for Wi-Fi tinkerers.
@@ -25,7 +23,7 @@ Connect to an SSID. Run with `./roamctl.` Exit with `ctrl+c`.
 `-reset` : Reset config file to original 
 
 ## Configuration
-All config parameters, including interface specification and scoring weights for the roaming algoithm, are set through the config.toml file at `/home/USER/.config/roamctl/config.toml`
+All config parameters, including interface specification and scoring weights for the roaming algorithm, are set through the config.toml file at `/home/USER/.config/roamctl/config.toml`
 
 For convenience, running with the `-edit` flag opens a text editor to edit the file directly. The `-reset` flag overwrites the config file with the default template.
 
@@ -36,7 +34,7 @@ For convenience, running with the `-edit` flag opens a text editor to edit the f
 interface = "wlan0"
 
 [thresholds]
-# Thesholds from signal polling which define when to enter
+# Thresholds from signal polling which define when to enter
 # the roaming decision loop.
 # For example, if the rssi threshold is -67, the device will enter
 # the roam decision loop when RSSI is -68 or lower.
