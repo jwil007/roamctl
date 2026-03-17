@@ -22,7 +22,7 @@ go install github.com/jwil007/roamctl/cmd/roamctl@latest
 ```
 >[!NOTE]
 > 
-> If running `roamctl` after the Go install returns "command not found", make sure the go/bin directory is in your path. The command below will add the path config for your default shell. Restart your shell session after running, and you should be able to run `roamctl`.
+> If running `roamctl` after the Go install returns "command not found", make sure the go/bin directory is in your path. The command below will add the path config for your default shell. After running the command, restart your shell session and you should be able to run `roamctl`.
 >```
 > echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.$(basename $SHELL)rc
 > ```
