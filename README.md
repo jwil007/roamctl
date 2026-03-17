@@ -11,11 +11,15 @@ Output is logged to the terminal with timestamps and color coding for important 
 > This is not a battle tested roaming algorithm. It is meant primarily to be a tool for Wi-Fi tinkerers.
 
 ## Quick Start
-### Go Install
+### One-line install
+```
+curl -fsSL https://raw.githubusercontent.com/jwil007/roamctl/master/install.sh | bash
+```
+### Build from source
 
 Make sure you have installed Go for Linux: https://go.dev/doc/install.
 
-This builds from source and installs to `$GOPATH/bin`. Most likely this is `~/go/bin`. 
+Builds and installs to `$GOPATH/bin`. Most likely this is `~/go/bin`. 
 
 ```
 go install github.com/jwil007/roamctl/cmd/roamctl@latest
