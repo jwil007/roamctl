@@ -47,7 +47,7 @@ If you get a permission error, run with `sudo`.
 >[!NOTE]
 >roamctl initializes with "sensible default" parameters. The Default Config shown below.
 
-All config parameters, including interface specification and scoring weights for the roaming algorithm, are set through the toml file at `/home/USER/.config/roamctl/config.toml`
+All config parameters, including interface specification and scoring weights for the roaming algorithm, are set through the toml file at `~/.config/roamctl/config.toml`
 
 For convenience, running with the `-edit` flag opens a text editor to edit the file directly.
 
