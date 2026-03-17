@@ -101,7 +101,7 @@ func (c *Client) Scan(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("runScanWithRetry: %w", err)
 	}
-	_, err = c.waitForEvent(ctx, []string{"CTRL-EVENT-SCAN-RESULTS"}, 10*time.Second)
+	_, err = c.waitForEvent(ctx, []string{"CTRL-EVENT-SCAN-RESULTS"}, 20*time.Second)
 	if err != nil {
 		return fmt.Errorf("c.waitForEvent: %w", err)
 	}

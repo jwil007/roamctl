@@ -8,10 +8,15 @@ import (
 )
 
 type Config struct {
-	Thresholds
-	ScoreWeights
-	Timing
-	SSID string
+	Thresholds   `toml:"Thresholds"`
+	ScoreWeights `toml:"ScoreWeights"`
+	Timing       `toml:"Timing"`
+	Preferences  `toml:"Preferences"`
+	SSID         string `toml:"-"`
+}
+
+type Preferences struct {
+	Interface string
 }
 
 type Timing struct {

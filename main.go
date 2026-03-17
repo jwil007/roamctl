@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/jwil007/roamctl/roam"
 	"github.com/jwil007/roamctl/wpac"
@@ -23,49 +22,27 @@ func main() {
 
 func run() error {
 	log.SetFlags(log.Ltime | log.Lmicroseconds)
-	iface := flag.String("i", "wlan0", "specify wireless interface")
-	rssi := flag.Int("r", -65, "specify rssi for roaming threshold")
+	iface := flag.String("i", "", "specify wireless interface")
+	rssi := flag.Int("r", 0, "specify rssi for roaming threshold")
 	flag.Parse()
 	ifaceName := *iface
 	rssiThr := *rssi
 
-	//manually define config during testing
-	thresholds := roam.Thresholds{
-		RSSI:       rssiThr,
-		DataRate:   0,
-		ScoreDelta: 5,
-	}
-	timing := roam.Timing{
-		SuccessBackoffTime:      5 * time.Second,
-		FailureBackoffTime:      2 * time.Second,
-		NoCandidatesBackoffTime: 7 * time.Second,
-		SigPollInterval:         500 * time.Millisecond,
-		BGScanInterval:          30 * time.Second,
-		MaxScanAge:              10 * time.Second,
+	cfg, err := roam.HandleConfig()
+	if err != nil {
+		return fmt.Errorf("roam.HandleConfig: %w", err)
 	}
 
-	scoreWeights := roam.ScoreWeights{
-		RSSI:         100,
-		MinRSSI:      -80,
-		MaxRSSI:      -40,
-		SNR:          0,
-		MinSNR:       0,
-		MaxSNR:       0,
-		Band:         50,
-		ChannelWidth: 0,
-		EstThruput:   0,
-		QBSSUtil:     25,
-		QBSSStaCt:    0,
-		PHYType:      15,
+	if ifaceName != "" {
+		cfg.Interface = ifaceName
 	}
-	cfg := roam.Config{
-		Thresholds:   thresholds,
-		ScoreWeights: scoreWeights,
-		Timing:       timing,
+
+	if rssiThr != 0 {
+		cfg.Thresholds.RSSI = rssiThr
 	}
 
 	//open unixsocket connection for commands
-	c, err := wpac.Connect(ifaceName)
+	c, err := wpac.Connect(cfg.Interface)
 	if err != nil {
 		return fmt.Errorf("wpac.Connect %v", err)
 	}

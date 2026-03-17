@@ -125,7 +125,7 @@ func scoreCW(cw wpac.ChannelWidth) int {
 
 func scoreUtil(util uint8) int {
 	var score int
-	score = ((255 - int(util)) / 255) * 100
+	score = (255 - int(util)) * 100 / 255
 	return score
 }
 

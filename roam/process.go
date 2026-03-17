@@ -43,7 +43,7 @@ func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 				continue
 			}
 			switch {
-			case lastKnown.AvgRSSI < cfg.Thresholds.RSSI:
+			case cfg.thresholdCheck(lastKnown):
 				if time.Since(lastRoamFailure) < cfg.FailureBackoffTime {
 					log.Printf("Roam failure backoff in effect. %v remaining",
 						cfg.FailureBackoffTime-time.Since(lastRoamFailure))
@@ -224,6 +224,22 @@ func logScoredAPs(scoredAPs []scoredBSS, bssid string) {
 			log.Printf("%+v", a)
 		}
 	}
+}
+
+func (cfg *Config) thresholdCheck(lastKnown *wpac.ConnectionStatus) bool {
+	rssi := lastKnown.AvgRSSIBeacon
+	if lastKnown.AvgRSSIBeacon == 0 {
+		//log.Printf("No RSSI BEACON available, falling back to basic RSSI")
+		rssi = lastKnown.RSSI
+	}
+	//log.Printf("threshold RSSI recorded as: %d", rssi)
+	switch {
+	case rssi < cfg.Thresholds.RSSI:
+		return true
+	case lastKnown.LinkSpeed < cfg.Thresholds.DataRate:
+		return true
+	}
+	return false
 }
 
 func (cfg *Config) handleWpaSuppConfig(c *wpac.Client) (func(), error) {
