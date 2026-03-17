@@ -3,6 +3,8 @@ roamctl is a Linux utility with the goal of providing a fully configurable Wi-Fi
 
 While running, roamctl disables wpa_supplicant's autonomous roaming and instead uses a configurable roaming algorithm. The algorithm is score based, using a method to score each BSSID in the scan data to make a decision whether or not to roam (reassociate). When the program exits, the devices original wpa_supplicant configuration and roaming behavior is restored.
 
+All configurable parameters are set in a config file which automatically created on the first execution of roamctl. It will be initialized "sensible defaults", but any parameter may be changed to adjust roaming behavior. You can use this to simluate various client behavior. For example, if you adjust the `band_scores` params to `2point4ghz = 100`, `5ghz = 25`, and `6ghz = 15`, you have created a roaming algorithm that prefers 2.4GHz over 5GHz and 6GHz. Nobody said you had a make a good roaming algorithm!
+
 Useful primitives in the ctrl interface such as `ROAM`, `SCAN`, `SIGNAL_POLL`, and `SCAN_RESULTS` make this type of program possible.
 
 Output is logged to the terminal with timestamps and color coding for important events.
