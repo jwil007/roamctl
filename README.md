@@ -35,7 +35,7 @@ Connect to an SSID. Run with `roamctl`. Exit with `ctrl+c`.
 
 Some Linux distros require elevated permissions.
 
-If you get a permission error, run with `sudo roamctl`. 
+If you get a permission error, run with `sudo`. 
 
 #### Flags:
 
