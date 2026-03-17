@@ -11,7 +11,9 @@ Output is logged to the terminal with timestamps and color coding for important 
 > This is not a battle tested roaming algorithm. It is meant primarily to be a tool for Wi-Fi tinkerers.
 
 ## Quick Start
+
 ### One-line install
+Automatically downloads and installs the binary for AMD64, ARM64, or ARM32 devices. 
 ```
 curl -fsSL https://raw.githubusercontent.com/jwil007/roamctl/master/install.sh | bash
 ```
