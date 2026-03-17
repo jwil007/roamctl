@@ -1,4 +1,5 @@
 //go:build linux
+
 package main
 
 import (
@@ -15,6 +16,8 @@ import (
 	"github.com/jwil007/roamctl/internal/wpac"
 )
 
+var version = "dev"
+
 func main() {
 	if err := run(); err != nil {
 		log.Printf("%v", err)
@@ -23,6 +26,10 @@ func main() {
 }
 
 func run() error {
+	if len(os.Args) > 1 && os.Args[1] == "--version" {
+		fmt.Println(version)
+		os.Exit(0)
+	}
 	log.SetFlags(log.Ltime | log.Lmicroseconds)
 	edit := flag.Bool("edit", false, "edit config file")
 	reset := flag.Bool("reset", false, "reset default config")

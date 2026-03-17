@@ -24,7 +24,7 @@ jobs:
       env:
         GOOS: ${{ matrix.goos }}
         GOARCH: ${{ matrix.goarch }}
-      run: go build -o roamctl-${{ matrix.goarch }} ./cmd/roamctl
+      run: go build -ldflags "-X main.version=${{ github.ref_name }}" -o roamctl-${{ matrix.goarch }} ./cmd/roamctl
     - uses: actions/upload-artifact@v4
       with:
         name: roamctl-${{ matrix.goarch }}
