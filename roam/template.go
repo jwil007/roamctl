@@ -6,7 +6,7 @@ const defaultConfigTemplate = `
   interface = "wlan0"
 
 [thresholds]
-# Thesholds from signal polling which define when to enter
+# Thresholds from signal polling which define when to enter
 # the roaming decision loop.
 # For example, if the rssi threshold is -67, the device will enter
 # the roam decision loop when RSSI is -68 or lower.
