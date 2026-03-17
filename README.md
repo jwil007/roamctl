@@ -5,7 +5,7 @@ While running, roamctl disables wpa_supplicant's autonomous roaming and instead 
 
 Useful primitives in the ctrl interface such as `ROAM`, `SCAN`, `SIGNAL_POLL`, and `SCAN_RESULTS` make this type of program possible.
 
-Output is logged to the terminal timestamps and color coding for important events.
+Output is logged to the terminal with timestamps and color coding for important events.
 
 > [!IMPORTANT]
 > This is not a battle tested roaming algorithm. It is meant primarily to be a tool for Wi-Fi tinkerers.
