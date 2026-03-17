@@ -22,7 +22,7 @@ go install github.com/jwil007/roamctl/cmd/roamctl@latest
 ```
 
 ## Usage
-Connect to an SSID. Run with `roamctl.` Exit with `ctrl+c`.
+Connect to an SSID. Run with `roamctl`. Exit with `ctrl+c`.
 
 Some Linux distros require elevated permissions.
 
