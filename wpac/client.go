@@ -32,16 +32,22 @@ func Connect(iface string) (*Client, error) {
 
 	cc, err := net.DialUnix("unixgram", laddrC, raddr)
 	if err != nil {
+		_ = os.Remove(localPathCmd)
 		return nil, fmt.Errorf("net.DialUnix: %w", err)
 	}
 
 	ec, err := net.DialUnix("unixgram", laddrE, raddr)
 	if err != nil {
+		_ = os.Remove(localPathCmd)
+		_ = os.Remove(localPathEvent)
 		_ = cc.Close()
 		return nil, fmt.Errorf("net.DialUnix: %w", err)
 	}
 	pc, err := net.DialUnix("unixgram", laddrP, raddr)
 	if err != nil {
+		_ = os.Remove(localPathCmd)
+		_ = os.Remove(localPathEvent)
+		_ = os.Remove(localPathPoll)
 		_ = ec.Close()
 		_ = cc.Close()
 		return nil, fmt.Errorf("net.DialUnix: %w", err)
