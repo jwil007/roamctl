@@ -1,5 +1,7 @@
 # roamctl
-This is a Linux utility with the goal of providing a fully configurable Wi-Fi roaming algorithm. It is written in Go, and exclusively utilizes the wpa_supplicant control interface (https://w1.fi/wpa_supplicant/devel/ctrl_iface_page.html) for all Wi-Fi operations.
+This is a Linux utility with the goal of providing a fully configurable Wi-Fi roaming algorithm. It is written in Go, and exclusively utilizes the wpa_supplicant control interface for all Wi-Fi operations. For more info on the wpa_supplicant control interface, check out the official docs https://w1.fi/wpa_supplicant/devel/ctrl_iface_page.html.
+
+
 
 The program works by first disabling wpa_supplicant's autonomous roaming, and then utilizing a configurable algorithm, which primarily uses a per-BSSID scoring mechanism to make roaming decisions. When the program exists, the devices original wpa_supplicant configuration is restored.
 
