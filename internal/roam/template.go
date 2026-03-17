@@ -11,7 +11,10 @@ const defaultConfigTemplate = `
 # For example, if the rssi threshold is -67, the device will enter
 # the roam decision loop when RSSI is -68 or lower.
   rssi = -67 # dBm, allowed range -128 to 0
-  data_rate = 12 # mbps
+
+# Set data rate to 0 to ignore, otherwise set value as Mbps.
+# Roam decision loop entered when polled data rate < threshold
+  data_rate = 0 # Mbps
 
 # score_delta score difference required to roam to a new AP.
 # Lower values: more roaming, less stable

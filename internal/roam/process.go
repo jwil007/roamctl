@@ -59,7 +59,6 @@ func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 						cfg.NoCandidatesBackoffTime-time.Since(lastNoCandidates))
 					continue
 				}
-				log.Printf("Entering roam decision loop with stats: %+v", lastKnown)
 				resultFlag, errR := cfg.roamDecisionLoop(c, ctx, lastKnown.BSSID)
 				if errR != nil {
 					return fmt.Errorf("makeRoamDecision %w", errR)
@@ -67,7 +66,7 @@ func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 				switch resultFlag {
 				case success:
 					lastRoamSuccess = time.Now()
-					lastKnown = nil //clear lastKnown stats so they don't update until fresh poll
+					lastKnown = nil //clear lastKnown stats
 				case failure:
 					lastRoamFailure = time.Now()
 				case noCandidates:
@@ -235,8 +234,12 @@ func (cfg *Config) thresholdCheck(lastKnown *wpac.ConnectionStatus) bool {
 	//log.Printf("threshold RSSI recorded as: %d", rssi)
 	switch {
 	case rssi < cfg.Thresholds.RSSI:
+		log.Printf("Current RSSI (%vdBm) below threshold (%vdBm). "+
+			"Entering roam decision loop...", rssi, cfg.Thresholds.RSSI)
 		return true
 	case lastKnown.LinkSpeed < cfg.Thresholds.DataRate:
+		log.Printf("Current data rate (%vMbps) below threshold (%vMbps). "+
+			"Entering roam decision loop...", lastKnown.LinkSpeed, cfg.Thresholds.DataRate)
 		return true
 	}
 	return false
