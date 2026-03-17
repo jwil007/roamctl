@@ -8,7 +8,7 @@ Useful primitives in the ctrl interface such as `ROAM`, `SCAN`, `SIGNAL_POLL`, a
 Output is logged to terminal with microsecond timestamp precision and color coding for important events.
 
 > [!IMPORTANT]
-> This is not a battle tested roaming algorithm. It is meant primarily to be a testing tool for Wi-Fi tinkerers.
+> This is not a battle tested roaming algorithm. It is meant primarily to be a tool for Wi-Fi tinkerers.
 
 ## Quick Start
 TODO
