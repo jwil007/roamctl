@@ -3,9 +3,9 @@ roamctl is a Linux utility with the goal of providing a fully configurable Wi-Fi
 
 While running, roamctl disables wpa_supplicant's autonomous roaming and instead uses a configurable roaming algorithm. The algorithm is score based, using a method to score each BSSID in the scan data to make a decision whether or not to roam (reassociate). When the program exits, the devices original wpa_supplicant configuration and roaming behavior is restored.
 
-The configurable algorithm allows simulation of various client behavior. For example, if you adjust the `band_scores` params to `2point4ghz = 100`, `5ghz = 25`, and `6ghz = 15`, the device will 2.4GHz over 5GHz and 6GHz. Nobody said you had a make a good roaming algorithm!
+The configurable algorithm allows simulation of various client behavior. For example, if you adjust the `band_scores` params to `2point4ghz = 100`, `5ghz = 25`, and `6ghz = 15`, the device will strongly prefer 2.4GHz over 5GHz and 6GHz, and slighly prefer 5GHz over 6GHz. There are over 30 parameters that can be configured, disussed in the Configuration section below.
 
-Useful primitives in the ctrl interface such as `ROAM`, `SCAN`, `SIGNAL_POLL`, and `SCAN_RESULTS` make this type of program possible.
+Useful primitives in the ctrl interface such as `ROAM`, `SCAN`, `SIGNAL_POLL`, and `SCAN_RESULTS` make this type of program possible. 
 
 Output is logged to the terminal with timestamps and color coding for important events.
 
@@ -44,6 +44,9 @@ If you get a permission error, run with `sudo roamctl`.
 `-reset` : Reset config file to original 
 
 ## Configuration
+>[!NOTE]
+>roamctl initializes with "sensible default" parameters. The Default Config shown below.
+
 All config parameters, including interface specification and scoring weights for the roaming algorithm, are set through the toml file at `/home/USER/.config/roamctl/config.toml`
 
 For convenience, running with the `-edit` flag opens a text editor to edit the file directly. The `-reset` flag overwrites the config file with the default template.
