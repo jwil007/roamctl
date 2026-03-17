@@ -11,10 +11,22 @@ Output is logged to the terminal timestamps and color coding for important event
 > This is not a battle tested roaming algorithm. It is meant primarily to be a tool for Wi-Fi tinkerers.
 
 ## Quick Start
-TODO
+### Go Install
+
+Make sure you have installed Go for Linux: https://go.dev/doc/install.
+
+This builds from source and installs to `$GOPATH/bin`. Most likely this is `~/go/bin`. 
+
+```
+go install github.com/jwil007/roamctl/cmd/roamctl@latest
+```
 
 ## Usage
-Connect to an SSID. Run with `./roamctl.` Exit with `ctrl+c`.
+Connect to an SSID. Run with `roamctl.` Exit with `ctrl+c`.
+
+Some Linux distros require elevated permissions.
+
+If you get a permission error, run with `sudo roamctl`. 
 
 #### Flags:
 
