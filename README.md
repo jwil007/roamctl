@@ -42,7 +42,7 @@ If you get a permission error, run with `sudo roamctl`.
 `-reset` : Reset config file to original 
 
 ## Configuration
-All config parameters, including interface specification and scoring weights for the roaming algorithm, are set through the config.toml file at `/home/USER/.config/roamctl/config.toml`
+All config parameters, including interface specification and scoring weights for the roaming algorithm, are set through the toml file at `/home/USER/.config/roamctl/config.toml`
 
 For convenience, running with the `-edit` flag opens a text editor to edit the file directly. The `-reset` flag overwrites the config file with the default template.
 
