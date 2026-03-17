@@ -10,8 +10,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/jwil007/roamctl/roam"
-	"github.com/jwil007/roamctl/wpac"
+	"github.com/jwil007/roamctl/internal/roam"
+	"github.com/jwil007/roamctl/internal/wpac"
 )
 
 func main() {

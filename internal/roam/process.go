@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/jwil007/roamctl/wpac"
+	"github.com/jwil007/roamctl/internal/wpac"
 )
 
 func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {

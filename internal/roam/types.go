@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jwil007/roamctl/wpac"
+	"github.com/jwil007/roamctl/internal/wpac"
 )
 
 type Config struct {

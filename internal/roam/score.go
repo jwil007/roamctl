@@ -3,7 +3,7 @@ package roam
 import (
 	"slices"
 
-	"github.com/jwil007/roamctl/wpac"
+	"github.com/jwil007/roamctl/internal/wpac"
 )
 
 func (cfg *Config) scoreAll(aps []wpac.RichBSS) []scoredBSS {
