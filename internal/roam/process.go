@@ -4,7 +4,7 @@ package roam
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/jwil007/roamctl/internal/wpac"
@@ -12,30 +12,28 @@ import (
 
 func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 	rc := &roamContext{}
-	log.Println("Starting roamctl... exit with ctrl+c")
+	slog.Info("Starting roamctl... exit with ctrl+c")
 	cleanup, err := cfg.handleWpaSuppConfig(c)
 	if err != nil {
 		return fmt.Errorf("handleWpaSuppConfig: %w", err)
 	}
 	defer cleanup() //sets wpa_supplicant back to original state
 	//Start polling signal stats
-	log.Println("Waiting for trigger to enter roam decision loop...")
+	slog.Info("Waiting for trigger to enter roam decision loop...")
 	sigCh, sigErrCh := c.PollSignal(ctx, cfg.Timing.SigPollInterval)
 	bgScanTicker := time.NewTicker(cfg.Timing.BGScanInterval)
 	for {
 		select {
 		case <-bgScanTicker.C:
-			log.Println("bgScanTicker reached 0, running scan...")
+			slog.Info("bgScanTicker reached 0, running scan...")
+			rc.bgScanReady = false
 			if err = c.Scan(ctx); err != nil {
 				return fmt.Errorf("c.Scan: %w", err)
 			}
-			log.Println("bgScan complete")
-			//aps, err := c.ScanResults(cfg.SSID)
-			//if err != nil {
-			//	return fmt.Errorf("c.ScanResults: %w", err)
-			//}
-			//rc.bgScanAPs = cfg.scoreAll(aps)
-			//logScoredAPs(rc.bgScanAPs, rc.lastKnown.BSSID)
+			slog.Info("bgScan complete")
+			rc.lastBGScan = time.Now()
+			rc.bgScanReady = true
+			rc.bgScanChecked = false
 		case <-ctx.Done():
 			return ctx.Err()
 		case con := <-sigCh:
@@ -45,16 +43,22 @@ func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 			if rc.lastKnown == nil {
 				continue
 			}
-			//log.Printf("DEBUG: last polled signal stats %+v\n", rc.lastKnown)
-			switch {
-			case cfg.thresholdCheck(rc):
-				cont, err := cfg.roamProcessWrapper(c, ctx, rc)
-				if err != nil {
-					return fmt.Errorf("roamProcessWrapper: %w", err)
-				}
-				if cont {
+			slog.Debug("Last polled connection status", "stats", rc.lastKnown)
+			if cfg.thresholdCheck(rc) {
+				if cfg.backoffCheck(rc) {
+					cfg.logRoamEntry(rc)
+					err := cfg.roamProcessWrapper(c, ctx, rc)
+					if err != nil {
+						return fmt.Errorf("roamProcessWrapper: %w", err)
+					}
+				} else {
+					cfg.logRoamEntry(rc)
 					continue
 				}
+			} else {
+				//rc.roamEnterCounter++
+				cfg.logRoamEntry(rc)
+				continue
 			}
 		case err = <-sigErrCh:
 			return fmt.Errorf("c.PollSignal: %w", err)
@@ -65,24 +69,21 @@ func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 func (cfg *Config) thresholdCheck(rc *roamContext) bool {
 	rssi := rc.lastKnown.AvgRSSIBeacon
 	if rc.lastKnown.AvgRSSIBeacon == 0 {
-		//log.Printf("No RSSI BEACON available, falling back to basic RSSI")
+		// slog.Info("No RSSI BEACON available, falling back to basic RSSI")
 		rssi = rc.lastKnown.RSSI
 	}
-	//log.Printf("threshold RSSI recorded as: %d", rssi)
+	// slog.Info("threshold RSSI recorded as: %d", rssi)
 	switch {
 	case rc.noCandCounter > cfg.MaxNoCandidates && rssi < cfg.Thresholds.RSSI:
-		log.Printf("Roam attempts with no candidates (%v) exceeds threshold (%v). "+
-			"Falling back to bgscan...", rc.noCandCounter, cfg.MaxNoCandidates)
 		rc.thresholdFlag = noCandidateLimit
+		rc.waitForBGScan = true
+		rc.lastTriggerRSSI = rssi
 		return true
 	case rssi < cfg.Thresholds.RSSI:
-		log.Printf("Last polled RSSI (%vdBm) below threshold (%vdBm). "+
-			"Entering roam decision loop...", rssi, cfg.Thresholds.RSSI)
 		rc.thresholdFlag = lowRSSI
+		rc.lastTriggerRSSI = rssi
 		return true
 	case rc.lastKnown.LinkSpeed < cfg.Thresholds.DataRate:
-		log.Printf("Last polled data rate (%vMbps) below threshold (%vMbps). "+
-			"Entering roam decision loop...", rc.lastKnown.LinkSpeed, cfg.Thresholds.DataRate)
 		rc.thresholdFlag = lowDataRate
 		return true
 	}
@@ -90,46 +91,112 @@ func (cfg *Config) thresholdCheck(rc *roamContext) bool {
 	return false
 }
 
+func (cfg *Config) backoffCheck(rc *roamContext) bool {
+	if rc.waitForBGScan {
+		//slog.Info("waitForBGScan = %v", rc.waitForBGScan)
+		//slog.Info("time since last bgscan: %v. bgscan interval: %v", time.Since(rc.lastBGScan), cfg.Timing.BGScanInterval)
+		if time.Since(rc.lastBGScan) < cfg.BGScanInterval &&
+			rc.bgScanReady && rc.bgScanChecked == false {
+			rc.bgScanChecked = true
+			//slog.Info("bgScanReady = %v", rc.bgScanReady)
+			return true
+		}
+		rc.backoffTriggerCt++
+		//slog.Info("rc.waitForBGScan = %v", rc.waitForBGScan)
+		return false
+	}
+	if time.Since(rc.lastRoamFailure) < cfg.FailureBackoffTime {
+		rc.backoffTrigger = failureBackoff
+		rc.backoffTriggerCt++
+		return false
+	}
+	if time.Since(rc.lastRoamSuccess) < cfg.SuccessBackoffTime {
+		rc.backoffTrigger = successBackoff
+		rc.backoffTriggerCt++
+		return false
+	}
+	if time.Since(rc.lastNoCandidates) < cfg.NoCandidatesBackoffTime {
+		rc.backoffTrigger = noCandidatesBackoff
+		rc.backoffTriggerCt++
+		return false
+	}
+	rc.backoffTriggerCt = 0
+	return true
+}
+
+func (cfg *Config) logRoamEntry(rc *roamContext) {
+	slog.Debug("roamEnterCounter", "count", rc.roamEnterCounter)
+	if rc.backoffTriggerCt < 2 { //only log on first trigger
+		switch {
+		// Thresholds
+		case rc.thresholdFlag == noValue:
+			return
+		case rc.thresholdFlag == noCandidateLimit:
+			slog.Info("No candidate attempts exceed threshold, falling back to bgscan",
+				"attempts", rc.noCandCounter,
+				"threshold", cfg.MaxNoCandidates)
+		case rc.thresholdFlag == lowRSSI:
+			slog.Info("Last polled RSSI below threshold. Entering roam decision loop...",
+				"rssi", rc.lastTriggerRSSI,
+				"threshold", cfg.Thresholds.RSSI)
+		case rc.thresholdFlag == lowDataRate:
+			slog.Info("Last polled data rate below threshold. Entering roam decision loop...",
+				"datarate", rc.lastKnown.LinkSpeed,
+				"threshold", cfg.Thresholds.DataRate)
+		// Backoff timers
+		case rc.waitForBGScan:
+			slog.Info("Waiting for next bgscan...",
+				"remaining", cfg.BGScanInterval-time.Since(rc.lastBGScan))
+		case rc.backoffTrigger == noBackoff:
+			return
+		case rc.backoffTrigger == successBackoff:
+			slog.Info("Roam success backoff in effect",
+				"remaining", cfg.SuccessBackoffTime-time.Since(rc.lastRoamSuccess))
+		case rc.backoffTrigger == failureBackoff:
+			slog.Info("Roam failure backoff in effect",
+				"remaining", cfg.FailureBackoffTime-time.Since(rc.lastRoamFailure))
+		case rc.backoffTrigger == noCandidatesBackoff:
+			slog.Info("No candidates backoff in effect.",
+				"remaining", cfg.NoCandidatesBackoffTime-time.Since(rc.lastNoCandidates))
+		}
+	}
+}
+
 func (cfg *Config) roamProcessWrapper(
 	c *wpac.Client,
 	ctx context.Context,
 	rc *roamContext,
-) (bool, error) {
-	if time.Since(rc.lastRoamFailure) < cfg.FailureBackoffTime {
-		log.Printf("Roam failure backoff in effect. %v remaining",
-			cfg.FailureBackoffTime-time.Since(rc.lastRoamFailure))
-		return true, nil //continue
-	}
-	if time.Since(rc.lastRoamSuccess) < cfg.SuccessBackoffTime {
-		log.Printf("Roam success backoff in effect. %v remaining",
-			cfg.SuccessBackoffTime-time.Since(rc.lastRoamSuccess))
-		return true, nil //continue
-	}
-	if time.Since(rc.lastNoCandidates) < cfg.NoCandidatesBackoffTime {
-		log.Printf("No candidates backoff in effect. %v remaining",
-			cfg.NoCandidatesBackoffTime-time.Since(rc.lastNoCandidates))
-		return true, nil //continue
-	}
+) error {
 	resultFlag, errR := cfg.roamDecisionLoop(c, ctx, rc)
 	if errR != nil {
-		return false, fmt.Errorf("makeRoamDecision %w", errR)
+		return fmt.Errorf("makeRoamDecision %w", errR)
 	}
 	switch resultFlag {
 	case success:
 		rc.lastRoamSuccess = time.Now()
+		rc.waitForBGScan = false
 		rc.lastKnown = nil //clear lastKnown stats
 		rc.noCandCounter = 0
+		rc.roamEnterCounter = 0
 	case failure:
 		rc.lastRoamFailure = time.Now()
+		rc.waitForBGScan = false
+		rc.lastKnown = nil
+		rc.noCandCounter = 0
+		rc.roamEnterCounter = 0
 	case noCandidates:
 		rc.lastNoCandidates = time.Now()
 		rc.noCandCounter++
-		log.Println("\033[33m## No better APs found, returning to signal monitoring...\033[0m")
-		log.Printf("No candidates counter at %v. Max threshold is %v", rc.noCandCounter, cfg.MaxNoCandidates)
+		rc.roamEnterCounter = 0
+		slog.Info("No better APs found, returning to signal monitoring...")
+		slog.Debug("No candidates counter",
+			"count", rc.noCandCounter,
+			"max", cfg.MaxNoCandidates)
 	case unknown:
-		return false, fmt.Errorf("unexpected roam result")
+		rc.roamEnterCounter = 0
+		return fmt.Errorf("unexpected roam result")
 	}
-	return false, nil
+	return nil
 }
 
 func (cfg *Config) roamDecisionLoop(
@@ -140,7 +207,7 @@ func (cfg *Config) roamDecisionLoop(
 	var scoredAPs []scoredBSS
 	var currAP scoredBSS
 	if rc.thresholdFlag == noCandidateLimit {
-		log.Printf("Roaming using background scan...")
+		slog.Info("Roaming using background scan...")
 		aps, err := c.ScanResults(cfg.SSID)
 		if err != nil {
 			return unknown, fmt.Errorf("c.ScanResults: %w", err)
@@ -171,14 +238,16 @@ func (cfg *Config) roamDecisionLoop(
 	candAP := scoredAPs[0] //scoredAP is sorted with highest score first
 	switch {
 	case currAP.bssid == "":
-		log.Printf("current AP not in scan data, selecting AP with highest score")
+		slog.Warn("current AP not in scan data, selecting AP with highest score")
 		flag, err := cfg.roamToCandidate(c, ctx, candAP)
 		if err != nil {
 			return flag, fmt.Errorf("roamToCandidate: %w", err)
 		}
 		return flag, nil
 	case cfg.roamReadyCheck(candAP, currAP, rc) == true:
-		log.Printf("Better AP found BSSID: %v Score: %v\n", candAP.bssid, candAP.finalScore)
+		slog.Info("Better AP found",
+			"bssid", candAP.bssid,
+			"score", candAP.finalScore)
 		flag, err := cfg.roamToCandidate(c, ctx, candAP)
 		if err != nil {
 			return flag, fmt.Errorf("roamToCandidate: %w", err)
@@ -209,7 +278,7 @@ func (cfg *Config) prepareScoredAPs(
 		}
 	}
 	if !hasFreshCandidate {
-		log.Println("Stale scan data, rerunning scan...")
+		slog.Info("Stale scan data, rerunning scan...")
 		out, err := cfg.rescan(c, ctx, cfg.SSID)
 		if err != nil {
 			return nil, fmt.Errorf("cfg.rescan: %w", err)
@@ -229,22 +298,24 @@ func (cfg *Config) roamToCandidate(
 	if err != nil {
 		return failure, fmt.Errorf("c.Roam(%v): %w", candAP.bssid, err)
 	}
-	log.Printf("Roam Result // Success:%v TargetBSSID:%v FinalBSSID:%v Duration:%v Message:%v",
-		result.Success,
-		result.TargetBSSID,
-		result.FinalBSSID,
-		result.Duration,
-		result.Message)
+	slog.Info("Roam complete", "stats", result)
 	switch result.Success {
 	case true:
-		log.Printf("\033[32m## Successful Roam to BSSID:%v RSSI:%v Band:%v\033[0m",
-			candAP.bssid, candAP.rssi, candAP.band)
-		log.Println("Waiting for next trigger...")
+		slog.Info("ROAM SUCCESS",
+			"bssid", candAP.bssid,
+			"rssi", candAP.rssi,
+			"band", candAP.band,
+			"score", candAP.finalScore)
+		slog.Info("Waiting for next trigger...")
 		return success, nil
 	case false:
-		log.Printf("\033[31m## Failed Roam to BSSID:%v RSSI:%v Band:%v\nReason:%v\033[0m",
-			candAP.bssid, candAP.rssi, candAP.band, result.Message)
-		log.Println("Waiting for next trigger...")
+		slog.Info("ROAM FAILURE",
+			"bssid", candAP.bssid,
+			"rssi", candAP.rssi,
+			"band", candAP.band,
+			"score", candAP.finalScore,
+			"reason", result.Message)
+		slog.Info("Waiting for next trigger...")
 		return failure, nil
 	}
 	return unknown, fmt.Errorf("missing result.Success data from c.Roam")
@@ -254,7 +325,7 @@ func (cfg *Config) roamReadyCheck(candidate scoredBSS, current scoredBSS, rc *ro
 	switch rc.thresholdFlag {
 	case noValue:
 	case noCandidateLimit:
-		log.Printf("Ignoring scan age limit, selecting best AP available.")
+		slog.Debug("Ignoring scan age limit, selecting best AP available.")
 		if candidate.finalScore-current.finalScore > cfg.ScoreDelta &&
 			candidate.bssid != current.bssid {
 			return true
@@ -291,12 +362,12 @@ func (cfg *Config) rescan(c *wpac.Client, ctx context.Context, ssid string) ([]s
 }
 
 func logScoredAPs(scoredAPs []scoredBSS, bssid string) {
-	log.Println("Most recent scan data: ")
+	slog.Info("Most recent scan data")
 	for _, a := range scoredAPs {
 		if a.bssid == bssid {
-			log.Printf("%+v [CURRENT AP]", a)
+			slog.Info("current ap", "bss", a)
 		} else {
-			log.Printf("%+v", a)
+			slog.Info("candidate ap", "bss", a)
 		}
 	}
 }
@@ -322,7 +393,7 @@ func (cfg *Config) handleWpaSuppConfig(c *wpac.Client) (func(), error) {
 	cleanup := func() {
 		err = c.SetConfig(storedConf)
 		if err != nil {
-			log.Printf("error restoring wpa_supplicant config: %v", err)
+			slog.Error("error restoring wpa_supplicant config", "value", err)
 		}
 	}
 	return cleanup, nil

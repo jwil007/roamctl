@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"strings"
@@ -20,7 +21,10 @@ var version = "dev"
 
 func main() {
 	if err := run(); err != nil {
-		log.Printf("%v", err)
+		slog.Error("Error occurred", "value", err)
+		if strings.Contains(err.Error(), "context canceled") {
+			slog.Info("Exiting...")
+		}
 		os.Exit(1)
 	}
 }
@@ -33,7 +37,22 @@ func run() error {
 	log.SetFlags(log.Ltime | log.Lmicroseconds)
 	edit := flag.Bool("edit", false, "edit config file")
 	reset := flag.Bool("reset", false, "reset default config")
+	debug := flag.Bool("debug", false, "enable debug logging")
 	flag.Parse()
+
+	logLevel := slog.LevelInfo
+	if *debug {
+		logLevel = slog.LevelDebug
+	}
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: logLevel,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.TimeKey {
+				a.Value = slog.StringValue(a.Value.Time().Format("15:04:05.000000"))
+			}
+			return a
+		},
+	})))
 
 	cfg, err := roam.HandleConfig(reset, edit)
 	if err != nil {
@@ -55,7 +74,7 @@ func run() error {
 	defer func() {
 		err = c.Close()
 		if err != nil {
-			log.Printf("failed to close unix connection: %v", err)
+			slog.Error("failed to close unix connection", "value", err)
 		}
 	}()
 	defer cancel()

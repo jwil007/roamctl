@@ -5,7 +5,7 @@ While running, roamctl disables wpa_supplicant's autonomous roaming and instead 
 
 The configurable roaming algorithm allows simulation of various client behavior. For example, if you adjust the `band_scores` params to `2point4ghz = 100`, `5ghz = 25`, and `6ghz = 15`, the device will strongly prefer 2.4GHz over 5GHz and 6GHz, and slightly prefer 5GHz over 6GHz. There are over 30 parameters that can be set. See [Configuration](#Configuration) for full parameter reference.
 
-Output is logged to the terminal with timestamps and color coding for important events.
+Output is shown in the terminal using structured logging, with timestamps and log levels.
 
 > [!IMPORTANT]
 > This is not a battle tested roaming algorithm. It is meant primarily to be a tool for Wi-Fi tinkerers.
@@ -47,7 +47,9 @@ If you get a permission error, run with `sudo`.
 
 `-edit` : Edit config file. Checks for $EDITOR env variable, otherwise tries nano, then vi.
 
-`-reset` : Reset config file to original 
+`-reset` : Reset config file to defaault template.
+
+`-debug` : Enable debug log level.
 
 ## Configuration
 >[!NOTE]
@@ -71,7 +73,7 @@ The `-reset` flag overwrites the config file with the default template.
 # For example, if the rssi threshold is -67, the device will enter
 # the roam decision loop when RSSI is -68 or lower.
   rssi = -67 # dBm, allowed range -128 to 0
-  
+
 # Set data rate to 0 to ignore, otherwise set value as Mbps.
 # Roam decision loop entered when polled data rate < threshold
   data_rate = 0 # Mbps
@@ -80,6 +82,11 @@ The `-reset` flag overwrites the config file with the default template.
 # Lower values: more roaming, less stable
 # Must be integer in range 0 to 100
   score_delta = 7
+
+# max_no_candidate_attempts defines the max number of consecutive
+# roam attempts where no candidate is found before falling back 
+# to bgscan monitoring.
+  max_no_candidate_attempts = 3
 
 [score_weights]
 # Score weights are a multipier on each scoring category
@@ -112,7 +119,7 @@ The `-reset` flag overwrites the config file with the default template.
 # Amount of time to wait before re-enterting roam loop depending on outcome
   success_backoff_time = "5s"
   failure_backoff_time = "2s"
-  no_candidates_backoff_time = "7s"
+  no_candidates_backoff_time = "6s"
 
 # Defines how often signal metrics for roaming threshold are checked.
   sig_poll_interval = "300ms"

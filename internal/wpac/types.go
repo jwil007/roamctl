@@ -1,6 +1,7 @@
 package wpac
 
 import (
+	"fmt"
 	"net"
 	"time"
 )
@@ -36,12 +37,35 @@ type ConnectionStatus struct {
 	BSSID string
 }
 
+func (c ConnectionStatus) String() string {
+	return fmt.Sprintf(
+		"bssid:%s rssi:%d avgrssi:%d avgrssibeacon:%d noise:%d linkspeed:%d freq:%d cw:%s",
+		c.BSSID,
+		c.RSSI,
+		c.AvgRSSI,
+		c.AvgRSSIBeacon,
+		c.Noise,
+		c.LinkSpeed,
+		c.Freq,
+		c.ChannelWidth,
+	)
+}
+
 type RoamStats struct {
 	Success     bool
 	TargetBSSID string
 	FinalBSSID  string
 	Duration    time.Duration
 	Message     string
+}
+
+func (r RoamStats) String() string {
+	return fmt.Sprintf("Success:%t TargetBSSID:%s FinalBSSID:%s Duration:%v Message:%s",
+		r.Success,
+		r.TargetBSSID,
+		r.FinalBSSID,
+		r.Duration,
+		r.Message)
 }
 
 type tlv struct {

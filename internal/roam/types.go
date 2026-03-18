@@ -113,9 +113,26 @@ type roamContext struct {
 	lastRoamFailure  time.Time
 	lastNoCandidates time.Time
 	noCandCounter    int
+	backoffTrigger   backoffTrigger
+	backoffTriggerCt int
+	roamEnterCounter int //debug counter to see how many times the roam loop is entered consecutively
 	thresholdFlag    thresholdFlag
+	lastTriggerRSSI  int
+	waitForBGScan    bool
 	bgScanAPs        []scoredBSS
+	lastBGScan       time.Time
+	bgScanReady      bool
+	bgScanChecked    bool
 }
+
+type backoffTrigger int
+
+const (
+	noBackoff backoffTrigger = iota
+	failureBackoff
+	successBackoff
+	noCandidatesBackoff
+)
 
 type roamResultFlag int
 
