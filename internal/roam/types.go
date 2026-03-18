@@ -53,9 +53,10 @@ type Timing struct {
 	MaxScanAge              time.Duration `toml:"max_scan_age"`
 }
 type Thresholds struct {
-	RSSI       int `toml:"rssi"`
-	DataRate   int `toml:"data_rate"`
-	ScoreDelta int `toml:"score_delta"`
+	RSSI            int `toml:"rssi"`
+	DataRate        int `toml:"data_rate"`
+	ScoreDelta      int `toml:"score_delta"`
+	MaxNoCandidates int `toml:"max_no_candidate_attempts"`
 }
 
 type ScoreWeights struct {
@@ -106,6 +107,16 @@ func (s scoredBSS) String() string {
 	)
 }
 
+type roamContext struct {
+	lastKnown        *wpac.ConnectionStatus
+	lastRoamSuccess  time.Time
+	lastRoamFailure  time.Time
+	lastNoCandidates time.Time
+	noCandCounter    int
+	thresholdFlag    thresholdFlag
+	bgScanAPs        []scoredBSS
+}
+
 type roamResultFlag int
 
 const (
@@ -113,4 +124,13 @@ const (
 	failure
 	noCandidates
 	unknown
+)
+
+type thresholdFlag int
+
+const (
+	noValue thresholdFlag = iota
+	lowRSSI
+	lowDataRate
+	noCandidateLimit
 )

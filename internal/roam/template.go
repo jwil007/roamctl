@@ -21,6 +21,11 @@ const defaultConfigTemplate = `
 # Must be integer in range 0 to 100
   score_delta = 7
 
+# max_no_candidate_attempts defines the max number of consecutive
+# roam attempts where no candidate is found before falling back 
+# to bgscan monitoring.
+  max_no_candidate_attempts = 3
+
 [score_weights]
 # Score weights are a multipier on each scoring category
 # A value of 0 means a category is ignored from the scoring algorithm.
@@ -52,7 +57,7 @@ const defaultConfigTemplate = `
 # Amount of time to wait before re-enterting roam loop depending on outcome
   success_backoff_time = "5s"
   failure_backoff_time = "2s"
-  no_candidates_backoff_time = "7s"
+  no_candidates_backoff_time = "6s"
 
 # Defines how often signal metrics for roaming threshold are checked.
   sig_poll_interval = "300ms"

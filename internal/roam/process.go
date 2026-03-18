@@ -11,6 +11,7 @@ import (
 )
 
 func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
+	rc := &roamContext{}
 	log.Println("Starting roamctl... exit with ctrl+c")
 	cleanup, err := cfg.handleWpaSuppConfig(c)
 	if err != nil {
@@ -19,10 +20,6 @@ func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 	defer cleanup() //sets wpa_supplicant back to original state
 	//Start polling signal stats
 	log.Println("Waiting for trigger to enter roam decision loop...")
-	var lastKnown *wpac.ConnectionStatus
-	var lastRoamSuccess time.Time
-	var lastRoamFailure time.Time
-	var lastNoCandidates time.Time
 	sigCh, sigErrCh := c.PollSignal(ctx, cfg.Timing.SigPollInterval)
 	bgScanTicker := time.NewTicker(cfg.Timing.BGScanInterval)
 	for {
@@ -33,47 +30,30 @@ func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 				return fmt.Errorf("c.Scan: %w", err)
 			}
 			log.Println("bgScan complete")
+			//aps, err := c.ScanResults(cfg.SSID)
+			//if err != nil {
+			//	return fmt.Errorf("c.ScanResults: %w", err)
+			//}
+			//rc.bgScanAPs = cfg.scoreAll(aps)
+			//logScoredAPs(rc.bgScanAPs, rc.lastKnown.BSSID)
 		case <-ctx.Done():
 			return ctx.Err()
 		case con := <-sigCh:
 			if con.BSSID != "" {
-				lastKnown = &con
+				rc.lastKnown = &con
 			}
-			if lastKnown == nil {
+			if rc.lastKnown == nil {
 				continue
 			}
-			//log.Printf("DEBUG: last polled signal stats %+v\n", lastKnown)
+			//log.Printf("DEBUG: last polled signal stats %+v\n", rc.lastKnown)
 			switch {
-			case cfg.thresholdCheck(lastKnown):
-				if time.Since(lastRoamFailure) < cfg.FailureBackoffTime {
-					log.Printf("Roam failure backoff in effect. %v remaining",
-						cfg.FailureBackoffTime-time.Since(lastRoamFailure))
+			case cfg.thresholdCheck(rc):
+				cont, err := cfg.roamProcessWrapper(c, ctx, rc)
+				if err != nil {
+					return fmt.Errorf("roamProcessWrapper: %w", err)
+				}
+				if cont {
 					continue
-				}
-				if time.Since(lastRoamSuccess) < cfg.SuccessBackoffTime {
-					log.Printf("Roam success backoff in effect. %v remaining",
-						cfg.SuccessBackoffTime-time.Since(lastRoamSuccess))
-					continue
-				}
-				if time.Since(lastNoCandidates) < cfg.NoCandidatesBackoffTime {
-					log.Printf("No candidates backoff in effect. %v remaining",
-						cfg.NoCandidatesBackoffTime-time.Since(lastNoCandidates))
-					continue
-				}
-				resultFlag, errR := cfg.roamDecisionLoop(c, ctx, lastKnown.BSSID)
-				if errR != nil {
-					return fmt.Errorf("makeRoamDecision %w", errR)
-				}
-				switch resultFlag {
-				case success:
-					lastRoamSuccess = time.Now()
-					lastKnown = nil //clear lastKnown stats
-				case failure:
-					lastRoamFailure = time.Now()
-				case noCandidates:
-					lastNoCandidates = time.Now()
-				case unknown:
-					return fmt.Errorf("unexpected roam result")
 				}
 			}
 		case err = <-sigErrCh:
@@ -82,14 +62,111 @@ func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 	}
 }
 
+func (cfg *Config) thresholdCheck(rc *roamContext) bool {
+	rssi := rc.lastKnown.AvgRSSIBeacon
+	if rc.lastKnown.AvgRSSIBeacon == 0 {
+		//log.Printf("No RSSI BEACON available, falling back to basic RSSI")
+		rssi = rc.lastKnown.RSSI
+	}
+	//log.Printf("threshold RSSI recorded as: %d", rssi)
+	switch {
+	case rc.noCandCounter > cfg.MaxNoCandidates && rssi < cfg.Thresholds.RSSI:
+		log.Printf("Roam attempts with no candidates (%v) exceeds threshold (%v). "+
+			"Falling back to bgscan...", rc.noCandCounter, cfg.MaxNoCandidates)
+		rc.thresholdFlag = noCandidateLimit
+		return true
+	case rssi < cfg.Thresholds.RSSI:
+		log.Printf("Last polled RSSI (%vdBm) below threshold (%vdBm). "+
+			"Entering roam decision loop...", rssi, cfg.Thresholds.RSSI)
+		rc.thresholdFlag = lowRSSI
+		return true
+	case rc.lastKnown.LinkSpeed < cfg.Thresholds.DataRate:
+		log.Printf("Last polled data rate (%vMbps) below threshold (%vMbps). "+
+			"Entering roam decision loop...", rc.lastKnown.LinkSpeed, cfg.Thresholds.DataRate)
+		rc.thresholdFlag = lowDataRate
+		return true
+	}
+	rc.thresholdFlag = noValue
+	return false
+}
+
+func (cfg *Config) roamProcessWrapper(
+	c *wpac.Client,
+	ctx context.Context,
+	rc *roamContext,
+) (bool, error) {
+	if time.Since(rc.lastRoamFailure) < cfg.FailureBackoffTime {
+		log.Printf("Roam failure backoff in effect. %v remaining",
+			cfg.FailureBackoffTime-time.Since(rc.lastRoamFailure))
+		return true, nil //continue
+	}
+	if time.Since(rc.lastRoamSuccess) < cfg.SuccessBackoffTime {
+		log.Printf("Roam success backoff in effect. %v remaining",
+			cfg.SuccessBackoffTime-time.Since(rc.lastRoamSuccess))
+		return true, nil //continue
+	}
+	if time.Since(rc.lastNoCandidates) < cfg.NoCandidatesBackoffTime {
+		log.Printf("No candidates backoff in effect. %v remaining",
+			cfg.NoCandidatesBackoffTime-time.Since(rc.lastNoCandidates))
+		return true, nil //continue
+	}
+	resultFlag, errR := cfg.roamDecisionLoop(c, ctx, rc)
+	if errR != nil {
+		return false, fmt.Errorf("makeRoamDecision %w", errR)
+	}
+	switch resultFlag {
+	case success:
+		rc.lastRoamSuccess = time.Now()
+		rc.lastKnown = nil //clear lastKnown stats
+		rc.noCandCounter = 0
+	case failure:
+		rc.lastRoamFailure = time.Now()
+	case noCandidates:
+		rc.lastNoCandidates = time.Now()
+		rc.noCandCounter++
+		log.Println("\033[33m## No better APs found, returning to signal monitoring...\033[0m")
+		log.Printf("No candidates counter at %v. Max threshold is %v", rc.noCandCounter, cfg.MaxNoCandidates)
+	case unknown:
+		return false, fmt.Errorf("unexpected roam result")
+	}
+	return false, nil
+}
+
 func (cfg *Config) roamDecisionLoop(
 	c *wpac.Client,
 	ctx context.Context,
-	currBSSID string,
+	rc *roamContext,
 ) (roamResultFlag, error) {
-	scoredAPs, currAP, err := cfg.prepareScoredAPs(c, ctx, cfg.SSID, currBSSID)
-	if err != nil {
-		return unknown, fmt.Errorf("prepareScoredAPs: %w", err)
+	var scoredAPs []scoredBSS
+	var currAP scoredBSS
+	if rc.thresholdFlag == noCandidateLimit {
+		log.Printf("Roaming using background scan...")
+		aps, err := c.ScanResults(cfg.SSID)
+		if err != nil {
+			return unknown, fmt.Errorf("c.ScanResults: %w", err)
+		}
+		saps := cfg.scoreAll(aps)
+		scoredAPs = saps
+		logScoredAPs(scoredAPs, rc.lastKnown.BSSID)
+		for _, ap := range scoredAPs {
+			if ap.bssid == rc.lastKnown.BSSID {
+				currAP = ap
+			}
+		}
+	} else {
+		prepAPs, err := cfg.prepareScoredAPs(c, ctx, rc)
+		if err != nil {
+			return unknown, fmt.Errorf("prepareScoredAPs: %w", err)
+		}
+		scoredAPs = prepAPs
+		for _, ap := range scoredAPs {
+			if ap.bssid == rc.lastKnown.BSSID {
+				currAP = ap
+			}
+		}
+	}
+	if len(scoredAPs) == 0 {
+		return unknown, fmt.Errorf("scored APs array is nil")
 	}
 	candAP := scoredAPs[0] //scoredAP is sorted with highest score first
 	switch {
@@ -100,7 +177,7 @@ func (cfg *Config) roamDecisionLoop(
 			return flag, fmt.Errorf("roamToCandidate: %w", err)
 		}
 		return flag, nil
-	case cfg.roamReadyCheck(candAP, currAP) == true:
+	case cfg.roamReadyCheck(candAP, currAP, rc) == true:
 		log.Printf("Better AP found BSSID: %v Score: %v\n", candAP.bssid, candAP.finalScore)
 		flag, err := cfg.roamToCandidate(c, ctx, candAP)
 		if err != nil {
@@ -108,9 +185,39 @@ func (cfg *Config) roamDecisionLoop(
 		}
 		return flag, nil
 	default:
-		log.Println("\033[33m## No better APs found, returning to signal monitoring...\033[0m")
 		return noCandidates, nil
 	}
+}
+
+func (cfg *Config) prepareScoredAPs(
+	c *wpac.Client,
+	ctx context.Context,
+	rc *roamContext,
+) ([]scoredBSS, error) {
+	aps, err := c.ScanResults(cfg.SSID)
+	if err != nil {
+		return nil, fmt.Errorf("c.ScanResults: %w", err)
+	}
+	scoredAPs := cfg.scoreAll(aps)
+	logScoredAPs(scoredAPs, rc.lastKnown.BSSID)
+	hasFreshCandidate := false
+
+	for _, candAP := range scoredAPs {
+		if candAP.age < cfg.MaxScanAge {
+			hasFreshCandidate = true
+			break
+		}
+	}
+	if !hasFreshCandidate {
+		log.Println("Stale scan data, rerunning scan...")
+		out, err := cfg.rescan(c, ctx, cfg.SSID)
+		if err != nil {
+			return nil, fmt.Errorf("cfg.rescan: %w", err)
+		}
+		scoredAPs = out
+		logScoredAPs(scoredAPs, rc.lastKnown.BSSID)
+	}
+	return scoredAPs, nil
 }
 
 func (cfg *Config) roamToCandidate(
@@ -143,55 +250,32 @@ func (cfg *Config) roamToCandidate(
 	return unknown, fmt.Errorf("missing result.Success data from c.Roam")
 }
 
-func (cfg *Config) roamReadyCheck(candidate scoredBSS, current scoredBSS) bool {
-	if candidate.finalScore-current.finalScore > cfg.ScoreDelta &&
-		candidate.bssid != current.bssid &&
-		candidate.age < cfg.MaxScanAge {
-		return true
+func (cfg *Config) roamReadyCheck(candidate scoredBSS, current scoredBSS, rc *roamContext) bool {
+	switch rc.thresholdFlag {
+	case noValue:
+	case noCandidateLimit:
+		log.Printf("Ignoring scan age limit, selecting best AP available.")
+		if candidate.finalScore-current.finalScore > cfg.ScoreDelta &&
+			candidate.bssid != current.bssid {
+			return true
+		}
+		return false
+	case lowRSSI:
+		if candidate.finalScore-current.finalScore > cfg.ScoreDelta &&
+			candidate.bssid != current.bssid &&
+			candidate.age < cfg.MaxScanAge {
+			return true
+		}
+		return false
+	case lowDataRate:
+		if candidate.finalScore-current.finalScore > cfg.ScoreDelta &&
+			candidate.bssid != current.bssid &&
+			candidate.age < cfg.MaxScanAge {
+			return true
+		}
+		return false
 	}
 	return false
-}
-
-func (cfg *Config) prepareScoredAPs(
-	c *wpac.Client,
-	ctx context.Context,
-	ssid string,
-	currBSSID string,
-) ([]scoredBSS, scoredBSS, error) {
-	aps, err := c.ScanResults(ssid)
-	if err != nil {
-		return nil, scoredBSS{}, fmt.Errorf("c.ScanResults: %w", err)
-	}
-	scoredAPs := cfg.scoreAll(aps)
-	logScoredAPs(scoredAPs, currBSSID)
-	hasFreshCandidate := false
-	var currAP scoredBSS
-
-	for _, candAP := range scoredAPs {
-		if candAP.age < cfg.MaxScanAge {
-			hasFreshCandidate = true
-			break
-		}
-	}
-	if !hasFreshCandidate {
-		log.Println("Stale scan data, rerunning scan...")
-		out, err := cfg.rescan(c, ctx, ssid)
-		if err != nil {
-			return nil, scoredBSS{}, fmt.Errorf("cfg.rescan: %w", err)
-		}
-		scoredAPs = out
-		logScoredAPs(scoredAPs, currBSSID)
-	}
-	for _, candAP := range scoredAPs {
-		if candAP.bssid == currBSSID {
-			currAP = candAP
-			break
-		}
-	}
-	if currAP.bssid == "" {
-		log.Printf("last connected AP (BSSID: %v) not in scan results", currBSSID)
-	}
-	return scoredAPs, currAP, nil
 }
 
 func (cfg *Config) rescan(c *wpac.Client, ctx context.Context, ssid string) ([]scoredBSS, error) {
@@ -215,26 +299,6 @@ func logScoredAPs(scoredAPs []scoredBSS, bssid string) {
 			log.Printf("%+v", a)
 		}
 	}
-}
-
-func (cfg *Config) thresholdCheck(lastKnown *wpac.ConnectionStatus) bool {
-	rssi := lastKnown.AvgRSSIBeacon
-	if lastKnown.AvgRSSIBeacon == 0 {
-		//log.Printf("No RSSI BEACON available, falling back to basic RSSI")
-		rssi = lastKnown.RSSI
-	}
-	//log.Printf("threshold RSSI recorded as: %d", rssi)
-	switch {
-	case rssi < cfg.Thresholds.RSSI:
-		log.Printf("Last polled RSSI (%vdBm) below threshold (%vdBm). "+
-			"Entering roam decision loop...", rssi, cfg.Thresholds.RSSI)
-		return true
-	case lastKnown.LinkSpeed < cfg.Thresholds.DataRate:
-		log.Printf("Last polled data rate (%vMbps) below threshold (%vMbps). "+
-			"Entering roam decision loop...", lastKnown.LinkSpeed, cfg.Thresholds.DataRate)
-		return true
-	}
-	return false
 }
 
 func (cfg *Config) handleWpaSuppConfig(c *wpac.Client) (func(), error) {
