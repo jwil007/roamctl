@@ -21,10 +21,11 @@ var version = "dev"
 
 func main() {
 	if err := run(); err != nil {
-		slog.Error("Error occurred", "value", err)
 		if strings.Contains(err.Error(), "context canceled") {
 			slog.Info("Exiting...")
+			os.Exit(0)
 		}
+		slog.Error("Error occurred", "value", err)
 		os.Exit(1)
 	}
 }

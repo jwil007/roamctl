@@ -22,6 +22,12 @@ func (cfg *Config) Validate() error {
 			"thresholds.score_delta %v invalid. Must be in range 0 to 100",
 			cfg.Thresholds.ScoreDelta))
 	}
+
+	if cfg.MaxNoCandidates > 20 {
+		errs = append(errs, fmt.Sprintf(
+			"thresholds.score_delta %v invalid. Must be in range 0 to 20",
+			cfg.MaxNoCandidates))
+	}
 	// ScoreWeights
 	if !validScore(cfg.ScoreWeights.RSSI) {
 		errs = append(errs, fmt.Sprintf(
