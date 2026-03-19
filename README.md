@@ -1,11 +1,11 @@
 # roamctl
-roamctl is a Linux utility with the goal of providing a fully configurable Wi-Fi roaming algorithm. It is written in Go, and exclusively utilizes the wpa_supplicant control interface for all Wi-Fi operations. For more info on the wpa_supplicant control interface, read the official docs https://w1.fi/wpa_supplicant/devel/ctrl_iface_page.html.
+roamctl is a Linux utility that provides a fully configurable Wi-Fi roaming algorithm. It is written in Go, and exclusively utilizes the wpa_supplicant control interface for Wi-Fi operations. For more info on the wpa_supplicant control interface, read the official docs https://w1.fi/wpa_supplicant/devel/ctrl_iface_page.html.
 
 While running, roamctl disables wpa_supplicant's autonomous roaming and instead uses a configurable roaming algorithm. The algorithm is score based, using a method to score each BSSID in the scan data to make a decision whether or not to roam (reassociate). When the program exits, the original wpa_supplicant configuration and roaming behavior is restored.
 
 The configurable roaming algorithm allows simulation of various client behavior. For example, if you adjust the `band_scores` params to `2point4ghz = 100`, `5ghz = 25`, and `6ghz = 15`, the device will strongly prefer 2.4GHz over 5GHz and 6GHz, and slightly prefer 5GHz over 6GHz. There are over 30 parameters that can be set. See [Configuration](#Configuration) for full parameter reference.
 
-Output is shown in the terminal using structured logging, with timestamps and log levels.
+Output is shown in the terminal using structured logging with timestamps and log levels.
 
 ## Quick Start
 
@@ -35,7 +35,11 @@ The command below will add the path config for your default shell. After running
 </details>
 
 ## Algorithm details
-The roaming algorithm consists of an outer loop (ProcessLoop) and an inner decision tree when a roam attempt is being made. The inner decision tree is reached when a threshold, such as RSSI, is below a set value. At that point the inner decision tree evaluates scan results against the current connected AP and decides whether or not to roam.
+The roaming algorithm consists of an outer loop (ProcessLoop) and an inner tree for roaming decision.
+
+The out loop handles polling to watch client metrics, such as RSSI, noise, and data rate. it also runs a background scan on a configurable time interval.
+
+The inner tree is reached when a threshold, such as RSSI, is below a set value. At that point the inner tree evaluates scan results against the current connected AP and decides whether or not to roam.
 
 ### Visual diagrams
 Flow chart diagrams are avaialble for both the outer loop algorithm, and the roam decision tree.
