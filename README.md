@@ -46,17 +46,6 @@ Flow chart diagrams are avaialble for both the outer loop algorithm, and the roa
 - [Outer Loop Algorithm](/docs/algorithm-chart.md)
 - [Roam Decision Tree](/docs/roam-decision-chart.md)
 
-## A note on 6GHz
-The version of wpa_supplicant that ships with most Debian based distros (v2.10) may not reliably find 6GHz APs in the scan results. If you're testing 6GHz roaming, check your version with `wpa_supplicant -v`. If you have v2.11 or newer, 6GHz should be reliable.
-
-Upgrading from v2.10 to v2.11 on Debian based distros may require building from source. This GitHub repo contains a shell script to handle the build process for you: https://github.com/jwil007/wpas-v2.11-install-script/tree/main.
-
->[!WARNING]
-> The script replaces the distro-packaged wpa_supplicant binary in-place without going through the package manager. Future apt upgrade runs may overwrite it with the older distro version.
->
-> The script will restart wpa_supplicant when it is completed. This briefly disconnects Wi-Fi, which means that you may lose connection to the machine if accessing it remotely and it is only Wi-Fi connected.
-
-
 ### Scoring and Stability
 BSSIDs in the scan results are scored using a weighted combination of RSSI, SNR, Band, channel utilization, PHY type, etc. The scoring parameters and weights are user-configurable, See [Configuration](#Configuration).
 
@@ -83,6 +72,17 @@ If you get a permission error, run with `sudo`.
 `-reset` : Reset config file to defaault template.
 
 `-level` : Set log level. Options are `info` or `debug`. Default is `info`
+
+## A note on 6GHz
+The version of wpa_supplicant that ships with most Debian based distros (v2.10) may not reliably find 6GHz APs in the scan results. If you're testing 6GHz roaming, check your version with `wpa_supplicant -v`. If you have v2.11 or newer, 6GHz should be reliable.
+
+Upgrading from v2.10 to v2.11 on Debian based distros may require building from source. This GitHub repo contains a shell script to handle the build process for you: https://github.com/jwil007/wpas-v2.11-install-script/tree/main.
+
+>[!WARNING]
+> The script replaces the distro-packaged wpa_supplicant binary in-place without going through the package manager. Future apt upgrade runs may overwrite it with the older distro version.
+>
+> The script will restart wpa_supplicant when it is completed. This briefly disconnects Wi-Fi, which means that you may lose connection to the machine if accessing it remotely and it is only Wi-Fi connected.
+
 
 ## Configuration
 
