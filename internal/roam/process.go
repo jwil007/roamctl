@@ -12,6 +12,7 @@ import (
 
 func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 	rc := &roamContext{}
+	rc.lastBGScan = time.Now()
 	slog.Info("Starting roamctl... exit with ctrl+c")
 	cleanup, err := cfg.handleWpaSuppConfig(c, rc)
 	if err != nil {

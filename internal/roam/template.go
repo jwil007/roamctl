@@ -16,7 +16,7 @@ const defaultConfigTemplate = `
 # Hysteresis is activated after a roam attempt with no candidates
 # RSSI must leave the hysteresis band before the roam loop is re-entered
 # Must be integer in range 0 to 15
-  rssi_hysteresis_up = 3
+  rssi_hysteresis_up = 5
   rssi_hysteresis_down = 5
 
 # Set data rate to 0 to ignore, otherwise set value as Mbps.

@@ -144,9 +144,9 @@ func (c *Client) getScanResults(ssid string) ([]string, error) {
 		return nil, fmt.Errorf("c.Cmd(\"SCAN_RESULTS\"): %w", err)
 	}
 	for _, line := range strings.Split(string(out), "\n")[1:] {
-		if strings.Contains(line, ssid) {
-			bssid := strings.Fields(line)[0]
-			bssids = append(bssids, bssid)
+		parts := strings.SplitN(line, "\t", 5)
+		if len(parts) == 5 && parts[4] == ssid {
+			bssids = append(bssids, parts[0])
 		}
 	}
 	return bssids, nil
