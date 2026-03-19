@@ -52,14 +52,15 @@ If you get a permission error, run with `sudo`.
 `-level` : Set log level. Options are `info` or `debug`. Default is `info`
 
 ## Configuration
->[!NOTE]
->roamctl initializes with "sensible default" parameters. The Default Config shown below.
 
 All config parameters, including interface specification and scoring weights for the roaming algorithm, are set through the toml file at `~/.config/roamctl/config.toml`
 
 For convenience, running with the `-edit` flag opens a text editor to edit the file directly.
 
 The `-reset` flag overwrites the config file with the default template.
+
+>[!NOTE]
+>roamctl initializes with "sensible default" parameters. The Default Config shown below.
 
 ## Default Config
 ```toml
