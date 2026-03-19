@@ -14,7 +14,7 @@ import (
 func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 	rc := &roamContext{}
 	slog.Info("Starting roamctl... exit with ctrl+c")
-	cleanup, err := cfg.handleWpaSuppConfig(c)
+	cleanup, err := cfg.handleWpaSuppConfig(c, rc)
 	if err != nil {
 		return fmt.Errorf("handleWpaSuppConfig: %w", err)
 	}
@@ -73,6 +73,15 @@ func (cfg *Config) thresholdCheck(rc *roamContext) bool {
 		rssi = rc.lastKnown.RSSI
 	}
 	// slog.Info("threshold RSSI recorded as: %d", rssi)
+	if rc.hysteresisActive {
+		if rc.lastKnown.RSSI > rc.lastTriggerRSSI-cfg.RSSIHysteresisDown &&
+			rc.lastKnown.RSSI < rc.lastTriggerRSSI+cfg.RSSIHysteresisUp {
+			rc.thresholdFlag = inHysteresis
+			return false
+		}
+		slog.Info("Hysteresis cleared", "rssi", rssi)
+		rc.hysteresisActive = false
+	}
 	switch {
 	case rc.noCandCounter > cfg.MaxNoCandidates && rssi < cfg.Thresholds.RSSI:
 		rc.thresholdFlag = noCandidateLimit
@@ -120,7 +129,6 @@ func (cfg *Config) backoffCheck(rc *roamContext) bool {
 }
 
 func (cfg *Config) logThreshold(rc *roamContext) {
-	slog.Debug("roamEnterCounter", "count", rc.roamEnterCounter)
 	if rc.backoffTriggerCt < 2 { //only log on first trigger
 		switch rc.thresholdFlag {
 		// Thresholds
@@ -138,6 +146,11 @@ func (cfg *Config) logThreshold(rc *roamContext) {
 			slog.Info("Last polled data rate below threshold. Entering roam decision loop...",
 				"datarate", rc.lastKnown.LinkSpeed,
 				"threshold", cfg.Thresholds.DataRate)
+		case inHysteresis:
+			slog.Debug("Hysteresis active, waiting for signal to change by configured bounds...",
+				"rssi", rc.lastTriggerRSSI,
+				"exit_threshold_up", rc.lastTriggerRSSI+cfg.Thresholds.RSSIHysteresisUp,
+				"exit_threshold_down", rc.lastTriggerRSSI-cfg.Thresholds.RSSIHysteresisDown)
 		}
 	}
 }
@@ -229,6 +242,7 @@ func (cfg *Config) roamProcessWrapper(
 		rc.lastNoCandidates = time.Now()
 		rc.noCandCounter++
 		rc.roamEnterCounter = 0
+		rc.hysteresisActive = true
 		slog.Info(yellow.Render("NO CANDIDATE") + " returning to signal monitoring...")
 		slog.Debug("No candidates counter",
 			"count", rc.noCandCounter,
@@ -249,7 +263,7 @@ func (cfg *Config) roamDecisionLoop(
 	var currAP scoredBSS
 	if rc.thresholdFlag == noCandidateLimit {
 		slog.Info("Roaming using background scan...")
-		aps, err := c.ScanResults(cfg.SSID)
+		aps, err := c.ScanResults(rc.ssid)
 		if err != nil {
 			return unknown, fmt.Errorf("c.ScanResults: %w", err)
 		}
@@ -304,7 +318,7 @@ func (cfg *Config) prepareScoredAPs(
 	ctx context.Context,
 	rc *roamContext,
 ) ([]scoredBSS, error) {
-	aps, err := c.ScanResults(cfg.SSID)
+	aps, err := c.ScanResults(rc.ssid)
 	if err != nil {
 		return nil, fmt.Errorf("c.ScanResults: %w", err)
 	}
@@ -320,7 +334,7 @@ func (cfg *Config) prepareScoredAPs(
 	}
 	if !hasFreshCandidate {
 		slog.Info("Stale scan data, rerunning scan...")
-		out, err := cfg.rescan(c, ctx, cfg.SSID)
+		out, err := cfg.rescan(c, ctx, rc.ssid)
 		if err != nil {
 			return nil, fmt.Errorf("cfg.rescan: %w", err)
 		}
@@ -415,7 +429,7 @@ func logScoredAPs(scoredAPs []scoredBSS, bssid string) {
 	}
 }
 
-func (cfg *Config) handleWpaSuppConfig(c *wpac.Client) (func(), error) {
+func (cfg *Config) handleWpaSuppConfig(c *wpac.Client, rc *roamContext) (func(), error) {
 	//Get Current wpa_supplicant status
 	storedConf, err := c.GetConfig()
 	if err != nil {
@@ -431,7 +445,7 @@ func (cfg *Config) handleWpaSuppConfig(c *wpac.Client) (func(), error) {
 	if err != nil {
 		return nil, fmt.Errorf("c.SetConfig: %w", err)
 	}
-	cfg.SSID = storedConf.SSID
+	rc.ssid = storedConf.SSID
 
 	cleanup := func() {
 		err = c.SetConfig(storedConf)

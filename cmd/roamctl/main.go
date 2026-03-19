@@ -31,15 +31,32 @@ func main() {
 }
 
 func run() error {
-	if len(os.Args) > 1 && os.Args[1] == "--version" {
-		fmt.Println(version)
-		os.Exit(0)
-	}
+	//handle args
+	versionFlag := flag.Bool("version", false, "print version and exit")
 	edit := flag.Bool("edit", false, "edit config file")
 	reset := flag.Bool("reset", false, "reset default config")
 	levelStr := flag.String("level", "info", "log level (debug, info)")
 	flag.Parse()
-
+	if *versionFlag {
+		fmt.Println(version)
+		os.Exit(0)
+	}
+	if flag.NArg() > 0 {
+		_, _ = fmt.Fprintf(os.Stderr, "error: unexpected argument(s): %v\n", flag.Args())
+		flag.Usage()
+		os.Exit(1)
+	}
+	validLevels := map[string]bool{"debug": true, "info": true}
+	if !validLevels[*levelStr] {
+		_, _ = fmt.Fprintf(os.Stderr, "error: invalid log level %q, must be debug or info\n", *levelStr)
+		flag.Usage()
+		os.Exit(1)
+	}
+	if *edit && *reset {
+		_, _ = fmt.Fprintf(os.Stderr, "error: -edit and -reset are mutually exclusive\n")
+		flag.Usage()
+		os.Exit(1)
+	}
 	var logLevel slog.Level
 	switch strings.ToLower(*levelStr) {
 	case "debug":
@@ -48,10 +65,12 @@ func run() error {
 		logLevel = slog.LevelInfo
 	}
 
+	//init logging
 	logger := charmlog.New(os.Stdout)
 	logger.SetLevel(charmlog.Level(logLevel))
 	slog.SetDefault(slog.New(logger))
 
+	//read and validate config file
 	cfg, err := roam.HandleConfig(reset, edit)
 	if err != nil {
 		return fmt.Errorf("roam.HandleConfig: %w", err)
@@ -59,7 +78,8 @@ func run() error {
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("cfg.Validate: %w", err)
 	}
-	//open unixsocket connection for commands
+
+	//open wpa_supplicant control interface unix socket
 	c, err := wpac.Connect(cfg.Interface)
 	if err != nil {
 		if strings.Contains(err.Error(), "no such file or directory") {
@@ -68,6 +88,8 @@ func run() error {
 		}
 		return fmt.Errorf("wpac.Connect %w", err)
 	}
+
+	//init context for all concurrent functions
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer func() {
 		err = c.Close()
@@ -76,6 +98,8 @@ func run() error {
 		}
 	}()
 	defer cancel()
+
+	//start the roamctl process
 	err = cfg.ProcessLoop(c, ctx)
 	if err != nil {
 		return fmt.Errorf("roam.ProcessLoop: %v", err)

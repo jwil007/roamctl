@@ -11,10 +11,11 @@ type Config struct {
 	Preferences     `toml:"preferences"`
 	Thresholds      `toml:"thresholds"`
 	ScoreWeights    `toml:"score_weights"`
-	Timing          `toml:"timing"`
+	ScoreClamps     `toml:"score_clamps"`
 	BandScores      `toml:"band_scores"`
 	ChanWidthScores `toml:"chan_width_scores"`
 	PhyScores       `toml:"phy_scores"`
+	Timing          `toml:"timing"`
 	SSID            string `toml:"-"`
 }
 
@@ -53,25 +54,31 @@ type Timing struct {
 	MaxScanAge              time.Duration `toml:"max_scan_age"`
 }
 type Thresholds struct {
-	RSSI            int `toml:"rssi"`
-	DataRate        int `toml:"data_rate"`
-	ScoreDelta      int `toml:"score_delta"`
-	MaxNoCandidates int `toml:"max_no_candidate_attempts"`
+	RSSI               int `toml:"rssi"`
+	RSSIHysteresisUp   int `toml:"rssi_hysteresis_up"`
+	RSSIHysteresisDown int `toml:"rssi_hysteresis_down"`
+	DataRate           int `toml:"data_rate"`
+	ScoreDelta         int `toml:"score_delta"`
+	MaxNoCandidates    int `toml:"max_no_candidate_attempts"`
 }
 
 type ScoreWeights struct {
-	RSSI         int `toml:"rssi"`
-	MinRSSI      int `toml:"min_rssi"`
-	MaxRSSI      int `toml:"max_rssi"`
-	SNR          int `toml:"snr"`
-	MinSNR       int `toml:"min_snr"`
-	MaxSNR       int `toml:"max_snr"`
+	RSSI int `toml:"rssi"`
+	SNR  int `toml:"snr"`
+
 	Band         int `toml:"band"`
 	ChannelWidth int `toml:"channel_width"`
 	EstThruput   int `toml:"-"`
 	QBSSUtil     int `toml:"qbss_util"`
 	QBSSStaCt    int `toml:"-"`
 	PHYType      int `toml:"phy_type"`
+}
+
+type ScoreClamps struct {
+	MinRSSI int `toml:"min_rssi"`
+	MaxRSSI int `toml:"max_rssi"`
+	MinSNR  int `toml:"min_snr"`
+	MaxSNR  int `toml:"max_snr"`
 }
 
 type scoredBSS struct {
@@ -108,6 +115,7 @@ func (s scoredBSS) String() string {
 }
 
 type roamContext struct {
+	ssid             string
 	lastKnown        *wpac.ConnectionStatus
 	lastRoamSuccess  time.Time
 	lastRoamFailure  time.Time
@@ -117,6 +125,7 @@ type roamContext struct {
 	backoffTriggerCt int
 	roamEnterCounter int //debug counter to see how many times the roam loop is entered consecutively
 	thresholdFlag    thresholdFlag
+	hysteresisActive bool
 	lastTriggerRSSI  int
 	waitForBGScan    bool
 	bgScanAPs        []scoredBSS
@@ -150,4 +159,5 @@ const (
 	lowRSSI
 	lowDataRate
 	noCandidateLimit
+	inHysteresis
 )

@@ -22,27 +22,26 @@ func (cfg *Config) Validate() error {
 			"thresholds.score_delta %v invalid. Must be in range 0 to 100",
 			cfg.Thresholds.ScoreDelta))
 	}
-
-	if cfg.MaxNoCandidates > 20 {
+	if cfg.MaxNoCandidates > 20 || cfg.MaxNoCandidates < 0 {
 		errs = append(errs, fmt.Sprintf(
 			"thresholds.score_delta %v invalid. Must be in range 0 to 20",
 			cfg.MaxNoCandidates))
+	}
+	if cfg.RSSIHysteresisUp > 15 || cfg.RSSIHysteresisUp < 0 {
+		errs = append(errs, fmt.Sprintf(
+			"thresholds.hysteresis_up %v invalid. Must be in range 0 to 15",
+			cfg.RSSIHysteresisUp))
+	}
+	if cfg.RSSIHysteresisDown > 15 || cfg.RSSIHysteresisDown < 0 {
+		errs = append(errs, fmt.Sprintf(
+			"thresholds.hysteresis_down %v invalid. Must be in range 0 to 15",
+			cfg.RSSIHysteresisUp))
 	}
 	// ScoreWeights
 	if !validScore(cfg.ScoreWeights.RSSI) {
 		errs = append(errs, fmt.Sprintf(
 			"score_weights.rssi %v invalid. Must be in range 0 to 100",
 			cfg.ScoreWeights.RSSI))
-	}
-	if !validRSSI(cfg.ScoreWeights.MinRSSI) {
-		errs = append(errs, fmt.Sprintf(
-			"score_weights.min_rssi %v invalid. Must be in range -128 to 0",
-			cfg.ScoreWeights.MinRSSI))
-	}
-	if !validRSSI(cfg.ScoreWeights.MaxRSSI) {
-		errs = append(errs, fmt.Sprintf(
-			"score_weights.max_rssi %v invalid. Must be in range -128 to 0",
-			cfg.ScoreWeights.MaxRSSI))
 	}
 	if !validScore(cfg.ScoreWeights.SNR) {
 		errs = append(errs, fmt.Sprintf(
@@ -84,6 +83,27 @@ func (cfg *Config) Validate() error {
 		errs = append(errs, fmt.Sprintf(
 			"band_scores.6ghz %v invalid. Must be in range 0 to 100",
 			cfg.BandScores.Band6))
+	}
+	// ScoreClamps
+	if !validRSSI(cfg.ScoreClamps.MinRSSI) {
+		errs = append(errs, fmt.Sprintf(
+			"score_clamps.min_rssi %v invalid. Must be in range -128 to 0",
+			cfg.ScoreClamps.MinRSSI))
+	}
+	if !validRSSI(cfg.ScoreClamps.MaxRSSI) {
+		errs = append(errs, fmt.Sprintf(
+			"score_clamps.max_rssi %v invalid. Must be in range -128 to 0",
+			cfg.ScoreClamps.MaxRSSI))
+	}
+	if !validScore(cfg.ScoreClamps.MinSNR) {
+		errs = append(errs, fmt.Sprintf(
+			"score_clamps.min_snr %v invalid. Must be in range 0 to 100",
+			cfg.ScoreClamps.MinSNR))
+	}
+	if !validScore(cfg.ScoreClamps.MaxSNR) {
+		errs = append(errs, fmt.Sprintf(
+			"score_clamps.min_snr %v invalid. Must be in range 0 to 100",
+			cfg.ScoreClamps.MinSNR))
 	}
 	// ChanWidthScores
 	if !validScore(cfg.ChanWidthScores.ChannelWidth20) {
