@@ -49,7 +49,7 @@ If you get a permission error, run with `sudo`.
 
 `-reset` : Reset config file to defaault template.
 
-`-debug` : Enable debug log level.
+`-level` : Set log level. Options are `info` or `debug`. Default is `info`
 
 ## Configuration
 >[!NOTE]
