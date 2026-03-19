@@ -29,10 +29,10 @@ BSSIDs in the scan results are scored using a weighted combination of RSSI, SNR,
 A number of stability guards are in place to prevent excessive roaming, scanning or ping-ponging. These guards include:
 - Backoff timers after the roam cycle
 - Fall back to passive roaming it no good candidates seen through multiple attempts
-- [Hysteresis methods](https://en.wikipedia.org/wiki/Hysteresis#Control_systems) to prevent freqently entering the roam cycle when at a borderline signal strength.
+- [Hysteresis methods](https://en.wikipedia.org/wiki/Hysteresis#Control_systems) to prevent freqently entering the roam cycle when at a borderline signal strength
 
 > [!IMPORTANT]
-> This is not a battle tested roaming algorithm. It is meant primarily to be a tool for Wi-Fi nerds.
+> While effort has been made to ensure stability in various edge cases, this is not a battle-tested roaming algorithm. It is meant primarily to be a tool for Wi-Fi engineers, allowing easy access to test  and simulate client behavior.
 
 ## Build from source
 
