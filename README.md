@@ -50,7 +50,7 @@ Flow chart diagrams are avaialble for both the outer loop algorithm, and the roa
 BSSIDs in the scan results are scored using a weighted combination of RSSI, SNR, Band, channel utilization, PHY type, etc. The scoring parameters and weights are user-configurable, See [Configuration](#Configuration).
 
 A number of stability guards are in place to prevent excessive roaming, scanning or ping-ponging. These guards include:
-- A minimum score_delta parameter, make sure the candidate AP is materially better than the current AP.
+- A score_delta parameter to ensure that the candidate AP is materially better than the current AP
 - Backoff timers after the roam cycle
 - Fallback to passive roaming if no acceptable candidate APs seen after multiple attempts
 - [Hysteresis methods](https://en.wikipedia.org/wiki/Hysteresis#Control_systems) to prevent freqently entering the roam cycle when at a borderline signal strength
