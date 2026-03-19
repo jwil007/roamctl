@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/jwil007/roamctl/internal/wpac"
 )
 
@@ -161,3 +162,8 @@ const (
 	noCandidateLimit
 	inHysteresis
 )
+
+var green = lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
+var red = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Bold(true)
+var yellow = lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true)
+var blue = lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Bold(true)

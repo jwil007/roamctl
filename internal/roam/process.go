@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/jwil007/roamctl/internal/wpac"
 )
 
@@ -26,12 +25,12 @@ func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 	for {
 		select {
 		case <-bgScanTicker.C:
-			slog.Info("bgScanTicker reached 0, running scan...")
+			slog.Debug("bgScanTicker reached 0, running scan...")
 			rc.bgScanReady = false
 			if err = c.Scan(ctx); err != nil {
 				return fmt.Errorf("c.Scan: %w", err)
 			}
-			slog.Info("bgScan complete")
+			slog.Debug("bgScan complete")
 			rc.lastBGScan = time.Now()
 			rc.bgScanReady = true
 			rc.bgScanChecked = false
@@ -220,7 +219,6 @@ func (cfg *Config) roamProcessWrapper(
 	ctx context.Context,
 	rc *roamContext,
 ) error {
-	yellow := lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true)
 	resultFlag, errR := cfg.roamDecisionLoop(c, ctx, rc)
 	if errR != nil {
 		return fmt.Errorf("makeRoamDecision %w", errR)
@@ -349,8 +347,6 @@ func (cfg *Config) roamToCandidate(
 	ctx context.Context,
 	candAP scoredBSS,
 ) (roamResultFlag, error) {
-	green := lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
-	red := lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Bold(true)
 	result, err := c.Roam(ctx, candAP.bssid)
 	if err != nil {
 		return failure, fmt.Errorf("c.Roam(%v): %w", candAP.bssid, err)
@@ -423,9 +419,9 @@ func logScoredAPs(scoredAPs []scoredBSS, bssid string) {
 	slog.Info("Most recent scan data")
 	for _, a := range scoredAPs {
 		if a.bssid == bssid {
-			slog.Info("current ap", "bss", a)
+			slog.Info(blue.Render("curr ap"), "bss", a)
 		} else {
-			slog.Info("candidate ap", "bss", a)
+			slog.Info("cand ap", "bss", a)
 		}
 	}
 }
