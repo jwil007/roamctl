@@ -207,6 +207,7 @@ func (cfg *Config) roamProcessWrapper(
 	ctx context.Context,
 	rc *roamContext,
 ) error {
+	yellow := lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true)
 	resultFlag, errR := cfg.roamDecisionLoop(c, ctx, rc)
 	if errR != nil {
 		return fmt.Errorf("makeRoamDecision %w", errR)
@@ -228,7 +229,7 @@ func (cfg *Config) roamProcessWrapper(
 		rc.lastNoCandidates = time.Now()
 		rc.noCandCounter++
 		rc.roamEnterCounter = 0
-		slog.Info("No better APs found, returning to signal monitoring...")
+		slog.Info(yellow.Render("NO CANDIDATE") + " returning to signal monitoring...")
 		slog.Debug("No candidates counter",
 			"count", rc.noCandCounter,
 			"max", cfg.MaxNoCandidates)
