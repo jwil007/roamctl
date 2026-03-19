@@ -10,7 +10,7 @@ Output is shown in the terminal using structured logging, with timestamps and lo
 ## Quick Start
 
 ### One-line install
-Automatically downloads and installs the binary for AMD64, ARM64, or ARM32 devices. 
+Automatically downloads and installs the Linux binary for AMD64, ARM64, or ARM32 devices. 
 ```
 curl -fsSL https://raw.githubusercontent.com/jwil007/roamctl/master/install.sh | bash
 ```
