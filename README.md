@@ -14,6 +14,25 @@ Automatically downloads and installs the binary for AMD64, ARM64, or ARM32 devic
 ```
 curl -fsSL https://raw.githubusercontent.com/jwil007/roamctl/master/install.sh | bash
 ```
+### Build from source
+<details>
+  <summary>Click to expand</summary>
+  Make sure you have installed Go for Linux: https://go.dev/doc/install.
+
+Builds and installs to `$GOPATH/bin`. Most likely this is `~/go/bin`. 
+
+```
+go install github.com/jwil007/roamctl/cmd/roamctl@latest
+```
+ 
+If running `roamctl` after the Go install returns "command not found", make sure the go/bin directory is in your path.
+
+The command below will add the path config for your default shell. After running the command, restart your shell session and you should be able to run `roamctl`.
+```
+ echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.$(basename $SHELL)rc
+ ```
+
+</details>
 
 ## Algorithm details
 The roaming algorithm consists of an outer loop (ProcessLoop) and an inner decision tree when a roam attempt is being made. The inner decision tree is reached when a threshold, such as RSSI, is below a set value. At that point the inner decision tree evaluates scan results against the current connected AP and decides whether or not to roam.
@@ -33,25 +52,6 @@ A number of stability guards are in place to prevent excessive roaming, scanning
 
 > [!IMPORTANT]
 > While effort has been made to ensure stability in various edge cases, this is not a battle-tested roaming algorithm. It is meant primarily to be a tool for Wi-Fi engineers, allowing easy access to test  and simulate client behavior.
-
-## Build from source
-
-Make sure you have installed Go for Linux: https://go.dev/doc/install.
-
-Builds and installs to `$GOPATH/bin`. Most likely this is `~/go/bin`. 
-
-```
-go install github.com/jwil007/roamctl/cmd/roamctl@latest
-```
->[!NOTE]
-> 
-> If running `roamctl` after the Go install returns "command not found", make sure the go/bin directory is in your path.
->
->The command below will add the path config for your default shell. After running the command, restart your shell session and you should be able to run `roamctl`.
->```
-> echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.$(basename $SHELL)rc
-> ```
-
 
 ## Usage
 Connect to an SSID. Run with `roamctl`. Exit with `ctrl+c`.
