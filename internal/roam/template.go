@@ -84,7 +84,7 @@ const defaultConfigTemplate = `
 [timing]
 # Times must use the format ms for millisecond, s for second, m for minute
 # Amount of time to wait before re-enterting roam loop depending on outcome
-  success_backoff_time = "5s"
+  success_backoff_time = "2s"
   failure_backoff_time = "2s"
   no_candidates_backoff_time = "3s"
 

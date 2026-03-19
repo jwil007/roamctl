@@ -46,7 +46,7 @@ func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 			slog.Debug("Last polled connection status", "stats", rc.lastKnown)
 			if cfg.thresholdCheck(rc) {
 				if cfg.backoffCheck(rc) {
-					cfg.logRoamEntry(rc)
+					cfg.logThreshold(rc)
 					err := cfg.roamProcessWrapper(c, ctx, rc)
 					if err != nil {
 						return fmt.Errorf("roamProcessWrapper: %w", err)
@@ -138,11 +138,11 @@ func (cfg *Config) logThreshold(rc *roamContext) {
 				"attempts", rc.noCandCounter,
 				"threshold", cfg.MaxNoCandidates)
 		case lowRSSI:
-			slog.Info("Last polled RSSI below threshold. Entering roam decision loop...",
+			slog.Info("Last polled RSSI below threshold. Entering roam decision tree...",
 				"rssi", rc.lastTriggerRSSI,
 				"threshold", cfg.Thresholds.RSSI)
 		case lowDataRate:
-			slog.Info("Last polled data rate below threshold. Entering roam decision loop...",
+			slog.Info("Last polled data rate below threshold. Entering roam decision tree...",
 				"datarate", rc.lastKnown.LinkSpeed,
 				"threshold", cfg.Thresholds.DataRate)
 		case inHysteresis:
@@ -158,44 +158,6 @@ func (cfg *Config) logBackoff(rc *roamContext) {
 	slog.Debug("roamEnterCounter", "count", rc.roamEnterCounter)
 	if rc.backoffTriggerCt < 2 { //only log on first trigger
 		switch {
-		case rc.waitForBGScan:
-			slog.Info("Waiting for next bgscan...",
-				"remaining", cfg.BGScanInterval-time.Since(rc.lastBGScan))
-		case rc.backoffTrigger == noBackoff:
-			return
-		case rc.backoffTrigger == successBackoff:
-			slog.Info("Roam success backoff in effect",
-				"remaining", cfg.SuccessBackoffTime-time.Since(rc.lastRoamSuccess))
-		case rc.backoffTrigger == failureBackoff:
-			slog.Info("Roam failure backoff in effect",
-				"remaining", cfg.FailureBackoffTime-time.Since(rc.lastRoamFailure))
-		case rc.backoffTrigger == noCandidatesBackoff:
-			slog.Info("No candidates backoff in effect.",
-				"remaining", cfg.NoCandidatesBackoffTime-time.Since(rc.lastNoCandidates))
-		}
-	}
-}
-
-func (cfg *Config) logRoamEntry(rc *roamContext) {
-	slog.Debug("roamEnterCounter", "count", rc.roamEnterCounter)
-	if rc.backoffTriggerCt < 2 { //only log on first trigger
-		switch {
-		// Thresholds
-		case rc.thresholdFlag == noValue:
-			return
-		case rc.thresholdFlag == noCandidateLimit:
-			slog.Info("No candidate attempts exceed threshold, falling back to bgscan",
-				"attempts", rc.noCandCounter,
-				"threshold", cfg.MaxNoCandidates)
-		case rc.thresholdFlag == lowRSSI:
-			slog.Info("Last polled RSSI below threshold. Entering roam decision loop...",
-				"rssi", rc.lastTriggerRSSI,
-				"threshold", cfg.Thresholds.RSSI)
-		case rc.thresholdFlag == lowDataRate:
-			slog.Info("Last polled data rate below threshold. Entering roam decision loop...",
-				"datarate", rc.lastKnown.LinkSpeed,
-				"threshold", cfg.Thresholds.DataRate)
-		// Backoff timers
 		case rc.waitForBGScan:
 			slog.Info("Waiting for next bgscan...",
 				"remaining", cfg.BGScanInterval-time.Since(rc.lastBGScan))

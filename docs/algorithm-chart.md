@@ -1,6 +1,6 @@
 ```mermaid
 flowchart TD
-    A[Signal polled every 300ms] --> B{Connection info available?}
+    A[Signal polled at set interval. Default 250ms] --> B{Connection info available?}
     B -- no --> C[Wait for BSSID]
     B -- yes --> D{RSSI or data rate below threshold?}
     D -- no --> E[↻ monitor and repoll]

@@ -44,7 +44,7 @@ The inner tree is reached when a threshold, such as RSSI, is below a set value. 
 ### Visual diagrams
 Flow chart diagrams are avaialble for both the outer loop algorithm, and the roam decision tree.
 - [Outer Loop Algorithm](/docs/algorithm-chart.md)
-- [Roam Decision Tree](/docs/roam-decision-tree.md)
+- [Roam Decision Tree](/docs/roam-decision-chart.md)
 
 ### Scoring and Stability
 BSSIDs in the scan results are scored using a weighted combination of RSSI, SNR, Band, channel utilization, PHY type, etc. The scoring parameters and weights are user-configurable, See [Configuration](#Configuration).
@@ -168,7 +168,7 @@ The `-reset` flag overwrites the config file with the default template.
 [timing]
 # Times must use the format ms for millisecond, s for second, m for minute
 # Amount of time to wait before re-enterting roam loop depending on outcome
-  success_backoff_time = "5s"
+  success_backoff_time = "2s"
   failure_backoff_time = "2s"
   no_candidates_backoff_time = "3s"
 
