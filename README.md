@@ -7,9 +7,6 @@ The configurable roaming algorithm allows simulation of various client behavior.
 
 Output is shown in the terminal using structured logging, with timestamps and log levels.
 
-> [!IMPORTANT]
-> This is not a battle tested roaming algorithm. It is meant primarily to be a tool for Wi-Fi tinkerers.
-
 ## Quick Start
 
 ### One-line install
@@ -17,7 +14,27 @@ Automatically downloads and installs the binary for AMD64, ARM64, or ARM32 devic
 ```
 curl -fsSL https://raw.githubusercontent.com/jwil007/roamctl/master/install.sh | bash
 ```
-### Build from source
+
+## Algorithm details
+The roaming algorithm consists of an outer loop (ProcessLoop) and an inner decision tree when a roam attempt is being made. The inner decision tree is reached when a threshold, such as RSSI, is below a set value. At that point the inner decision tree evaluates scan results against the current connected AP and decides whether or not to roam.
+
+### Visual diagrams
+Flow chart diagrams are avaialble for both the outer loop algorithm, and the roam decision tree.
+- [Outer Loop Algorithm](/docs/algorithm-chart.md)
+- [Roam Decision Tree](/docs/roam-decision-tree.md)
+
+### Scoring and Stability
+BSSIDs in the scan results are scored using a weighted combination of RSSI, SNR, Band, channel utilization, PHY type, etc. The scoring parameters and weights are user-configurable, See [Configuration](#Configuration).
+
+A number of stability guards are in place to prevent excessive roaming, scanning or ping-ponging. These guards include:
+- Backoff timers after the roam cycle
+- Fall back to passive roaming it no good candidates seen through multiple attempts
+- [Hysteresis methods](https://en.wikipedia.org/wiki/Hysteresis#Control_systems) to prevent freqently entering the roam cycle when at a borderline signal strength.
+
+> [!IMPORTANT]
+> This is not a battle tested roaming algorithm. It is meant primarily to be a tool for Wi-Fi nerds.
+
+## Build from source
 
 Make sure you have installed Go for Linux: https://go.dev/doc/install.
 
