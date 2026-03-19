@@ -401,6 +401,7 @@ func (cfg *Config) roamReadyCheck(candidate scoredBSS, current scoredBSS, rc *ro
 			candidate.age < cfg.MaxScanAge {
 			return true
 		}
+	default:
 		return false
 	}
 	return false
