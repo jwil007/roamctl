@@ -35,9 +35,9 @@ The command below will add the path config for your default shell. After running
 </details>
 
 ## Algorithm details
-The roaming algorithm consists of an outer loop (ProcessLoop) and an inner tree for roaming decision.
+The roaming algorithm consists of an outer loop for polling and an inner tree for roaming decisions.
 
-The out loop handles polling to watch client metrics, such as RSSI, noise, and data rate. it also runs a background scan on a configurable time interval.
+The outer loop handles polling to watch client metrics, such as RSSI, noise, and data rate. it also runs a background scan on a configurable time interval.
 
 The inner tree is reached when a threshold, such as RSSI, is below a set value. At that point the inner tree evaluates scan results against the current connected AP and decides whether or not to roam.
 
