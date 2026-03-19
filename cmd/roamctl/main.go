@@ -6,13 +6,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 
+	charmlog "github.com/charmbracelet/log"
 	"github.com/jwil007/roamctl/internal/roam"
 	"github.com/jwil007/roamctl/internal/wpac"
 )
@@ -35,25 +35,22 @@ func run() error {
 		fmt.Println(version)
 		os.Exit(0)
 	}
-	log.SetFlags(log.Ltime | log.Lmicroseconds)
 	edit := flag.Bool("edit", false, "edit config file")
 	reset := flag.Bool("reset", false, "reset default config")
-	debug := flag.Bool("debug", false, "enable debug logging")
+	levelStr := flag.String("level", "info", "log level (debug, info)")
 	flag.Parse()
 
-	logLevel := slog.LevelInfo
-	if *debug {
+	var logLevel slog.Level
+	switch strings.ToLower(*levelStr) {
+	case "debug":
 		logLevel = slog.LevelDebug
+	default:
+		logLevel = slog.LevelInfo
 	}
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: logLevel,
-		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-			if a.Key == slog.TimeKey {
-				a.Value = slog.StringValue(a.Value.Time().Format("15:04:05.000000"))
-			}
-			return a
-		},
-	})))
+
+	logger := charmlog.New(os.Stdout)
+	logger.SetLevel(charmlog.Level(logLevel))
+	slog.SetDefault(slog.New(logger))
 
 	cfg, err := roam.HandleConfig(reset, edit)
 	if err != nil {

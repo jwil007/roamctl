@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/jwil007/roamctl/internal/wpac"
 )
 
@@ -52,12 +53,11 @@ func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 						return fmt.Errorf("roamProcessWrapper: %w", err)
 					}
 				} else {
-					cfg.logRoamEntry(rc)
+					cfg.logBackoff(rc)
 					continue
 				}
 			} else {
-				//rc.roamEnterCounter++
-				cfg.logRoamEntry(rc)
+				cfg.logThreshold(rc)
 				continue
 			}
 		case err = <-sigErrCh:
@@ -93,16 +93,11 @@ func (cfg *Config) thresholdCheck(rc *roamContext) bool {
 
 func (cfg *Config) backoffCheck(rc *roamContext) bool {
 	if rc.waitForBGScan {
-		//slog.Info("waitForBGScan = %v", rc.waitForBGScan)
-		//slog.Info("time since last bgscan: %v. bgscan interval: %v", time.Since(rc.lastBGScan), cfg.Timing.BGScanInterval)
-		if time.Since(rc.lastBGScan) < cfg.BGScanInterval &&
-			rc.bgScanReady && rc.bgScanChecked == false {
+		if rc.bgScanReady && !rc.bgScanChecked {
 			rc.bgScanChecked = true
-			//slog.Info("bgScanReady = %v", rc.bgScanReady)
 			return true
 		}
 		rc.backoffTriggerCt++
-		//slog.Info("rc.waitForBGScan = %v", rc.waitForBGScan)
 		return false
 	}
 	if time.Since(rc.lastRoamFailure) < cfg.FailureBackoffTime {
@@ -122,6 +117,51 @@ func (cfg *Config) backoffCheck(rc *roamContext) bool {
 	}
 	rc.backoffTriggerCt = 0
 	return true
+}
+
+func (cfg *Config) logThreshold(rc *roamContext) {
+	slog.Debug("roamEnterCounter", "count", rc.roamEnterCounter)
+	if rc.backoffTriggerCt < 2 { //only log on first trigger
+		switch rc.thresholdFlag {
+		// Thresholds
+		case noValue:
+			return
+		case noCandidateLimit:
+			slog.Info("No candidate attempts exceed threshold, falling back to bgscan",
+				"attempts", rc.noCandCounter,
+				"threshold", cfg.MaxNoCandidates)
+		case lowRSSI:
+			slog.Info("Last polled RSSI below threshold. Entering roam decision loop...",
+				"rssi", rc.lastTriggerRSSI,
+				"threshold", cfg.Thresholds.RSSI)
+		case lowDataRate:
+			slog.Info("Last polled data rate below threshold. Entering roam decision loop...",
+				"datarate", rc.lastKnown.LinkSpeed,
+				"threshold", cfg.Thresholds.DataRate)
+		}
+	}
+}
+
+func (cfg *Config) logBackoff(rc *roamContext) {
+	slog.Debug("roamEnterCounter", "count", rc.roamEnterCounter)
+	if rc.backoffTriggerCt < 2 { //only log on first trigger
+		switch {
+		case rc.waitForBGScan:
+			slog.Info("Waiting for next bgscan...",
+				"remaining", cfg.BGScanInterval-time.Since(rc.lastBGScan))
+		case rc.backoffTrigger == noBackoff:
+			return
+		case rc.backoffTrigger == successBackoff:
+			slog.Info("Roam success backoff in effect",
+				"remaining", cfg.SuccessBackoffTime-time.Since(rc.lastRoamSuccess))
+		case rc.backoffTrigger == failureBackoff:
+			slog.Info("Roam failure backoff in effect",
+				"remaining", cfg.FailureBackoffTime-time.Since(rc.lastRoamFailure))
+		case rc.backoffTrigger == noCandidatesBackoff:
+			slog.Info("No candidates backoff in effect.",
+				"remaining", cfg.NoCandidatesBackoffTime-time.Since(rc.lastNoCandidates))
+		}
+	}
 }
 
 func (cfg *Config) logRoamEntry(rc *roamContext) {
@@ -294,6 +334,8 @@ func (cfg *Config) roamToCandidate(
 	ctx context.Context,
 	candAP scoredBSS,
 ) (roamResultFlag, error) {
+	green := lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
+	red := lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Bold(true)
 	result, err := c.Roam(ctx, candAP.bssid)
 	if err != nil {
 		return failure, fmt.Errorf("c.Roam(%v): %w", candAP.bssid, err)
@@ -301,7 +343,7 @@ func (cfg *Config) roamToCandidate(
 	slog.Info("Roam complete", "stats", result)
 	switch result.Success {
 	case true:
-		slog.Info("ROAM SUCCESS",
+		slog.Info(green.Render("ROAM SUCCESS"),
 			"bssid", candAP.bssid,
 			"rssi", candAP.rssi,
 			"band", candAP.band,
@@ -309,7 +351,7 @@ func (cfg *Config) roamToCandidate(
 		slog.Info("Waiting for next trigger...")
 		return success, nil
 	case false:
-		slog.Info("ROAM FAILURE",
+		slog.Warn(red.Render("ROAM FAILURE"),
 			"bssid", candAP.bssid,
 			"rssi", candAP.rssi,
 			"band", candAP.band,
