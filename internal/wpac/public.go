@@ -80,17 +80,26 @@ func (c *Client) GetConfig() (WPAConfig, error) {
 	if err != nil {
 		return WPAConfig{}, fmt.Errorf("getBGScan: %w", err)
 	}
+	disableBTM, err := c.getBTM()
+	if err != nil {
+		return WPAConfig{}, fmt.Errorf("getBTM: %w", err)
+	}
 	return WPAConfig{
-		SSID:      ssid,
-		NetworkID: networkID,
-		BGScan:    bgscan,
+		SSID:       ssid,
+		NetworkID:  networkID,
+		BGScan:     bgscan,
+		DisableBTM: disableBTM,
 	}, nil
 }
 
 func (c *Client) SetConfig(config WPAConfig) error {
 	err := c.setBGScan(config)
 	if err != nil {
-		return fmt.Errorf("setBGScan: %w", err)
+		return fmt.Errorf("setBGScan %v: %w", config.BGScan, err)
+	}
+	err = c.setBTM(config)
+	if err != nil {
+		return fmt.Errorf("setBTM %v: %w", config.DisableBTM, err)
 	}
 	return nil
 }

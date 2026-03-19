@@ -2,17 +2,19 @@ package roam
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/charmbracelet/log"
 )
 
-func HandleConfig(reset *bool, edit *bool) (*Config, error) {
-	path, err := initConfigFile(reset)
+func HandleConfig(template *string, edit *bool) (*Config, error) {
+	path, err := initConfigFile(template)
 	if err != nil {
 		return nil, fmt.Errorf("initConfigFile: %w", err)
 	}
@@ -21,7 +23,7 @@ func HandleConfig(reset *bool, edit *bool) (*Config, error) {
 			return nil, fmt.Errorf("editConfig: %w", err)
 		}
 	}
-	log.Printf("Config file path: %s", path)
+	slog.Info("Config file location", "path", path)
 	cfg, err := parseConfig(path)
 	if err != nil {
 		return nil, fmt.Errorf("parseConfig: %w", err)
@@ -53,7 +55,7 @@ func editConfig(path string) error {
 
 func getConfigDir() (string, error) {
 	if sudoUser := os.Getenv("SUDO_USER"); sudoUser != "" {
-		log.Printf("Running as sudo...")
+		slog.Info("Running as sudo...")
 		u, err := user.Lookup(sudoUser)
 		if err != nil {
 			return "", fmt.Errorf("user.Lookup: %w", err)
@@ -67,7 +69,7 @@ func getConfigDir() (string, error) {
 	return filepath.Join(configDir, "roamctl"), nil
 }
 
-func initConfigFile(resetDefaults *bool) (string, error) {
+func initConfigFile(template *string) (string, error) {
 	configDir, err := getConfigDir()
 	configPath := filepath.Join(configDir, "config.toml")
 	if err != nil {
@@ -90,9 +92,20 @@ func initConfigFile(resetDefaults *bool) (string, error) {
 			return "", fmt.Errorf("encodeConfig: %w", err)
 		}
 	}
-	if *resetDefaults {
-		log.Printf("Overwriting config.toml to default values...")
-		err = os.WriteFile(configPath, []byte(defaultConfigTemplate), 0755)
+	iface := readIfaceFromFile(configPath)
+	switch *template {
+	case "base":
+		slog.Info("Overwriting config.toml to default values...")
+		err = os.WriteFile(configPath,
+			[]byte(strings.Replace(defaultConfigTemplate, `"wlan0"`, `"`+iface+`"`, 1)), 0755)
+	case "macos":
+		slog.Info("Overwriting config.toml to MacOS template...")
+		err = os.WriteFile(configPath,
+			[]byte(strings.Replace(macOSTemplate, `"wlan0"`, `"`+iface+`"`, 1)), 0755)
+	case "ios":
+		slog.Info("Overwriting config.toml to iOS template...")
+		err = os.WriteFile(configPath,
+			[]byte(strings.Replace(iOSTemplate, `"wlan0"`, `"`+iface+`"`, 1)), 0755)
 	}
 	return configPath, nil
 }
@@ -104,4 +117,19 @@ func parseConfig(configPath string) (*Config, error) {
 		return nil, fmt.Errorf("toml.DecodeFile: %w", err)
 	}
 	return &cfg, nil
+}
+
+func readIfaceFromFile(path string) string {
+	var c struct {
+		Preferences struct {
+			Interface string
+		}
+	}
+	if _, err := toml.DecodeFile(path, &c); err != nil {
+		return "wlan0"
+	}
+	if c.Preferences.Interface == "" {
+		return "wlan0"
+	}
+	return c.Preferences.Interface
 }

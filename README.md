@@ -3,7 +3,9 @@ roamctl is a Linux utility that provides a fully configurable Wi-Fi roaming algo
 
 While running, roamctl disables wpa_supplicant's autonomous roaming and instead uses a configurable roaming algorithm. The algorithm is score based, using a method to score each BSSID in the scan data to make a decision whether or not to roam (reassociate). When the program exits, the original wpa_supplicant configuration and roaming behavior is restored.
 
-The configurable roaming algorithm allows simulation of various client behavior. For example, if you adjust the `band_scores` params to `2point4ghz = 100`, `5ghz = 25`, and `6ghz = 15`, the device will strongly prefer 2.4GHz over 5GHz and 6GHz, and slightly prefer 5GHz over 6GHz. There are over 30 parameters that can be set. See [Configuration](#Configuration) for full parameter reference.
+The configurable roaming algorithm allows full control of the roaming behavior, and can be used to test unique scenarios.  For example, if you set phy_scores to `80211ac = 100` and `80211ax = 20`, the device will strongly prefer Wi-Fi 5 APs over Wi-Fi 6.  See [Configuration](#Configuration) for full parameter reference.
+
+There are also templates designed to map to real world devices. Currently, templates are available to simulate Apple MacOS and iOS roaming, based on their documented algorithm.
 
 Output is shown in the terminal using structured logging with timestamps and log levels.
 
@@ -65,13 +67,13 @@ Some Linux distros require elevated permissions.
 
 If you get a permission error, run with `sudo`. 
 
-#### Flags:
+### Flags:
 
 `-edit` : Edit config file. Checks for $EDITOR env variable, otherwise tries nano, then vi.
 
-`-reset` : Reset config file to defaault template.
-
 `-level` : Set log level. Options are `info` or `debug`. Default is `info`
+
+`-template`: Select config template. Options are `base`, `macos`, and `ios`.
 
 ## A note on 6GHz
 The version of wpa_supplicant that ships with most Debian based distros (v2.10) may not reliably find 6GHz APs in the scan results. If you're testing 6GHz roaming, check your version with `wpa_supplicant -v`. If you have v2.11 or newer, 6GHz should be reliable.
@@ -90,10 +92,12 @@ All config parameters, including interface specification and scoring weights for
 
 For convenience, running with the `-edit` flag opens a text editor to edit the file directly.
 
-The `-reset` flag overwrites the config file with the default template.
+The `-template` flag allows selection of pre-defined templates. The current options are `base` (default), `macos`, and `ios`.
+
+The MacOS and iOS templates are meant to simulate Apple roaming behavior as documented in: https://support.apple.com/guide/deployment/wi-fi-roaming-support-dep98f116c0f/web
 
 >[!NOTE]
->roamctl initializes with "sensible default" parameters. The Default Config shown below.
+>roamctl initializes with the params shown in the default config below.
 
 ## Default Config
 ```toml

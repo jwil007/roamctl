@@ -396,17 +396,17 @@ func (cfg *Config) handleWpaSuppConfig(c *wpac.Client, rc *roamContext) (func(),
 		return nil, fmt.Errorf("c.GetConfig: %v", err)
 	}
 	//Disable bgscan to prevent autonomous roaming
-	bgscanOffConfig := wpac.WPAConfig{
-		SSID:      storedConf.SSID,
-		NetworkID: storedConf.NetworkID,
-		BGScan:    "",
+	noRoamConfig := wpac.WPAConfig{
+		SSID:       storedConf.SSID,
+		NetworkID:  storedConf.NetworkID,
+		BGScan:     "",
+		DisableBTM: "1",
 	}
-	err = c.SetConfig(bgscanOffConfig)
+	err = c.SetConfig(noRoamConfig)
 	if err != nil {
 		return nil, fmt.Errorf("c.SetConfig: %w", err)
 	}
 	rc.ssid = storedConf.SSID
-
 	cleanup := func() {
 		err = c.SetConfig(storedConf)
 		if err != nil {

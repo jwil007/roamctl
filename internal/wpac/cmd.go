@@ -109,6 +109,25 @@ func (c *Client) setBGScan(config WPAConfig) error {
 	return nil
 }
 
+func (c *Client) getBTM() (string, error) {
+	out, err := c.cmd("GET " + "disable_btm")
+	if err != nil {
+		return "", fmt.Errorf("c.Cmd(\"GET disable_btm\"): %w", err)
+	}
+	return string(out), nil
+}
+
+func (c *Client) setBTM(config WPAConfig) error {
+	out, err := c.cmd("SET " + "disable_btm " + config.DisableBTM)
+	if err != nil {
+		return fmt.Errorf("c.Cmd(\"SET disable_btm %v\"): %w", config.DisableBTM, err)
+	}
+	if strings.TrimSpace(string(out)) != "OK" {
+		return fmt.Errorf("c.Cmd(\"SET disable_btm %v\"): %v", config.DisableBTM, string(out))
+	}
+	return nil
+}
+
 func (c *Client) runScan() error {
 	out, err := c.cmd("SCAN TYPE=ONLY")
 	if err != nil {

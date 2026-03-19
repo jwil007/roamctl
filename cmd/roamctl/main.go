@@ -34,7 +34,7 @@ func run() error {
 	//handle args
 	versionFlag := flag.Bool("version", false, "print version and exit")
 	edit := flag.Bool("edit", false, "edit config file")
-	reset := flag.Bool("reset", false, "reset default config")
+	template := flag.String("template", "", "select config template (base, macos, ios)")
 	levelStr := flag.String("level", "info", "log level (debug, info)")
 	flag.Parse()
 	if *versionFlag {
@@ -52,8 +52,9 @@ func run() error {
 		flag.Usage()
 		os.Exit(1)
 	}
-	if *edit && *reset {
-		_, _ = fmt.Fprintf(os.Stderr, "error: -edit and -reset are mutually exclusive\n")
+	validTemplates := map[string]bool{"": true, "base": true, "macos": true, "ios": true}
+	if !validTemplates[*template] {
+		_, _ = fmt.Fprintf(os.Stderr, "error: invalid template %q, must be default, macos, or ios\n", *template)
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -71,7 +72,7 @@ func run() error {
 	slog.SetDefault(slog.New(logger))
 
 	//read and validate config file
-	cfg, err := roam.HandleConfig(reset, edit)
+	cfg, err := roam.HandleConfig(template, edit)
 	if err != nil {
 		return fmt.Errorf("roam.HandleConfig: %w", err)
 	}

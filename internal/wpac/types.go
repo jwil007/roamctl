@@ -17,9 +17,10 @@ type Client struct {
 }
 
 type WPAConfig struct {
-	SSID      string
-	NetworkID string
-	BGScan    string
+	SSID       string
+	NetworkID  string
+	BGScan     string
+	DisableBTM string
 }
 
 type Signal struct {

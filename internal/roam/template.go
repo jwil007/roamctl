@@ -98,3 +98,115 @@ const defaultConfigTemplate = `
 # to be considered.
   max_scan_age = "10s"
 `
+
+const macOSTemplate = `
+# This template aims to simulate documented Apple behavior from the article below:
+# https://support.apple.com/guide/deployment/wi-fi-roaming-support-dep98f116c0f/web
+[preferences]
+  interface = "wlan0"
+
+[thresholds]
+  rssi = -75 # Mac roam trigger
+  rssi_hysteresis_up = 8
+  rssi_hysteresis_down = 5
+  data_rate = 0 # not used by Apple
+  score_delta = 12 # approximates Mac's 12 dB RSSI delta
+  max_no_candidate_attempts = 3
+
+[score_weights]
+  rssi = 100
+  snr = 25
+  qbss_util = 40 # Apple factors channel util + client count
+  band = 50
+  channel_width = 30
+  phy_type = 30
+
+[score_clamps]
+  min_rssi = -85
+  max_rssi = -30
+  min_snr = 10
+  max_snr = 50
+
+[band_scores]
+  2point4ghz = 10
+  5ghz = 80
+  6ghz = 100
+
+[chan_width_scores]
+  20mhz = 20
+  40mhz = 50
+  80mhz = 75
+  160mhz = 95
+  320mhz = 100
+
+[phy_scores]
+  legacy = 0
+  80211n = 15
+  80211ac = 50
+  80211ax = 80
+  80211be = 100
+
+[timing]
+  success_backoff_time = "3s"
+  failure_backoff_time = "2s"
+  no_candidates_backoff_time = "5s"
+  sig_poll_interval = "250ms"
+  bg_scan_interval = "30s"
+  max_scan_age = "10s"
+`
+
+const iOSTemplate = `
+# This template aims to simulate documented Apple behavior from the article below:
+# https://support.apple.com/guide/deployment/wi-fi-roaming-support-dep98f116c0f/web
+[preferences]
+  interface = "wlan0"
+
+[thresholds]
+  rssi = -70 # iPhone/iPad roam trigger
+  rssi_hysteresis_up = 6
+  rssi_hysteresis_down = 4
+  data_rate = 0
+  score_delta = 8 # approximates iOS 8 dB delta (transmitting)
+  max_no_candidate_attempts = 3
+
+[score_weights]
+  rssi = 100
+  snr = 25
+  qbss_util = 40
+  band = 50
+  channel_width = 30
+  phy_type = 30
+
+[score_clamps]
+  min_rssi = -85
+  max_rssi = -30
+  min_snr = 10
+  max_snr = 50
+
+[band_scores]
+  2point4ghz = 10
+  5ghz = 80
+  6ghz = 100
+
+[chan_width_scores]
+  20mhz = 20
+  40mhz = 50
+  80mhz = 75
+  160mhz = 95
+  320mhz = 100
+
+[phy_scores]
+  legacy = 0
+  80211n = 15
+  80211ac = 50
+  80211ax = 80
+  80211be = 100
+
+[timing]
+  success_backoff_time = "3s"
+  failure_backoff_time = "2s"
+  no_candidates_backoff_time = "5s"
+  sig_poll_interval = "250ms"
+  bg_scan_interval = "30s"
+  max_scan_age = "10s"
+`
