@@ -33,14 +33,27 @@ type Signal struct {
 	AvgRSSIBeacon int
 }
 
+type STAInfo struct {
+	RxBitrate    int
+	TxBitrate    int
+	TxRetries    int
+	RetryRate    int
+	TxFails      int
+	BeaconLoss   int
+	SignalAvg    int
+	ConnDuration time.Duration
+	BSSID        string
+}
+
 type ConnectionStatus struct {
 	Signal
-	BSSID string
+	STAInfo
 }
 
 func (c ConnectionStatus) String() string {
 	return fmt.Sprintf(
-		"bssid:%s rssi:%d avgrssi:%d avgrssibeacon:%d noise:%d linkspeed:%d freq:%d cw:%s",
+		"bssid:%s rssi:%d avgrssi:%d avgrssibeacon:%d noise:%d linkspeed:%d freq:%d cw:%s "+
+			"sigavg:%v RxBitrate:%v TxBitrate:%v TxRetries:%v RetryRate: %v TxFails:%v beaconloss:%v connduration:%v",
 		c.BSSID,
 		c.RSSI,
 		c.AvgRSSI,
@@ -49,7 +62,14 @@ func (c ConnectionStatus) String() string {
 		c.LinkSpeed,
 		c.Freq,
 		c.ChannelWidth,
-	)
+		c.SignalAvg,
+		c.RxBitrate,
+		c.TxBitrate,
+		c.TxRetries,
+		c.RetryRate,
+		c.TxFails,
+		c.BeaconLoss,
+		c.ConnDuration)
 }
 
 type RoamStats struct {

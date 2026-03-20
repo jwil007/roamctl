@@ -63,18 +63,18 @@ func (c *Client) getSSID() (string, error) {
 	return "", fmt.Errorf("ssid field not found - check if wifi iface connected")
 }
 
-func (c *Client) getBSSID() (string, error) {
-	out, err := c.cmdP("STATUS")
-	if err != nil {
-		return "", fmt.Errorf("c.cmd(\"STATUS\"): %w", err)
-	}
-	for _, line := range strings.Split(string(out), "\n") {
-		if strings.HasPrefix(line, "bssid=") {
-			return line[6:], nil
-		}
-	}
-	return "", fmt.Errorf("bssid field not found - check if wifi iface connected")
-}
+//func (c *Client) getBSSID() (string, error) {
+//	out, err := c.cmdP("STATUS")
+//	if err != nil {
+//		return "", fmt.Errorf("c.cmd(\"STATUS\"): %w", err)
+//	}
+//	for _, line := range strings.Split(string(out), "\n") {
+//		if strings.HasPrefix(line, "bssid=") {
+//			return line[6:], nil
+//		}
+//	}
+//	return "", fmt.Errorf("bssid field not found - check if wifi iface connected")
+//}
 
 func (c *Client) getNetworkID() (string, error) {
 	out, err := c.cmd("LIST_NETWORKS")
@@ -292,13 +292,10 @@ func (c *Client) constructConnStatus() (ConnectionStatus, error) {
 	if err != nil {
 		return ConnectionStatus{}, fmt.Errorf("c.getSignal(): %w", err)
 	}
-	bssid, err := c.getBSSID()
-	if err != nil {
-		return ConnectionStatus{}, fmt.Errorf("c.getBSSID(): %w", err)
-	}
+	staInfo, err := getStationInfo(c.Iface)
 	return ConnectionStatus{
-		Signal: s,
-		BSSID:  bssid,
+		Signal:  s,
+		STAInfo: staInfo,
 	}, nil
 }
 

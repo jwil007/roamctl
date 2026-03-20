@@ -58,6 +58,7 @@ type Thresholds struct {
 	RSSI               int `toml:"rssi"`
 	RSSIHysteresisUp   int `toml:"rssi_hysteresis_up"`
 	RSSIHysteresisDown int `toml:"rssi_hysteresis_down"`
+	RetryRate          int `toml:"retry_rate"`
 	DataRate           int `toml:"data_rate"`
 	ScoreDelta         int `toml:"score_delta"`
 	MaxNoCandidates    int `toml:"max_no_candidate_attempts"`
@@ -159,6 +160,7 @@ const (
 	noValue thresholdFlag = iota
 	lowRSSI
 	lowDataRate
+	highRetryRate
 	noCandidateLimit
 	inHysteresis
 )

@@ -22,6 +22,11 @@ func (cfg *Config) Validate() error {
 			"thresholds.score_delta %v invalid. Must be in range 0 to 100",
 			cfg.Thresholds.ScoreDelta))
 	}
+	if !validScore(cfg.Thresholds.ScoreDelta) {
+		errs = append(errs, fmt.Sprintf(
+			"thresholds.retry_rate %v invalid. Must be in range 0 to 100",
+			cfg.Thresholds.RetryRate))
+	}
 	if cfg.MaxNoCandidates > 20 || cfg.MaxNoCandidates < 0 {
 		errs = append(errs, fmt.Sprintf(
 			"thresholds.score_delta %v invalid. Must be in range 0 to 20",

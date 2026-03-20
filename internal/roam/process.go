@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/jwil007/roamctl/internal/wpac"
@@ -20,7 +21,7 @@ func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 	}
 	defer cleanup() //sets wpa_supplicant back to original state
 	//Start polling signal stats
-	slog.Info("Waiting for trigger to enter roam decision loop...")
+	slog.Info("Starting signal polling...")
 	sigCh, sigErrCh := c.PollSignal(ctx, cfg.Timing.SigPollInterval)
 	bgScanTicker := time.NewTicker(cfg.Timing.BGScanInterval)
 	for {
@@ -69,10 +70,9 @@ func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 func (cfg *Config) thresholdCheck(rc *roamContext) bool {
 	rssi := rc.lastKnown.AvgRSSIBeacon
 	if rc.lastKnown.AvgRSSIBeacon == 0 {
-		// slog.Info("No RSSI BEACON available, falling back to basic RSSI")
+		slog.Debug("No RSSI BEACON available, falling back to basic RSSI")
 		rssi = rc.lastKnown.RSSI
 	}
-	// slog.Info("threshold RSSI recorded as: %d", rssi)
 	if rc.hysteresisActive {
 		if rc.lastKnown.RSSI > rc.lastTriggerRSSI-cfg.RSSIHysteresisDown &&
 			rc.lastKnown.RSSI < rc.lastTriggerRSSI+cfg.RSSIHysteresisUp {
@@ -82,18 +82,21 @@ func (cfg *Config) thresholdCheck(rc *roamContext) bool {
 		slog.Info("Hysteresis cleared", "rssi", rssi)
 		rc.hysteresisActive = false
 	}
-	switch {
-	case rc.noCandCounter > cfg.MaxNoCandidates && rssi < cfg.Thresholds.RSSI:
+	if rc.noCandCounter >= cfg.MaxNoCandidates {
 		rc.thresholdFlag = noCandidateLimit
 		rc.waitForBGScan = true
-		rc.lastTriggerRSSI = rssi
 		return true
-	case rssi < cfg.Thresholds.RSSI:
+	}
+	switch {
+	case rssi <= cfg.Thresholds.RSSI:
 		rc.thresholdFlag = lowRSSI
 		rc.lastTriggerRSSI = rssi
 		return true
-	case rc.lastKnown.LinkSpeed < cfg.Thresholds.DataRate:
+	case rc.lastKnown.LinkSpeed <= cfg.Thresholds.DataRate:
 		rc.thresholdFlag = lowDataRate
+		return true
+	case rc.lastKnown.RetryRate >= cfg.Thresholds.RetryRate:
+		rc.thresholdFlag = highRetryRate
 		return true
 	}
 	rc.thresholdFlag = noValue
@@ -139,13 +142,15 @@ func (cfg *Config) logThreshold(rc *roamContext) {
 				"attempts", rc.noCandCounter,
 				"threshold", cfg.MaxNoCandidates)
 		case lowRSSI:
-			slog.Info("Last polled RSSI below threshold. Entering roam decision tree...",
+			slog.Info("RSSI below threshold, scanning for roam candidates...",
 				"rssi", rc.lastTriggerRSSI,
 				"threshold", cfg.Thresholds.RSSI)
 		case lowDataRate:
-			slog.Info("Last polled data rate below threshold. Entering roam decision tree...",
+			slog.Info("Data rate below threshold, scanning for roam candidates...",
 				"datarate", rc.lastKnown.LinkSpeed,
 				"threshold", cfg.Thresholds.DataRate)
+		case highRetryRate:
+			slog.Info("Retry rate above threshold, scanning for roam candidates...")
 		case inHysteresis:
 			slog.Debug("Hysteresis active, waiting for signal to change by configured bounds...",
 				"rssi", rc.lastTriggerRSSI,
@@ -312,7 +317,11 @@ func (cfg *Config) roamToCandidate(
 ) (roamResultFlag, error) {
 	result, err := c.Roam(ctx, candAP.bssid)
 	if err != nil {
-		return failure, fmt.Errorf("c.Roam(%v): %w", candAP.bssid, err)
+		if strings.Contains(err.Error(), "timed out waiting for event") {
+			slog.Error("Roam attempt timed out")
+			return failure, nil
+		}
+		return unknown, fmt.Errorf("c.Roam(%v): %w", candAP.bssid, err)
 	}
 	slog.Info("Roam complete", "stats", result)
 	switch result.Success {
