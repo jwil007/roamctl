@@ -112,16 +112,13 @@ The MacOS and iOS templates are meant to simulate Apple roaming behavior as docu
 # the roam decision loop when RSSI is -68 or lower.
   rssi = -67 # dBm, allowed range -128 to 0
 
-# Set upper and lower bounds for the RSSI hysteresis band in dBm
-# Hysteresis is activated after a roam attempt with no candidates
-# RSSI must leave the hysteresis band before the roam loop is re-entered
-# Must be integer in range 0 to 15
-  rssi_hysteresis_up = 5
-  rssi_hysteresis_down = 5
-
 # Set data rate to 0 to ignore, otherwise set value as Mbps.
 # Roam decision loop entered when polled data rate < threshold
   data_rate = 0 # Mbps
+
+# Set retry_rate to start roaming if tx retry rate exceeds value.
+# Set to 100 to ignore. Must be integer in range 0 to 100.
+  retry_rate = 50
 
 # score_delta score difference required to roam to a new AP.
 # Lower values: more roaming, less stable
@@ -133,6 +130,13 @@ The MacOS and iOS templates are meant to simulate Apple roaming behavior as docu
 # to bgscan monitoring.
 # Must be integer in range 0 to 20
   max_no_candidate_attempts = 3
+
+# Set upper and lower bounds for the RSSI hysteresis band in dBm
+# Hysteresis is activated after a roam attempt with no candidates
+# RSSI must leave the hysteresis band before the roam loop is re-entered
+# Must be integer in range 0 to 15
+  rssi_hysteresis_up = 5
+  rssi_hysteresis_down = 5
 
 [score_weights]
 # Score weights are a multipier on each scoring category
