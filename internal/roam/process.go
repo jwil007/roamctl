@@ -30,7 +30,11 @@ func (cfg *Config) ProcessLoop(c *wpac.Client, ctx context.Context) error {
 			slog.Debug("bgScanTicker reached 0, running scan...")
 			rc.bgScanReady = false
 			if err = c.Scan(ctx); err != nil {
-				return fmt.Errorf("c.Scan: %w", err)
+				if strings.Contains(err.Error(), "max retries exceeded") {
+					slog.Warn("Background scan retry limit exceeded")
+				} else {
+					return fmt.Errorf("c.Scan: %w", err)
+				}
 			}
 			slog.Debug("bgScan complete")
 			rc.lastBGScan = time.Now()
@@ -377,7 +381,11 @@ func (cfg *Config) roamReadyCheck(candidate scoredBSS, current scoredBSS, rc *ro
 
 func (cfg *Config) rescan(c *wpac.Client, ctx context.Context, ssid string) ([]scoredBSS, error) {
 	if err := c.Scan(ctx); err != nil {
-		return nil, fmt.Errorf("c.Scan: %w", err)
+		if strings.Contains(err.Error(), "max retries exceeded") {
+			slog.Warn("Background scan retry limit exceeded")
+		} else {
+			return nil, fmt.Errorf("c.Scan: %w", err)
+		}
 	}
 	aps, err := c.ScanResults(ssid)
 	if err != nil {
