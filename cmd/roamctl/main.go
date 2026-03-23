@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	charmlog "github.com/charmbracelet/log"
+	"github.com/jwil007/roamctl/internal/config"
 	"github.com/jwil007/roamctl/internal/roam"
 	"github.com/jwil007/roamctl/internal/wpac"
 )
@@ -72,7 +73,7 @@ func run() error {
 	slog.SetDefault(slog.New(logger))
 
 	//read and validate config file
-	cfg, err := roam.HandleConfig(template, edit)
+	cfg, err := config.HandleConfig(template, edit)
 	if err != nil {
 		return fmt.Errorf("roam.HandleConfig: %w", err)
 	}
@@ -101,7 +102,7 @@ func run() error {
 	defer cancel()
 
 	//start the roamctl process
-	err = cfg.ProcessLoop(c, ctx)
+	err = roam.Proc(c, ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("roam.ProcessLoop: %v", err)
 	}

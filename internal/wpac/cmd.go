@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -128,21 +129,34 @@ func (c *Client) setBTM(config WPAConfig) error {
 	return nil
 }
 
-func (c *Client) runScan() error {
-	out, err := c.cmd("SCAN TYPE=ONLY")
+func (c *Client) runScan(s ScanParams) error {
+	var freqStr string
+	var ssidStr string
+	if s.Freqs != nil {
+		slices.Sort(s.Freqs)
+		var freqStrs []string
+		for _, freq := range s.Freqs {
+			freqStrs = append(freqStrs, strconv.Itoa(freq))
+		}
+		freqStr = " freq=" + strings.Join(freqStrs, ",")
+	}
+	if s.SSID != "" {
+		ssidStr = " ssid=" + hex.EncodeToString([]byte(s.SSID))
+	}
+	out, err := c.cmd("SCAN TYPE=ONLY" + freqStr + ssidStr)
 	if err != nil {
-		return fmt.Errorf("c.Cmd(\"SCAN TYPE=ONLY\"): %w", err)
+		return fmt.Errorf("c.Cmd(SCAN TYPE=ONLY %v %v): %w", freqStr, ssidStr, err)
 	}
 	if strings.TrimSpace(string(out)) != "OK" {
-		return fmt.Errorf("c.Cmd(\"SCAN TYPE=ONLY\"): %s", string(out))
+		return fmt.Errorf("c.Cmd(SCAN TYPE=ONLY %v %v): %s", freqStr, ssidStr, string(out))
 	}
 	return nil
 }
 
-func (c *Client) runScanWithRetry() error {
-	maxRetries := 3
+func (c *Client) runScanWithRetry(s ScanParams) error {
+	maxRetries := s.RetryCount
 	for range maxRetries {
-		err := c.runScan()
+		err := c.runScan(s)
 		if err != nil {
 			if strings.Contains(err.Error(), "FAIL-BUSY") {
 				log.Println("interface busy, retrying scan in 2 seconds")

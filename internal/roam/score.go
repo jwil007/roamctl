@@ -3,13 +3,14 @@ package roam
 import (
 	"slices"
 
+	"github.com/jwil007/roamctl/internal/config"
 	"github.com/jwil007/roamctl/internal/wpac"
 )
 
-func (cfg *Config) scoreAll(aps []wpac.RichBSS) []scoredBSS {
+func scoreAll(aps []wpac.RichBSS, cfg *config.Config) []scoredBSS {
 	var scoredList []scoredBSS
 	for _, ap := range aps {
-		scored := cfg.score(ap)
+		scored := score(ap, cfg)
 		scoredList = append(scoredList, scored)
 	}
 	slices.SortFunc(scoredList, func(a, b scoredBSS) int {
@@ -18,15 +19,15 @@ func (cfg *Config) scoreAll(aps []wpac.RichBSS) []scoredBSS {
 	return scoredList
 }
 
-func (cfg *Config) score(bss wpac.RichBSS) scoredBSS {
-	rs := cfg.ScoreWeights.RSSI * cfg.scoreRSSI(bss.RSSI) / 100
-	ss := cfg.SNR * cfg.scoreSNR(bss.SNR) / 100
-	bs := cfg.Band * cfg.scoreBand(bss.Band) / 100
-	cws := cfg.ChannelWidth * cfg.scoreCW(bss.ChannelWidth) / 100
+func score(bss wpac.RichBSS, cfg *config.Config) scoredBSS {
+	rs := cfg.ScoreWeights.RSSI * scoreRSSI(bss.RSSI, cfg) / 100
+	ss := cfg.SNR * scoreSNR(bss.SNR, cfg) / 100
+	bs := cfg.Band * scoreBand(bss.Band, cfg) / 100
+	cws := cfg.ChannelWidth * scoreCW(bss.ChannelWidth, cfg) / 100
 	//es := cfg.EstThruput * cfg.scoreET(bss.EstThruput) / 100
-	us := cfg.QBSSUtil * cfg.scoreUtil(bss.QBSSUtil) / 100
+	us := cfg.QBSSUtil * scoreUtil(bss.QBSSUtil) / 100
 	//sts := cfg.QBSSStaCt * cfg.scoreStaCt(bss.QBSSStaCt) / 100
-	ps := cfg.PHYType * cfg.scorePhy(bss.PHYType) / 100
+	ps := cfg.PHYType * scorePhy(bss.PHYType, cfg) / 100
 	totalWeight := cfg.ScoreWeights.RSSI + cfg.SNR + cfg.Band + cfg.ChannelWidth + cfg.QBSSUtil + cfg.PHYType
 	scoreSum := rs + ss + bs + cws + us + ps
 	if totalWeight == 0 {
@@ -35,6 +36,8 @@ func (cfg *Config) score(bss wpac.RichBSS) scoredBSS {
 	finalScore := scoreSum * 100 / totalWeight
 	return scoredBSS{
 		bssid:      bss.BSSID,
+		freq:       bss.Freq,
+		channelNum: bss.ChannelNum,
 		finalScore: finalScore,
 		rssiScore:  rs,
 		rssi:       bss.RSSI,
@@ -52,7 +55,7 @@ func (cfg *Config) score(bss wpac.RichBSS) scoredBSS {
 	}
 }
 
-func (cfg *Config) scoreRSSI(rssi int) int {
+func scoreRSSI(rssi int, cfg *config.Config) int {
 	var score int
 	if cfg.MaxRSSI-cfg.MinRSSI == 0 {
 		return 0
@@ -67,7 +70,7 @@ func (cfg *Config) scoreRSSI(rssi int) int {
 	return score
 }
 
-func (cfg *Config) scoreSNR(snr int) int {
+func scoreSNR(snr int, cfg *config.Config) int {
 	var score int
 	if cfg.MaxSNR-cfg.MinSNR == 0 {
 		return 0
@@ -82,7 +85,7 @@ func (cfg *Config) scoreSNR(snr int) int {
 	return score
 }
 
-func (cfg *Config) scoreBand(band wpac.Band) int {
+func scoreBand(band wpac.Band, cfg *config.Config) int {
 	var score int
 	switch band {
 	case wpac.BandUnknown:
@@ -97,7 +100,7 @@ func (cfg *Config) scoreBand(band wpac.Band) int {
 	return score
 }
 
-func (cfg *Config) scoreCW(cw wpac.ChannelWidth) int {
+func scoreCW(cw wpac.ChannelWidth, cfg *config.Config) int {
 	var score int
 	switch cw {
 	case wpac.ChannelWidthUnknown:
@@ -123,7 +126,7 @@ func (cfg *Config) scoreCW(cw wpac.ChannelWidth) int {
 //	return score
 //}
 
-func (cfg *Config) scoreUtil(util uint8) int {
+func scoreUtil(util uint8) int {
 	var score int
 	score = (255 - int(util)) * 100 / 255
 	return score
@@ -134,7 +137,7 @@ func (cfg *Config) scoreUtil(util uint8) int {
 //	return score
 //}
 
-func (cfg *Config) scorePhy(phy wpac.PHYType) int {
+func scorePhy(phy wpac.PHYType, cfg *config.Config) int {
 	var score int
 	switch phy {
 	case wpac.PHYUnknown:

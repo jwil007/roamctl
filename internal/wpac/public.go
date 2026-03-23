@@ -104,13 +104,13 @@ func (c *Client) SetConfig(config WPAConfig) error {
 	return nil
 }
 
-func (c *Client) Scan(ctx context.Context) error {
+func (c *Client) Scan(ctx context.Context, s ScanParams) error {
 	//run scan and collect scan results to build bssid list
-	err := c.runScanWithRetry()
+	err := c.runScanWithRetry(s)
 	if err != nil {
 		return fmt.Errorf("runScanWithRetry: %w", err)
 	}
-	_, err = c.waitForEvent(ctx, []string{"CTRL-EVENT-SCAN-RESULTS"}, 20*time.Second)
+	_, err = c.waitForEvent(ctx, []string{"CTRL-EVENT-SCAN-RESULTS"}, s.Timeout)
 	if err != nil {
 		return fmt.Errorf("c.waitForEvent: %w", err)
 	}

@@ -1,4 +1,4 @@
-package roam
+package config
 
 import (
 	"fmt"

@@ -101,6 +101,13 @@ type qbssLoad struct {
 	availableAdmissionCapacity uint16
 }
 
+type ScanParams struct {
+	Freqs      []int
+	SSID       string
+	Timeout    time.Duration
+	RetryCount int
+}
+
 type RichBSS struct {
 	WpasBSS
 	IEBSS
