@@ -1,6 +1,7 @@
 package roam
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -62,15 +63,16 @@ type roamContext struct {
 	roamEnterCounter int            //debug counter to see how many times the roam loop is entered consecutively
 	thresholdFlag    thresholdFlag  //don't need?
 	hysteresisActive bool
-	lastTriggerRSSI  int         //don't need?
+	lastTriggerRSSI  int
+	lastEvalTime     time.Time
 	waitForBGScan    bool        // don't need?
 	bgScanAPs        []scoredBSS // don't need?
 	lastBGScan       time.Time   // don't need?
 	bgScanReady      bool        // don't need?
 	bgScanChecked    bool        // don't need?
-
-	roamingTier roamingTier
-	scanState   scanState
+	entryScanned     bool        // flag to track the immediate scan when in actively roaming. Prevents scan loop
+	roamingTier      roamingTier
+	scanState        scanState
 }
 
 type scanState struct {
@@ -80,6 +82,7 @@ type scanState struct {
 	scanMode       scanMode
 	channels       []int
 	scanDuration   time.Duration
+	lastScanTime   time.Time
 	bssidHash      uint64
 	bssListStable  bool
 }
@@ -130,6 +133,8 @@ const (
 	noCandidateLimit
 	inHysteresis
 )
+
+var ErrScanRetryLimit = errors.New("scan retry limit exceeded")
 
 var green = lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
 var red = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Bold(true)

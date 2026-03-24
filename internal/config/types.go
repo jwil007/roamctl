@@ -5,6 +5,7 @@ import "time"
 type Config struct {
 	Preferences     `toml:"preferences"`
 	Thresholds      `toml:"thresholds"`
+	Scanning        `toml:"scanning"`
 	RoamingTiers    `toml:"roaming_tiers"`
 	ScoreWeights    `toml:"score_weights"`
 	ScoreClamps     `toml:"score_clamps"`
@@ -12,7 +13,6 @@ type Config struct {
 	ChanWidthScores `toml:"chan_width_scores"`
 	PhyScores       `toml:"phy_scores"`
 	Timing          `toml:"timing"`
-	SSID            string `toml:"-"`
 }
 
 type Preferences struct {
@@ -51,13 +51,17 @@ type PhyScores struct {
 	PHY80211be int `toml:"80211be"`
 }
 
+type Scanning struct {
+	BGScanInterval time.Duration `toml:"bg_scan_interval"`
+	MaxScanAge     time.Duration `toml:"max_scan_age"`
+	MaxBSSCt       int           `toml:"max_bss_ct"`
+}
+
 type Timing struct {
 	SuccessBackoffTime      time.Duration `toml:"success_backoff_time"`
 	FailureBackoffTime      time.Duration `toml:"failure_backoff_time"`
 	NoCandidatesBackoffTime time.Duration `toml:"no_candidates_backoff_time"`
 	SigPollInterval         time.Duration `toml:"sig_poll_interval"`
-	BGScanInterval          time.Duration `toml:"bg_scan_interval"`
-	MaxScanAge              time.Duration `toml:"max_scan_age"`
 }
 type Thresholds struct {
 	RSSI               int `toml:"rssi"`
