@@ -37,10 +37,10 @@ The command below will add the path config for your default shell. After running
 </details>
 
 ## Algorithm details
-The roaming algorithm consists continuous signal polling, concurrent background scanning, and four different tiers based on signal metrics which determine roaming behavior.
+The roaming algorithm consists continuous signal polling, concurrent background scanning, and four different tiers based on signal metrics to determine roaming behavior.
 
 ### Roaming Tiers
-There are four tiers which set roaming behavior, such as aggresiveness, to allow for perfomant roaming in a wide variety of environments. The tiers are based on RSSI breakpoints, which are user configurable.
+There are four tiers which set roaming behavior to optimize roaming in a wide variety of environments. The tiers are based on RSSI breakpoints, which are user configurable.
 
 #### Excellent - No roaming or scanning
 In the Excellent tier, background scanning is paused and no roaming will occur.
