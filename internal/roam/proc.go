@@ -59,9 +59,10 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 			}
 			//slog.Debug("Last polled connection status", "stats", rc.lastKnown)
 			rc.evalTier()
-			if rc.roamingTier == opportunistic || rc.roamingTier == noRoam {
+			if rc.lastKnown.RSSI >= rc.cfg.FairRSSI+rc.cfg.RSSIHysteresisUp {
 				//slog.Debug("Clearing entryScanned flag")
 				rc.entryScanned = false
+				rc.entryScannedCrit = false
 			}
 			if rc.roamingTier == opportunistic {
 				err = rc.handleOppRoam(c, ctx)
@@ -104,7 +105,7 @@ func (rc *roamContext) evalTier() {
 		rc.scanState.mu.Unlock()
 		slog.Debug("roaming tier noRoam",
 			"rssi", rc.lastKnown.RSSI)
-	case rc.lastKnown.RSSI >= rc.cfg.OpportunisticRSSI:
+	case rc.lastKnown.RSSI >= rc.cfg.FairRSSI:
 		rc.roamingTier = opportunistic
 		rc.scanState.mu.Lock()
 		if rc.scanState.scanMode != fullScan {
@@ -113,7 +114,7 @@ func (rc *roamContext) evalTier() {
 		rc.scanState.mu.Unlock()
 		slog.Debug("roaming tier opportunistic",
 			"rssi", rc.lastKnown.RSSI)
-	case rc.lastKnown.RSSI >= rc.cfg.ActiveRSSI:
+	case rc.lastKnown.RSSI >= rc.cfg.DegradedRSSI:
 		rc.roamingTier = active
 		rc.scanState.mu.Lock()
 		if rc.scanState.scanMode != fullScan {
@@ -122,7 +123,7 @@ func (rc *roamContext) evalTier() {
 		rc.scanState.mu.Unlock()
 		slog.Debug("roaming tier active",
 			"rssi", rc.lastKnown.RSSI)
-	case rc.lastKnown.RSSI <= rc.cfg.CriticalRSSI:
+	default: //Anything lower than degraded RSSI is critical
 		rc.roamingTier = critical
 		rc.scanState.mu.Lock()
 		if rc.scanState.scanMode != fullScan {

@@ -19,13 +19,12 @@ type Preferences struct {
 }
 
 type RoamingTiers struct {
-	ExcellentRSSI      int `toml:"excellent_rssi"`
-	OpportunisticRSSI  int `toml:"opportunistic_rssi"`
-	OpportunisticDelta int `toml:"opportunistic_score_delta"`
-	ActiveRSSI         int `toml:"active_rssi"`
-	ActiveDelta        int `toml:"active_score_delta"`
-	CriticalRSSI       int `toml:"critical_rssi"`
-	CriticalDelta      int `toml:"critical_score_delta"`
+	ExcellentRSSI int `toml:"excellent_rssi"`
+	FairRSSI      int `toml:"fair_rssi"`
+	FairDelta     int `toml:"fair_score_delta"`
+	DegradedRSSI  int `toml:"degraded_rssi"`
+	DegradedDelta int `toml:"degraded_score_delta"`
+	CriticalDelta int `toml:"critical_score_delta"`
 }
 
 type Stability struct {

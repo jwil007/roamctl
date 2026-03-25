@@ -18,30 +18,25 @@ func (cfg *Config) Validate() error {
 			"roaming_tiers.excellent_rssi %v invalid. Must be in range -128 to 0",
 			cfg.RoamingTiers.ExcellentRSSI))
 	}
-	if !validRSSI(cfg.RoamingTiers.OpportunisticRSSI) {
+	if !validRSSI(cfg.RoamingTiers.FairRSSI) {
 		errs = append(errs, fmt.Sprintf(
 			"roaming_tiers.opportunistic_rssi %v invalid. Must be in range -128 to 0",
-			cfg.RoamingTiers.OpportunisticRSSI))
+			cfg.RoamingTiers.FairRSSI))
 	}
-	if !validScore(cfg.RoamingTiers.OpportunisticDelta) {
+	if !validScore(cfg.RoamingTiers.FairDelta) {
 		errs = append(errs, fmt.Sprintf(
 			"roaming_tiers.opportunistic_score_delta %v invalid. Must be in range 0 to 100",
-			cfg.RoamingTiers.OpportunisticDelta))
+			cfg.RoamingTiers.FairDelta))
 	}
-	if !validRSSI(cfg.RoamingTiers.ActiveRSSI) {
+	if !validRSSI(cfg.RoamingTiers.DegradedRSSI) {
 		errs = append(errs, fmt.Sprintf(
 			"roaming_tiers.active_rssi %v invalid. Must be in range -128 to 0",
-			cfg.RoamingTiers.ActiveRSSI))
+			cfg.RoamingTiers.DegradedRSSI))
 	}
-	if !validScore(cfg.RoamingTiers.ActiveDelta) {
+	if !validScore(cfg.RoamingTiers.DegradedDelta) {
 		errs = append(errs, fmt.Sprintf(
 			"roaming_tiers.active_score_delta %v invalid. Must be in range 0 to 100",
-			cfg.RoamingTiers.ActiveDelta))
-	}
-	if !validRSSI(cfg.RoamingTiers.CriticalRSSI) {
-		errs = append(errs, fmt.Sprintf(
-			"roaming_tiers.critical_rssi %v invalid. Must be in range -128 to 0",
-			cfg.RoamingTiers.CriticalRSSI))
+			cfg.RoamingTiers.DegradedDelta))
 	}
 	if !validScore(cfg.RoamingTiers.CriticalDelta) {
 		errs = append(errs, fmt.Sprintf(
@@ -49,14 +44,11 @@ func (cfg *Config) Validate() error {
 			cfg.RoamingTiers.CriticalDelta))
 	}
 	// tier ordering
-	if cfg.RoamingTiers.ExcellentRSSI <= cfg.RoamingTiers.OpportunisticRSSI {
+	if cfg.RoamingTiers.ExcellentRSSI <= cfg.RoamingTiers.FairRSSI {
 		errs = append(errs, "roaming_tiers.excellent_rssi must be greater than opportunistic_rssi")
 	}
-	if cfg.RoamingTiers.OpportunisticRSSI <= cfg.RoamingTiers.ActiveRSSI {
+	if cfg.RoamingTiers.FairRSSI <= cfg.RoamingTiers.DegradedRSSI {
 		errs = append(errs, "roaming_tiers.opportunistic_rssi must be greater than active_rssi")
-	}
-	if cfg.RoamingTiers.ActiveRSSI <= cfg.RoamingTiers.CriticalRSSI {
-		errs = append(errs, "roaming_tiers.active_rssi must be greater than critical_rssi")
 	}
 
 	// Stability

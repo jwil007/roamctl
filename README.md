@@ -37,24 +37,33 @@ The command below will add the path config for your default shell. After running
 </details>
 
 ## Algorithm details
-The roaming algorithm consists of an outer loop for polling and an inner tree for roaming decisions.
+The roaming algorithm consists continuous signal polling, concurrent background scanning, and four different tiers based on signal metrics which determine roaming behavior.
 
-The outer loop handles polling to watch client metrics, such as RSSI, noise, and data rate. it also runs a background scan on a configurable time interval.
+### Roaming Tiers
+There are four tiers which set roaming behavior, such as aggresiveness, to allow for perfomant roaming in a wide variety of environments. The tiers are based on RSSI breakpoints, which are user configurable.
 
-The inner tree is reached when a threshold, such as RSSI, is below a set value. At that point the inner tree evaluates scan results against the current connected AP and decides whether or not to roam.
+#### Excellent - No roaming or scanning
+In the Excellent tier, background scanning is paused and no roaming will occur.
 
-### Visual diagrams
-Flow chart diagrams are avaialble for both the outer loop algorithm, and the roam decision tree.
-- [Outer Loop Algorithm](/docs/algorithm-chart.md)
-- [Roam Decision Tree](/docs/roam-decision-chart.md)
+#### Fair - Passive roaming / background scan
+In the Fair tier, backgound scanning begins using a smart scan to only scan relevant channels. Background scan results are evaluated, and if an AP is significantly better than the current AP, a roam will occur.
 
-### Scoring and Stability
+#### Degraded - Active roaming / full scan if needed
+In the Degraded tier, active roaming begins. When this tier is entered a scan on targeted channels is performed to see if a better AP is available. If a better AP is not found, a full scan is requested for the next background scan interval.
+
+#### Critical - Aggressive roaming
+When the critical tier is entered, another immediate fast scan is triggered. If no better APs are found, a full scan is run in line, rather than waiting for the next background scan interval. The score delta required to roam is lower in this tier by default.
+### Visual Diagram
+A flow chart diagram is avaialble for a simplified view at the roaming algorithm.
+- [Algorithm flowchart](/docs/algorithm-chart.md)
+
+### Scoring
 BSSIDs in the scan results are scored using a weighted combination of RSSI, SNR, Band, channel utilization, PHY type, etc. The scoring parameters and weights are user-configurable, See [Configuration](#Configuration).
 
+### Scanning and Stability 
 A number of stability guards are in place to prevent excessive roaming, scanning or ping-ponging. These guards include:
 - A score_delta parameter to ensure that the candidate AP is materially better than the current AP
-- Backoff timers after the roam cycle
-- Fallback to passive roaming if no acceptable candidate APs seen after multiple attempts
+- A smart scanning algorithm is used to minimze time spent scanning, by scanning only channels known to have candidate APs. Full sweeps are only done when needed.
 - [Hysteresis methods](https://en.wikipedia.org/wiki/Hysteresis#Control_systems) to prevent freqently entering the roam cycle when at a borderline signal strength
 
 > [!IMPORTANT]
@@ -102,103 +111,75 @@ The MacOS and iOS templates are meant to simulate Apple roaming behavior as docu
 ## Default Config
 ```toml
 [preferences]
-# Set Wi-Fi interface name
-  interface = "wlan0"
+interface = "wlan0"
 
-[thresholds]
-# Thresholds from signal polling which define when to enter
-# the roaming decision loop.
-# For example, if the rssi threshold is -67, the device will enter
-# the roam decision loop when RSSI is -68 or lower.
-  rssi = -67 # dBm, allowed range -128 to 0
+[roaming_tiers]
+# These values set the floor of each RSSI tier, which dictate roaming logic
+# They are the floor for each tier. 
+# i.e. if fair_rssi is -67, -68 is in the "degraded" tier.
+excellent_rssi = -58
+fair_rssi = -70
+degraded_rssi = -76
+# values lower than degraded are considered critical
 
-# Set data rate to 0 to ignore, otherwise set value as Mbps.
-# Roam decision loop entered when polled data rate < threshold
-  data_rate = 0 # Mbps
+# Set score deltas required to roam per tier
+# Higher numbers mean candidate AP must be significantly better
+fair_score_delta = 8
+degraded_score_delta = 5
+critical_score_delta = 3
 
-# Set retry_rate to start roaming if tx retry rate exceeds value.
-# Set to 100 to ignore. Must be integer in range 0 to 100.
-  retry_rate = 50
-
-# score_delta score difference required to roam to a new AP.
-# Lower values: more roaming, less stable
-# Must be integer in range 0 to 100
-  score_delta = 10
-
-# max_no_candidate_attempts defines the max number of consecutive
-# roam attempts where no candidate is found before falling back 
-# to bgscan monitoring.
-# Must be integer in range 0 to 20
-  max_no_candidate_attempts = 3
-
-# Set upper and lower bounds for the RSSI hysteresis band in dBm
-# Hysteresis is activated after a roam attempt with no candidates
-# RSSI must leave the hysteresis band before the roam loop is re-entered
-# Must be integer in range 0 to 15
-  rssi_hysteresis_up = 5
-  rssi_hysteresis_down = 5
-
-[score_weights]
-# Score weights are a multipier on each scoring category
-# A value of 0 means a category is ignored from the scoring algorithm.
-# 100 is the max value.
-  rssi = 100
-  snr = 50
-
-# qbss utilzation parsed from beacon frames. Akin to channel utilzation
-  qbss_util = 25
-
-# Weights for band (2.4/5/6GHz), chan width, and PHY type (wifi version)
-# Scores for each value within these categories are defined below
-  band = 60
-  channel_width = 0
-  phy_type = 25
-
-[score_clamps]
-# Min and max RSSI used to clamp scoring algorithm.
-# Values below min are scored 0, values above max are scored 100.
-  min_rssi = -85
-  max_rssi = -30
-
-# Min and max SNR used to clamp scoring algorithm.
-# Values below min are scored 0, values above max are scored 100
-  min_snr = 10
-  max_snr = 50
-
-[band_scores]
-# All scores below must be integers 0 to 100
-  2point4ghz = 0
-  5ghz = 80
-  6ghz = 100
-
-[chan_width_scores]
-  20mhz = 30
-  40mhz = 60
-  80mhz = 80
-  160mhz = 90
-  320mhz = 100
-
-[phy_scores]
-  legacy = 0 # Wi-Fi 3 or older
-  80211n = 20 # Wi-Fi 4
-  80211ac = 50 # Wi-Fi 5
-  80211ax = 80 # Wi-Fi 6
-  80211be = 100 # Wi-Fi 7
+[stability]
+# These values define upper and lower bounds RSSI must cross before re-roaming
+# This is meant to prevent ping-ponging when at RSSI boundry
+rssi_hysteresis_up = 5
+rssi_hysteresis_down = 5
 
 [timing]
-# Times must use the format ms for millisecond, s for second, m for minute
-# Amount of time to wait before re-enterting roam loop depending on outcome
-  success_backoff_time = "2s"
-  failure_backoff_time = "2s"
-  no_candidates_backoff_time = "3s"
+# Timings for signal polling (e.g. hosts current RSSI, SNR) and bg scan interval
+sig_poll_interval = "250ms"
+base_scan_interval = "15s"
 
-# Defines how often signal metrics for roaming threshold are checked.
-  sig_poll_interval = "250ms"
+# Defines number of bssids used to build fast-scan channel list
+# In very dense environments, this number can be tuned to optimize channel scanning
+max_bss_ct = 15
 
-# When not in roam decision loop, define how frequently wifi scan is done
-  bg_scan_interval = "30s"
+[score_weights]
+# These tune the scoring algorithm, which ranks candidate APs
+# Set to 100 for maxmium weight, 0 to ignore category
+rssi = 100
+snr = 0
+qbss_util = 30
+band = 50
+channel_width = 10
+phy_type = 15
 
-# A candidate AP in the scan data must be "newer" than the max_scan_age
-# to be considered.
-  max_scan_age = "10s"
+[score_clamps]
+# Used for RSSI and SNR scoring.
+# Values below min are scored 0, values above max are score 100
+# Values between clamps are scored linearly
+min_rssi = -85
+max_rssi = -25
+min_snr = 10
+max_snr = 50
+
+# Use the following to adjust various scoring. This is where you can 
+# tweak band pref, cw pref, etc.
+[band_scores]
+2point4ghz = 0
+5ghz = 75
+6ghz = 100
+
+[chan_width_scores]
+20mhz = 0
+40mhz = 25
+80mhz = 75
+160mhz = 90
+320mhz = 100
+
+[phy_scores]
+legacy = 0
+80211n = 20
+80211ac = 50
+80211ax = 80
+80211be = 100
 ```

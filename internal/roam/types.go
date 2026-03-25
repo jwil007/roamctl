@@ -61,6 +61,7 @@ type roamContext struct {
 	lastTriggerRSSI  int
 	lastEvalTime     time.Time
 	entryScanned     bool //Prevents scan loop
+	entryScannedCrit bool
 	roamingTier      roamingTier
 	scanState        scanState
 }

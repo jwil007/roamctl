@@ -63,6 +63,14 @@ func (rc *roamContext) handleActiveRoam(c *wpac.Client, ctx context.Context) err
 }
 
 func (rc *roamContext) handleCriticalRoam(c *wpac.Client, ctx context.Context) error {
+	if !rc.entryScannedCrit {
+		slog.Info("Critical roaming entered, running fast scan")
+		err := rc.runFastScan(c, ctx)
+		if err != nil && !errors.Is(err, ErrScanRetryLimit) {
+			return fmt.Errorf("runFastScan: %w", err)
+		}
+		rc.entryScannedCrit = true
+	}
 	if !rc.checkIfNewScan() {
 		slog.Debug("No new scan data, skipping roam attempt")
 		return nil
@@ -75,19 +83,25 @@ func (rc *roamContext) handleCriticalRoam(c *wpac.Client, ctx context.Context) e
 	if err != nil {
 		return fmt.Errorf("attemptRoam: %w", err)
 	}
+	rc.scanState.mu.RLock()
+	stable := rc.scanState.bssListStable
+	rc.scanState.mu.RUnlock()
 	if rc.roamResultFlag == noCandidates {
-		// break glass full scan
-		err = rc.runFullScan(c, ctx)
-		if err != nil && !errors.Is(err, ErrScanRetryLimit) {
-			return fmt.Errorf("runFullScan: %w", err)
-		}
-		err = rc.prepScanResults(c)
-		if err != nil {
-			return fmt.Errorf("prepScanResults: %w", err)
-		}
-		err = rc.attemptRoam(c, ctx)
-		if err != nil {
-			return fmt.Errorf("attemptRoam: %w", err)
+		if !stable {
+			slog.Info("Running full scan immediately...")
+			// break glass full scan
+			err = rc.runFullScan(c, ctx)
+			if err != nil && !errors.Is(err, ErrScanRetryLimit) {
+				return fmt.Errorf("runFullScan: %w", err)
+			}
+			err = rc.prepScanResults(c)
+			if err != nil {
+				return fmt.Errorf("prepScanResults: %w", err)
+			}
+			err = rc.attemptRoam(c, ctx)
+			if err != nil {
+				return fmt.Errorf("attemptRoam: %w", err)
+			}
 		}
 	}
 	return nil
@@ -126,13 +140,13 @@ func (rc *roamContext) checkRoam() bool {
 	case unknownTier:
 	case noRoam:
 	case opportunistic:
-		if rc.candidateAP.finalScore-rc.cfg.OpportunisticDelta >=
+		if rc.candidateAP.finalScore-rc.cfg.FairDelta >=
 			rc.currentAP.finalScore {
 			return true
 		}
 		return false
 	case active:
-		if rc.candidateAP.finalScore-rc.cfg.ActiveDelta >=
+		if rc.candidateAP.finalScore-rc.cfg.DegradedDelta >=
 			rc.currentAP.finalScore {
 			return true
 		}

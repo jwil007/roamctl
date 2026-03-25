@@ -1,22 +1,26 @@
 ```mermaid
 flowchart TD
-    A[Signal polled at set interval. Default 250ms] --> B{Connection info available?}
-    B -- no --> C[Wait for BSSID]
-    B -- yes --> D{RSSI or data rate below threshold?}
-    D -- no --> E[↻ monitor and repoll]
-    D -- yes --> F{Hysteresis active?}
-    F -- yes --> G{Signal outside exit band?}
-    G -- no --> H[↻ wait and repoll]
-    G -- yes --> I[Hysteresis cleared]
-    I --> J
-    F -- no --> J{Backoff timer running?}
-    J -- yes --> K[↻ wait out backoff]
-    J -- no --> L{No-candidates limit reached?}
-    L -- yes --> M[↻ wait for background scan]
-    L -- no --> N[Enter roam decision loop]
-    N --> O{Outcome?}
-    O -- roamed --> P[↻ success backoff, repoll]
-    O -- failed --> Q[↻ failure backoff, repoll]
-    O -- no candidate --> R[Counter++, hysteresis on\n↻ repoll]
-    S([Background scan every 30s]) -.->|feeds fresh data| N
+flowchart TD
+    A([Connected to AP]) --> B[Poll signal quality continuously]
+    B --> C{Signal quality?}
+
+    C -->|Excellent| D[No scan · No roam]
+    D 
+
+    C -->|Fair| E[Periodic background scan]
+    E --> H
+
+    C -->|Degraded| F[Targeted scan on known channels\nfull sweep if environment changed]
+    F --> H
+
+    C -->|Critical| G[Immediate full sweep\nacross all channels]
+    G --> H
+
+    H[Score all visible APs\nRSSI · SNR · band · width · load · gen] --> I{Better AP above\nscore threshold?}
+
+    I -->|No| J[Stay put · await next scan]
+    J 
+
+    I -->|Yes| K[Roam to highest-scored AP]
+    K 
 ```

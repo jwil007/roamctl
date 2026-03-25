@@ -55,7 +55,7 @@ func (rc *roamContext) runFastScan(c *wpac.Client, ctx context.Context) error {
 	sp := wpac.ScanParams{
 		Freqs:      freqs,
 		SSID:       rc.ssid,
-		Timeout:    15 * time.Second,
+		Timeout:    20 * time.Second,
 		RetryCount: 3,
 	}
 	err := rc.executeScan(c, ctx, sp)
@@ -70,7 +70,7 @@ func (rc *roamContext) runFullScan(c *wpac.Client, ctx context.Context) error {
 	sp := wpac.ScanParams{
 		Freqs:      nil,
 		SSID:       rc.ssid,
-		Timeout:    15 * time.Second,
+		Timeout:    20 * time.Second,
 		RetryCount: 3,
 	}
 	err := rc.executeScan(c, ctx, sp)
@@ -89,12 +89,16 @@ func (rc *roamContext) runFullScan(c *wpac.Client, ctx context.Context) error {
 	rc.scanState.channels = freqs
 	rc.scanState.bssListStable = hash == rc.scanState.bssidHash
 	rc.scanState.bssidHash = hash
+	rc.scanState.scanMode = fastScan
 	rc.scanState.mu.Unlock()
 	return nil
 }
 
 func (rc *roamContext) executeScan(c *wpac.Client, ctx context.Context, sp wpac.ScanParams) error {
 	rc.scanState.mu.Lock()
+	for rc.scanState.scanInProgress {
+		rc.scanState.cond.Wait()
+	}
 	rc.scanState.scanInProgress = true
 	rc.scanState.mu.Unlock()
 	start := time.Now()
@@ -106,6 +110,10 @@ func (rc *roamContext) executeScan(c *wpac.Client, ctx context.Context, sp wpac.
 		rc.scanState.mu.Unlock()
 		if strings.Contains(err.Error(), "max retries exceeded") {
 			slog.Warn("Scan retry limit exceeded")
+			return ErrScanRetryLimit
+		}
+		if strings.Contains(err.Error(), "timed out waiting for event") {
+			slog.Warn("Scan timed out")
 			return ErrScanRetryLimit
 		}
 		return fmt.Errorf("c.Scan: %w", err)
@@ -122,36 +130,15 @@ func (rc *roamContext) executeScan(c *wpac.Client, ctx context.Context, sp wpac.
 	return nil
 }
 
-func (rc *roamContext) reScan(
-	c *wpac.Client,
-	ctx context.Context,
-	sp wpac.ScanParams) error {
-	rc.scanState.mu.RLock()
-	inProgress := rc.scanState.scanInProgress
-	rc.scanState.mu.RUnlock()
-	if !inProgress {
-		err := rc.executeScan(c, ctx, sp)
-		if err != nil {
-			return fmt.Errorf("c.ExecuteScan: %w", err)
-		}
-	} else {
-		rc.scanState.mu.Lock()
-		for rc.scanState.scanInProgress {
-			rc.scanState.cond.Wait()
-		}
-		rc.scanState.mu.Unlock()
-	}
-	err := rc.prepScanResults(c)
-	if err != nil {
-		return fmt.Errorf("c.prepScanResults: %w", err)
-	}
-	return nil
-}
-
 func (rc *roamContext) prepScanResults(c *wpac.Client) error {
+	rc.currentAP = scoredBSS{}
 	aps, err := c.ScanResults(rc.ssid)
 	if err != nil {
 		return fmt.Errorf("c.ScanResults: %w", err)
+	}
+	if len(aps) == 0 {
+		slog.Warn("scanResults empty")
+		return nil
 	}
 	rc.scoredAPs = scoreAll(aps, rc.cfg)
 	for _, ap := range rc.scoredAPs {
@@ -166,10 +153,6 @@ func (rc *roamContext) prepScanResults(c *wpac.Client) error {
 	stable := rc.scanState.bssListStable
 	rc.scanState.mu.Unlock()
 	slog.Debug("bssListStable checked", "bool", stable)
-	if len(rc.scoredAPs) == 0 {
-		slog.Warn("scoredAPs is empty")
-		return nil
-	}
 	rc.candidateAP = rc.scoredAPs[0]
 	return nil
 }
