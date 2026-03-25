@@ -2,176 +2,84 @@ package config
 
 const defaultConfigTemplate = `
 [preferences]
-# Set Wi-Fi interface name
-  interface = "wlan0"
+interface = "wlan0"
 
-[thresholds]
-# Thresholds from signal polling which define when to enter
-# the roaming decision loop.
-# For example, if the rssi threshold is -67, the device will enter
-# the roam decision loop when RSSI is -68 or lower.
-  rssi = -67 # dBm, allowed range -128 to 0
+[roaming_tiers]
+excellent_rssi = -50
+opportunistic_rssi = -65
+opportunistic_score_delta = 10
+active_rssi = -71
+active_score_delta = 7
+critical_rssi = -76
+critical_score_delta = 3
 
-# Set data rate to 0 to ignore, otherwise set value as Mbps.
-# Roam decision loop entered when polled data rate < threshold
-  data_rate = 0 # Mbps
-
-# Set retry_rate to start roaming if tx retry rate exceeds value.
-# Set to 100 to ignore. Must be integer in range 0 to 100.
-  retry_rate = 50
-
-# score_delta score difference required to roam to a new AP.
-# Lower values: more roaming, less stable
-# Must be integer in range 0 to 100
-  score_delta = 10
-
-# max_no_candidate_attempts defines the max number of consecutive
-# roam attempts where no candidate is found before falling back 
-# to bgscan monitoring.
-# Must be integer in range 0 to 20
-  max_no_candidate_attempts = 3
-
-# Set upper and lower bounds for the RSSI hysteresis band in dBm
-# Hysteresis is activated after a roam attempt with no candidates
-# RSSI must leave the hysteresis band before the roam loop is re-entered
-# Must be integer in range 0 to 15
-  rssi_hysteresis_up = 5
-  rssi_hysteresis_down = 5
-
-[score_weights]
-# Score weights are a multipier on each scoring category
-# A value of 0 means a category is ignored from the scoring algorithm.
-# 100 is the max value.
-  rssi = 100
-  snr = 50
-
-# qbss utilzation parsed from beacon frames. Akin to channel utilzation
-  qbss_util = 25
-
-# Weights for band (2.4/5/6GHz), chan width, and PHY type (wifi version)
-# Scores for each value within these categories are defined below
-  band = 60
-  channel_width = 0
-  phy_type = 25
-
-[score_clamps]
-# Min and max RSSI used to clamp scoring algorithm.
-# Values below min are scored 0, values above max are scored 100.
-  min_rssi = -85
-  max_rssi = -30
-
-# Min and max SNR used to clamp scoring algorithm.
-# Values below min are scored 0, values above max are scored 100
-  min_snr = 10
-  max_snr = 50
-
-[band_scores]
-# All scores below must be integers 0 to 100
-  2point4ghz = 0
-  5ghz = 80
-  6ghz = 100
-
-[chan_width_scores]
-  20mhz = 30
-  40mhz = 60
-  80mhz = 80
-  160mhz = 90
-  320mhz = 100
-
-[phy_scores]
-  legacy = 0 # Wi-Fi 3 or older
-  80211n = 20 # Wi-Fi 4
-  80211ac = 50 # Wi-Fi 5
-  80211ax = 80 # Wi-Fi 6
-  80211be = 100 # Wi-Fi 7
+[stability]
+rssi_hysteresis_up = 5
+rssi_hysteresis_down = 5
 
 [timing]
-# Times must use the format ms for millisecond, s for second, m for minute
-# Amount of time to wait before re-enterting roam loop depending on outcome
-  success_backoff_time = "2s"
-  failure_backoff_time = "2s"
-  no_candidates_backoff_time = "3s"
+sig_poll_interval = "100ms"
+base_scan_interval = "15s"
+max_bss_ct = 15
 
-# Defines how often signal metrics for roaming threshold are checked.
-  sig_poll_interval = "250ms"
+[score_weights]
+rssi = 100
+snr = 0
+qbss_util = 30
+band = 50
+channel_width = 10
+phy_type = 15
 
-# When not in roam decision loop, define how frequently wifi scan is done
-  bg_scan_interval = "30s"
+[score_clamps]
+min_rssi = -85
+max_rssi = -25
+min_snr = 10
+max_snr = 50
 
-# A candidate AP in the scan data must be "newer" than the max_scan_age
-# to be considered.
-  max_scan_age = "10s"
+[band_scores]
+2point4ghz = 0
+5ghz = 75
+6ghz = 100
+
+[chan_width_scores]
+20mhz = 0
+40mhz = 25
+80mhz = 75
+160mhz = 90
+320mhz = 100
+
+[phy_scores]
+legacy = 0
+80211n = 20
+80211ac = 50
+80211ax = 80
+80211be = 100
 `
 
 const macOSTemplate = `
-# This template aims to simulate documented Apple behavior from the article below:
+# This template aims to simulate documented Apple macOS roaming behavior:
 # https://support.apple.com/guide/deployment/wi-fi-roaming-support-dep98f116c0f/web
+
 [preferences]
   interface = "wlan0"
 
-[thresholds]
-  rssi = -75 # Mac roam trigger
+[roaming_tiers]
+  excellent_rssi = -60
+  opportunistic_rssi = -67
+  opportunistic_score_delta = 15
+  active_rssi = -75
+  active_score_delta = 12
+  critical_rssi = -82
+  critical_score_delta = 6
+
+[stability]
   rssi_hysteresis_up = 8
   rssi_hysteresis_down = 5
-  data_rate = 0 # not used by Apple
-  score_delta = 12 # approximates Mac's 12 dB RSSI delta
-  max_no_candidate_attempts = 3
-
-[score_weights]
-  rssi = 100
-  snr = 25
-  qbss_util = 40 # Apple factors channel util + client count
-  band = 50
-  channel_width = 30
-  phy_type = 30
-
-[score_clamps]
-  min_rssi = -85
-  max_rssi = -30
-  min_snr = 10
-  max_snr = 50
-
-[band_scores]
-  2point4ghz = 10
-  5ghz = 80
-  6ghz = 100
-
-[chan_width_scores]
-  20mhz = 20
-  40mhz = 50
-  80mhz = 75
-  160mhz = 95
-  320mhz = 100
-
-[phy_scores]
-  legacy = 0
-  80211n = 15
-  80211ac = 50
-  80211ax = 80
-  80211be = 100
 
 [timing]
-  success_backoff_time = "3s"
-  failure_backoff_time = "2s"
-  no_candidates_backoff_time = "5s"
   sig_poll_interval = "250ms"
-  bg_scan_interval = "30s"
-  max_scan_age = "10s"
-`
-
-const iOSTemplate = `
-# This template aims to simulate documented Apple behavior from the article below:
-# https://support.apple.com/guide/deployment/wi-fi-roaming-support-dep98f116c0f/web
-[preferences]
-  interface = "wlan0"
-
-[thresholds]
-  rssi = -70 # iPhone/iPad roam trigger
-  rssi_hysteresis_up = 6
-  rssi_hysteresis_down = 4
-  data_rate = 0
-  score_delta = 8 # approximates iOS 8 dB delta (transmitting)
-  max_no_candidate_attempts = 3
+  base_scan_interval = "30s"
+  max_bss_ct = 15
 
 [score_weights]
   rssi = 100
@@ -205,12 +113,64 @@ const iOSTemplate = `
   80211ac = 50
   80211ax = 80
   80211be = 100
+`
+
+const iOSTemplate = `
+# This template aims to simulate documented Apple iOS/iPadOS roaming behavior:
+# https://support.apple.com/guide/deployment/wi-fi-roaming-support-dep98f116c0f/web
+
+[preferences]
+  interface = "wlan0"
+
+[roaming_tiers]
+  excellent_rssi = -60
+  opportunistic_rssi = -63
+  opportunistic_score_delta = 12
+  active_rssi = -70
+  active_score_delta = 8
+  critical_rssi = -78
+  critical_score_delta = 5
+
+[stability]
+  rssi_hysteresis_up = 6
+  rssi_hysteresis_down = 4
 
 [timing]
-  success_backoff_time = "3s"
-  failure_backoff_time = "2s"
-  no_candidates_backoff_time = "5s"
   sig_poll_interval = "250ms"
-  bg_scan_interval = "30s"
-  max_scan_age = "10s"
+  base_scan_interval = "20s"
+  base_scan_interval = "20s"
+  max_bss_ct = 15
+
+[score_weights]
+  rssi = 100
+  snr = 25
+  qbss_util = 40
+  band = 50
+  channel_width = 30
+  phy_type = 30
+
+[score_clamps]
+  min_rssi = -85
+  max_rssi = -30
+  min_snr = 10
+  max_snr = 50
+
+[band_scores]
+  2point4ghz = 10
+  5ghz = 80
+  6ghz = 100
+
+[chan_width_scores]
+  20mhz = 20
+  40mhz = 50
+  80mhz = 75
+  160mhz = 95
+  320mhz = 100
+
+[phy_scores]
+  legacy = 0
+  80211n = 15
+  80211ac = 50
+  80211ax = 80
+  80211be = 100
 `

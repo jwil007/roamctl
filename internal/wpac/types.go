@@ -3,10 +3,12 @@ package wpac
 import (
 	"fmt"
 	"net"
+	"sync"
 	"time"
 )
 
 type Client struct {
+	cmdMu          sync.Mutex
 	CC             *net.UnixConn //CommandConnection
 	EC             *net.UnixConn //EventConnection
 	PC             *net.UnixConn //PollConnection

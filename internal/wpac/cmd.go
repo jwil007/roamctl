@@ -15,6 +15,8 @@ import (
 )
 
 func (c *Client) cmd(command string) ([]byte, error) {
+	c.cmdMu.Lock()
+	defer c.cmdMu.Unlock()
 	buf := make([]byte, 4096)
 	_, wErr := c.CC.Write([]byte(command))
 	if wErr != nil {
@@ -63,19 +65,6 @@ func (c *Client) getSSID() (string, error) {
 	}
 	return "", fmt.Errorf("ssid field not found - check if wifi iface connected")
 }
-
-//func (c *Client) getBSSID() (string, error) {
-//	out, err := c.cmdP("STATUS")
-//	if err != nil {
-//		return "", fmt.Errorf("c.cmd(\"STATUS\"): %w", err)
-//	}
-//	for _, line := range strings.Split(string(out), "\n") {
-//		if strings.HasPrefix(line, "bssid=") {
-//			return line[6:], nil
-//		}
-//	}
-//	return "", fmt.Errorf("bssid field not found - check if wifi iface connected")
-//}
 
 func (c *Client) getNetworkID() (string, error) {
 	out, err := c.cmd("LIST_NETWORKS")
@@ -176,12 +165,17 @@ func (c *Client) getScanResults(ssid string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("c.Cmd(\"SCAN_RESULTS\"): %w", err)
 	}
+	//fmt.Printf("DEBUG - raw out of SCAN_RESULTS %v", string(out)) //debug
 	for _, line := range strings.Split(string(out), "\n")[1:] {
+		//fmt.Printf("DEBUG - line split of SCAN_RESULTS out: %v", line)
 		parts := strings.SplitN(line, "\t", 5)
+		//fmt.Printf("DEBUG - fields of SCAN_RESULTS line: %v", parts)
 		if len(parts) == 5 && parts[4] == ssid {
+			//fmt.Printf("DEBUG - BSSID from SCAN_RESULTS: %v", parts[0])
 			bssids = append(bssids, parts[0])
 		}
 	}
+	//fmt.Printf("DEBUG - BSSID list from SCAN_RESULTS: %v", bssids)
 	return bssids, nil
 }
 

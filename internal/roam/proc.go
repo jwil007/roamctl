@@ -13,19 +13,21 @@ import (
 )
 
 func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
+	slog.Info("Starting roamctl... exit with ctrl+c")
 	rc := &roamContext{}
 	rc.cfg = cfg
 	rc.scanState.cond = sync.NewCond(&rc.scanState.mu)
-	err := rc.runFullScan(c, ctx)
-	if err != nil && !errors.Is(err, ErrScanRetryLimit) {
-		return fmt.Errorf("rc.runFullScan: %w", err)
-	}
-	slog.Info("Starting roamctl... exit with ctrl+c")
+	slog.Info("Setting wpa_supplicant configuration")
 	cleanup, err := rc.handleWpaSuppConfig(c)
 	if err != nil {
 		return fmt.Errorf("handleWpaSuppConfig: %w", err)
 	}
 	defer cleanup() //sets wpa_supplicant back to original state
+	slog.Info("Running full channel scan ...")
+	err = rc.runFullScan(c, ctx)
+	if err != nil && !errors.Is(err, ErrScanRetryLimit) {
+		return fmt.Errorf("rc.runFullScan: %w", err)
+	}
 	//Start polling signal stats
 	slog.Info("Starting signal polling...")
 	sigCh, sigErrCh := c.PollSignal(ctx, cfg.Timing.SigPollInterval)
@@ -36,17 +38,17 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 		select {
 		case <-cadenceTicker.C:
 			rc.scanState.mu.RLock()
-			if !rc.scanState.scanInProgress {
-				rc.scanState.mu.RUnlock()
+			inProgress := rc.scanState.scanInProgress
+			mode := rc.scanState.scanMode
+			rc.scanState.mu.RUnlock()
+			if !inProgress {
+				if mode != noScan {
+					slog.Info("Running background scan",
+						"scan_mode", mode)
+				}
 				scErrCh = rc.runScanConcurrent(c, ctx)
 			} else {
-				rc.scanState.mu.RUnlock()
-			}
-			if rc.roamingTier == opportunistic {
-				err = rc.handleOppRoam(c, ctx)
-				if err != nil {
-					return fmt.Errorf("handleOppRoam: %w", err)
-				}
+				slog.Info("Backgound scan skipped - scan already in progress")
 			}
 		case con := <-sigCh:
 			if con.BSSID != "" {
@@ -55,11 +57,17 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 			if rc.lastKnown == nil {
 				continue
 			}
-			slog.Debug("Last polled connection status", "stats", rc.lastKnown)
+			//slog.Debug("Last polled connection status", "stats", rc.lastKnown)
 			rc.evalTier()
 			if rc.roamingTier == opportunistic || rc.roamingTier == noRoam {
-				slog.Debug("Clearing entryScanned flag")
+				//slog.Debug("Clearing entryScanned flag")
 				rc.entryScanned = false
+			}
+			if rc.roamingTier == opportunistic {
+				err = rc.handleOppRoam(c, ctx)
+				if err != nil {
+					return fmt.Errorf("handleOppRoam: %w", err)
+				}
 			}
 			if rc.roamingTier == active {
 				err = rc.handleActiveRoam(c, ctx)
@@ -79,7 +87,7 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 			}
 		case err = <-scErrCh:
 			if err != nil && !errors.Is(err, ErrScanRetryLimit) {
-				return fmt.Errorf("rc.runScanLoop: %w", err)
+				return fmt.Errorf("rc.runScanConcurrent: %w", err)
 			}
 		}
 	}
@@ -89,12 +97,40 @@ func (rc *roamContext) evalTier() {
 	switch {
 	case rc.lastKnown.RSSI >= rc.cfg.ExcellentRSSI:
 		rc.roamingTier = noRoam
+		rc.scanState.mu.Lock()
+		if rc.scanState.scanMode != fullScan {
+			rc.scanState.scanMode = noScan
+		}
+		rc.scanState.mu.Unlock()
+		slog.Debug("roaming tier noRoam",
+			"rssi", rc.lastKnown.RSSI)
 	case rc.lastKnown.RSSI >= rc.cfg.OpportunisticRSSI:
 		rc.roamingTier = opportunistic
+		rc.scanState.mu.Lock()
+		if rc.scanState.scanMode != fullScan {
+			rc.scanState.scanMode = fastScan
+		}
+		rc.scanState.mu.Unlock()
+		slog.Debug("roaming tier opportunistic",
+			"rssi", rc.lastKnown.RSSI)
 	case rc.lastKnown.RSSI >= rc.cfg.ActiveRSSI:
 		rc.roamingTier = active
-	default:
+		rc.scanState.mu.Lock()
+		if rc.scanState.scanMode != fullScan {
+			rc.scanState.scanMode = fastScan
+		}
+		rc.scanState.mu.Unlock()
+		slog.Debug("roaming tier active",
+			"rssi", rc.lastKnown.RSSI)
+	case rc.lastKnown.RSSI <= rc.cfg.CriticalRSSI:
 		rc.roamingTier = critical
+		rc.scanState.mu.Lock()
+		if rc.scanState.scanMode != fullScan {
+			rc.scanState.scanMode = fastScan
+		}
+		rc.scanState.mu.Unlock()
+		slog.Debug("roaming tier critical",
+			"rssi", rc.lastKnown.RSSI)
 	}
 }
 func (rc *roamContext) handleWpaSuppConfig(c *wpac.Client) (func(), error) {

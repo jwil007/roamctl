@@ -7,41 +7,70 @@ import (
 
 func (cfg *Config) Validate() error {
 	var errs []string
-	// Preferences
+
 	if cfg.Interface == "" {
-		errs = append(errs, "Interface field cannot be empty")
+		errs = append(errs, "preferences.interface cannot be empty")
 	}
-	// Thresholds
-	if !validRSSI(cfg.Thresholds.RSSI) {
+
+	// RoamingTiers
+	if !validRSSI(cfg.RoamingTiers.ExcellentRSSI) {
 		errs = append(errs, fmt.Sprintf(
-			"thresholds.rssi %v invalid. Must be in range -128 to 0",
-			cfg.Thresholds.RSSI))
+			"roaming_tiers.excellent_rssi %v invalid. Must be in range -128 to 0",
+			cfg.RoamingTiers.ExcellentRSSI))
 	}
-	if !validScore(cfg.Thresholds.ScoreDelta) {
+	if !validRSSI(cfg.RoamingTiers.OpportunisticRSSI) {
 		errs = append(errs, fmt.Sprintf(
-			"thresholds.score_delta %v invalid. Must be in range 0 to 100",
-			cfg.Thresholds.ScoreDelta))
+			"roaming_tiers.opportunistic_rssi %v invalid. Must be in range -128 to 0",
+			cfg.RoamingTiers.OpportunisticRSSI))
 	}
-	if !validScore(cfg.Thresholds.ScoreDelta) {
+	if !validScore(cfg.RoamingTiers.OpportunisticDelta) {
 		errs = append(errs, fmt.Sprintf(
-			"thresholds.retry_rate %v invalid. Must be in range 0 to 100",
-			cfg.Thresholds.RetryRate))
+			"roaming_tiers.opportunistic_score_delta %v invalid. Must be in range 0 to 100",
+			cfg.RoamingTiers.OpportunisticDelta))
 	}
-	if cfg.MaxNoCandidates > 20 || cfg.MaxNoCandidates < 0 {
+	if !validRSSI(cfg.RoamingTiers.ActiveRSSI) {
 		errs = append(errs, fmt.Sprintf(
-			"thresholds.score_delta %v invalid. Must be in range 0 to 20",
-			cfg.MaxNoCandidates))
+			"roaming_tiers.active_rssi %v invalid. Must be in range -128 to 0",
+			cfg.RoamingTiers.ActiveRSSI))
 	}
-	if cfg.RSSIHysteresisUp > 15 || cfg.RSSIHysteresisUp < 0 {
+	if !validScore(cfg.RoamingTiers.ActiveDelta) {
 		errs = append(errs, fmt.Sprintf(
-			"thresholds.hysteresis_up %v invalid. Must be in range 0 to 15",
-			cfg.RSSIHysteresisUp))
+			"roaming_tiers.active_score_delta %v invalid. Must be in range 0 to 100",
+			cfg.RoamingTiers.ActiveDelta))
 	}
-	if cfg.RSSIHysteresisDown > 15 || cfg.RSSIHysteresisDown < 0 {
+	if !validRSSI(cfg.RoamingTiers.CriticalRSSI) {
 		errs = append(errs, fmt.Sprintf(
-			"thresholds.hysteresis_down %v invalid. Must be in range 0 to 15",
-			cfg.RSSIHysteresisUp))
+			"roaming_tiers.critical_rssi %v invalid. Must be in range -128 to 0",
+			cfg.RoamingTiers.CriticalRSSI))
 	}
+	if !validScore(cfg.RoamingTiers.CriticalDelta) {
+		errs = append(errs, fmt.Sprintf(
+			"roaming_tiers.critical_score_delta %v invalid. Must be in range 0 to 100",
+			cfg.RoamingTiers.CriticalDelta))
+	}
+	// tier ordering
+	if cfg.RoamingTiers.ExcellentRSSI <= cfg.RoamingTiers.OpportunisticRSSI {
+		errs = append(errs, "roaming_tiers.excellent_rssi must be greater than opportunistic_rssi")
+	}
+	if cfg.RoamingTiers.OpportunisticRSSI <= cfg.RoamingTiers.ActiveRSSI {
+		errs = append(errs, "roaming_tiers.opportunistic_rssi must be greater than active_rssi")
+	}
+	if cfg.RoamingTiers.ActiveRSSI <= cfg.RoamingTiers.CriticalRSSI {
+		errs = append(errs, "roaming_tiers.active_rssi must be greater than critical_rssi")
+	}
+
+	// Stability
+	if cfg.Stability.RSSIHysteresisUp > 15 || cfg.Stability.RSSIHysteresisUp < 0 {
+		errs = append(errs, fmt.Sprintf(
+			"stability.rssi_hysteresis_up %v invalid. Must be in range 0 to 15",
+			cfg.Stability.RSSIHysteresisUp))
+	}
+	if cfg.Stability.RSSIHysteresisDown > 15 || cfg.Stability.RSSIHysteresisDown < 0 {
+		errs = append(errs, fmt.Sprintf(
+			"stability.rssi_hysteresis_down %v invalid. Must be in range 0 to 15",
+			cfg.Stability.RSSIHysteresisDown))
+	}
+
 	// ScoreWeights
 	if !validScore(cfg.ScoreWeights.RSSI) {
 		errs = append(errs, fmt.Sprintf(
@@ -73,6 +102,35 @@ func (cfg *Config) Validate() error {
 			"score_weights.phy_type %v invalid. Must be in range 0 to 100",
 			cfg.ScoreWeights.PHYType))
 	}
+
+	// ScoreClamps
+	if !validRSSI(cfg.ScoreClamps.MinRSSI) {
+		errs = append(errs, fmt.Sprintf(
+			"score_clamps.min_rssi %v invalid. Must be in range -128 to 0",
+			cfg.ScoreClamps.MinRSSI))
+	}
+	if !validRSSI(cfg.ScoreClamps.MaxRSSI) {
+		errs = append(errs, fmt.Sprintf(
+			"score_clamps.max_rssi %v invalid. Must be in range -128 to 0",
+			cfg.ScoreClamps.MaxRSSI))
+	}
+	if cfg.ScoreClamps.MinRSSI >= cfg.ScoreClamps.MaxRSSI {
+		errs = append(errs, "score_clamps.min_rssi must be less than max_rssi")
+	}
+	if !validScore(cfg.ScoreClamps.MinSNR) {
+		errs = append(errs, fmt.Sprintf(
+			"score_clamps.min_snr %v invalid. Must be in range 0 to 100",
+			cfg.ScoreClamps.MinSNR))
+	}
+	if !validScore(cfg.ScoreClamps.MaxSNR) {
+		errs = append(errs, fmt.Sprintf(
+			"score_clamps.max_snr %v invalid. Must be in range 0 to 100",
+			cfg.ScoreClamps.MaxSNR))
+	}
+	if cfg.ScoreClamps.MinSNR >= cfg.ScoreClamps.MaxSNR {
+		errs = append(errs, "score_clamps.min_snr must be less than max_snr")
+	}
+
 	// BandScores
 	if !validScore(cfg.BandScores.Band2point4) {
 		errs = append(errs, fmt.Sprintf(
@@ -89,27 +147,7 @@ func (cfg *Config) Validate() error {
 			"band_scores.6ghz %v invalid. Must be in range 0 to 100",
 			cfg.BandScores.Band6))
 	}
-	// ScoreClamps
-	if !validRSSI(cfg.ScoreClamps.MinRSSI) {
-		errs = append(errs, fmt.Sprintf(
-			"score_clamps.min_rssi %v invalid. Must be in range -128 to 0",
-			cfg.ScoreClamps.MinRSSI))
-	}
-	if !validRSSI(cfg.ScoreClamps.MaxRSSI) {
-		errs = append(errs, fmt.Sprintf(
-			"score_clamps.max_rssi %v invalid. Must be in range -128 to 0",
-			cfg.ScoreClamps.MaxRSSI))
-	}
-	if !validScore(cfg.ScoreClamps.MinSNR) {
-		errs = append(errs, fmt.Sprintf(
-			"score_clamps.min_snr %v invalid. Must be in range 0 to 100",
-			cfg.ScoreClamps.MinSNR))
-	}
-	if !validScore(cfg.ScoreClamps.MaxSNR) {
-		errs = append(errs, fmt.Sprintf(
-			"score_clamps.min_snr %v invalid. Must be in range 0 to 100",
-			cfg.ScoreClamps.MinSNR))
-	}
+
 	// ChanWidthScores
 	if !validScore(cfg.ChanWidthScores.ChannelWidth20) {
 		errs = append(errs, fmt.Sprintf(
@@ -136,6 +174,7 @@ func (cfg *Config) Validate() error {
 			"chan_width_scores.320mhz %v invalid. Must be in range 0 to 100",
 			cfg.ChanWidthScores.ChannelWidth320))
 	}
+
 	// PhyScores
 	if !validScore(cfg.PhyScores.PHYLegacy) {
 		errs = append(errs, fmt.Sprintf(
@@ -162,6 +201,7 @@ func (cfg *Config) Validate() error {
 			"phy_scores.80211be %v invalid. Must be in range 0 to 100",
 			cfg.PhyScores.PHY80211be))
 	}
+
 	if len(errs) > 0 {
 		return fmt.Errorf("config validation failed:\n%v", strings.Join(errs, "\n"))
 	}

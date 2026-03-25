@@ -4,15 +4,14 @@ import "time"
 
 type Config struct {
 	Preferences     `toml:"preferences"`
-	Thresholds      `toml:"thresholds"`
-	Scanning        `toml:"scanning"`
 	RoamingTiers    `toml:"roaming_tiers"`
+	Stability       `toml:"stability"`
+	Timing          `toml:"timing"`
 	ScoreWeights    `toml:"score_weights"`
 	ScoreClamps     `toml:"score_clamps"`
 	BandScores      `toml:"band_scores"`
 	ChanWidthScores `toml:"chan_width_scores"`
 	PhyScores       `toml:"phy_scores"`
-	Timing          `toml:"timing"`
 }
 
 type Preferences struct {
@@ -22,11 +21,42 @@ type Preferences struct {
 type RoamingTiers struct {
 	ExcellentRSSI      int `toml:"excellent_rssi"`
 	OpportunisticRSSI  int `toml:"opportunistic_rssi"`
-	OpportunisticDelta int `toml:"opportunistic_delta"`
+	OpportunisticDelta int `toml:"opportunistic_score_delta"`
 	ActiveRSSI         int `toml:"active_rssi"`
-	ActiveDelta        int `toml:"active_delta"`
+	ActiveDelta        int `toml:"active_score_delta"`
 	CriticalRSSI       int `toml:"critical_rssi"`
-	CriticalDelta      int `toml:"critical_delta"`
+	CriticalDelta      int `toml:"critical_score_delta"`
+}
+
+type Stability struct {
+	RSSIHysteresisUp   int `toml:"rssi_hysteresis_up"`
+	RSSIHysteresisDown int `toml:"rssi_hysteresis_down"`
+	//RetryRate          int `toml:"retry_rate"`  // not used, may implement for tier select
+	//DataRate           int `toml:"data_rate"`   // not used, may implement for tier select
+}
+
+type Timing struct {
+	SigPollInterval time.Duration `toml:"sig_poll_interval"`
+	BGScanInterval  time.Duration `toml:"base_scan_interval"`
+	MaxBSSCt        int           `toml:"max_bss_ct"`
+}
+
+type ScoreWeights struct {
+	RSSI         int `toml:"rssi"`
+	SNR          int `toml:"snr"`
+	Band         int `toml:"band"`
+	ChannelWidth int `toml:"channel_width"`
+	EstThruput   int `toml:"-"`
+	QBSSUtil     int `toml:"qbss_util"`
+	QBSSStaCt    int `toml:"-"`
+	PHYType      int `toml:"phy_type"`
+}
+
+type ScoreClamps struct {
+	MinRSSI int `toml:"min_rssi"`
+	MaxRSSI int `toml:"max_rssi"`
+	MinSNR  int `toml:"min_snr"`
+	MaxSNR  int `toml:"max_snr"`
 }
 
 type BandScores struct {
@@ -49,45 +79,4 @@ type PhyScores struct {
 	PHY80211ac int `toml:"80211ac"`
 	PHY80211ax int `toml:"80211ax"`
 	PHY80211be int `toml:"80211be"`
-}
-
-type Scanning struct {
-	BGScanInterval time.Duration `toml:"bg_scan_interval"`
-	MaxScanAge     time.Duration `toml:"max_scan_age"`
-	MaxBSSCt       int           `toml:"max_bss_ct"`
-}
-
-type Timing struct {
-	SuccessBackoffTime      time.Duration `toml:"success_backoff_time"`
-	FailureBackoffTime      time.Duration `toml:"failure_backoff_time"`
-	NoCandidatesBackoffTime time.Duration `toml:"no_candidates_backoff_time"`
-	SigPollInterval         time.Duration `toml:"sig_poll_interval"`
-}
-type Thresholds struct {
-	RSSI               int `toml:"rssi"`
-	RSSIHysteresisUp   int `toml:"rssi_hysteresis_up"`
-	RSSIHysteresisDown int `toml:"rssi_hysteresis_down"`
-	RetryRate          int `toml:"retry_rate"`
-	DataRate           int `toml:"data_rate"`
-	ScoreDelta         int `toml:"score_delta"`
-	MaxNoCandidates    int `toml:"max_no_candidate_attempts"`
-}
-
-type ScoreWeights struct {
-	RSSI int `toml:"rssi"`
-	SNR  int `toml:"snr"`
-
-	Band         int `toml:"band"`
-	ChannelWidth int `toml:"channel_width"`
-	EstThruput   int `toml:"-"`
-	QBSSUtil     int `toml:"qbss_util"`
-	QBSSStaCt    int `toml:"-"`
-	PHYType      int `toml:"phy_type"`
-}
-
-type ScoreClamps struct {
-	MinRSSI int `toml:"min_rssi"`
-	MaxRSSI int `toml:"max_rssi"`
-	MinSNR  int `toml:"min_snr"`
-	MaxSNR  int `toml:"max_snr"`
 }

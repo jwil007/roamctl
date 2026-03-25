@@ -164,7 +164,6 @@ func (rc *roamContext) prepScanResults(c *wpac.Client) error {
 	rc.scanState.mu.Lock()
 	rc.scanState.bssListStable = hash == rc.scanState.bssidHash
 	stable := rc.scanState.bssListStable
-	rc.scanState.bssidHash = hash
 	rc.scanState.mu.Unlock()
 	slog.Debug("bssListStable checked", "bool", stable)
 	if len(rc.scoredAPs) == 0 {
@@ -178,6 +177,10 @@ func (rc *roamContext) prepScanResults(c *wpac.Client) error {
 func getFreqsByRSSI(aps []wpac.RichBSS) []int {
 	var freqsRaw []int
 	for _, ap := range aps {
+		slog.Debug("BSS to build chan list",
+			"ssid", ap.SSID,
+			"bssid", ap.BSSID,
+			"freq", ap.Freq)
 		freqsRaw = append(freqsRaw, ap.Freq)
 	}
 	slices.Sort(freqsRaw)

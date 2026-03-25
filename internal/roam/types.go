@@ -90,10 +90,22 @@ type scanState struct {
 type scanMode int
 
 const (
-	noScan scanMode = iota
-	fastScan
+	fastScan scanMode = iota
 	fullScan
+	noScan
 )
+
+func (s scanMode) String() string {
+	switch s {
+	case fastScan:
+		return "fast_scan"
+	case fullScan:
+		return "full_scan"
+	case noScan:
+		return "scan_disabled"
+	}
+	return ""
+}
 
 type roamingTier int
 

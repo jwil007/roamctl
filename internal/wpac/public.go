@@ -4,6 +4,7 @@ package wpac
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 	"time"
@@ -144,6 +145,12 @@ func (c *Client) ScanResults(ssid string) ([]RichBSS, error) {
 		//fmt.Printf("Data parsed from beacon TLVs:\n %+v\n", ieBSS)
 		richBSSList = append(richBSSList, constructRichBSS(wpasBSS, ieBSS))
 	}
+	richBSSList = slices.DeleteFunc(richBSSList, func(b RichBSS) bool {
+		if b.BSSID == "" {
+			slog.Warn("Null BSSID in parsed scan results. Skipping this entry.")
+		}
+		return b.BSSID == ""
+	})
 	slices.SortFunc(richBSSList, func(a, b RichBSS) int {
 		return b.RSSI - a.RSSI
 	})

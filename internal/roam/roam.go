@@ -12,6 +12,10 @@ import (
 )
 
 func (rc *roamContext) handleOppRoam(c *wpac.Client, ctx context.Context) error {
+	if !rc.checkIfNewScan() {
+		slog.Debug("No new scan data, skipping roam attempt")
+		return nil
+	}
 	err := rc.prepScanResults(c)
 	if err != nil {
 		return fmt.Errorf("prepScanResults: %w", err)
@@ -105,7 +109,7 @@ func (rc *roamContext) attemptRoam(
 			RetryCount: 3,
 		}
 		if rc.checkRoam() {
-			slog.Info("Run confirmation check against candidateAP")
+			slog.Info("Runing confirmation scan to ensure roam is optimal")
 			err := rc.reScan(c, ctx, sp) //rescan to ensure candidate AP is still best
 			if err != nil {
 				if errors.Is(err, ErrScanRetryLimit) {
@@ -119,17 +123,14 @@ func (rc *roamContext) attemptRoam(
 					return fmt.Errorf("c.roamToCandidate: %w", err)
 				}
 			} else {
-				//no candidate APs
 				rc.roamResultFlag = noCandidates
-				slog.Warn(yellow.Render("NO CANDIDATES") +
+				slog.Info(yellow.Render("NO CANDIDATES") +
 					" returning to signal monitoring")
 				return nil
 			}
 		} else {
-			//no candidate APs
-			rc.roamResultFlag = noCandidates
-			slog.Warn(yellow.Render("NO CANDIDATES") +
-				" returning to signal monitoring")
+			// no better AP in pre-check
+			slog.Debug("no candidate meets threshold, skipping confirmation scan")
 			return nil
 		}
 	} //withRescan == false
@@ -141,7 +142,7 @@ func (rc *roamContext) attemptRoam(
 	} else {
 		//no candidate APs
 		rc.roamResultFlag = noCandidates
-		slog.Warn(yellow.Render("NO CANDIDATES") +
+		slog.Info(yellow.Render("NO CANDIDATES") +
 			" returning to signal monitoring")
 		return nil
 	}
