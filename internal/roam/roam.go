@@ -20,7 +20,7 @@ func (rc *roamContext) handleOppRoam(c *wpac.Client, ctx context.Context) error 
 	if err != nil {
 		return fmt.Errorf("prepScanResults: %w", err)
 	}
-	err = rc.attemptRoam(c, ctx, true)
+	err = rc.attemptRoam(c, ctx)
 	if err != nil {
 		return fmt.Errorf("attemptRoam: %w", err)
 	}
@@ -28,14 +28,12 @@ func (rc *roamContext) handleOppRoam(c *wpac.Client, ctx context.Context) error 
 }
 
 func (rc *roamContext) handleActiveRoam(c *wpac.Client, ctx context.Context) error {
-	withRescan := true
 	if !rc.entryScanned {
 		slog.Info("Active roaming entered, running fast scan")
 		err := rc.runFastScan(c, ctx)
 		if err != nil && !errors.Is(err, ErrScanRetryLimit) {
 			return fmt.Errorf("runFastScan: %w", err)
 		}
-		withRescan = false
 		rc.entryScanned = true
 	}
 	if !rc.checkIfNewScan() {
@@ -46,7 +44,7 @@ func (rc *roamContext) handleActiveRoam(c *wpac.Client, ctx context.Context) err
 	if err != nil {
 		return fmt.Errorf("prepScanResults: %w", err)
 	}
-	err = rc.attemptRoam(c, ctx, withRescan)
+	err = rc.attemptRoam(c, ctx)
 	if err != nil {
 		return fmt.Errorf("attemptRoam: %w", err)
 	}
@@ -73,7 +71,7 @@ func (rc *roamContext) handleCriticalRoam(c *wpac.Client, ctx context.Context) e
 	if err != nil {
 		return fmt.Errorf("prepScanResults: %w", err)
 	}
-	err = rc.attemptRoam(c, ctx, true)
+	err = rc.attemptRoam(c, ctx)
 	if err != nil {
 		return fmt.Errorf("attemptRoam: %w", err)
 	}
@@ -87,7 +85,7 @@ func (rc *roamContext) handleCriticalRoam(c *wpac.Client, ctx context.Context) e
 		if err != nil {
 			return fmt.Errorf("prepScanResults: %w", err)
 		}
-		err = rc.attemptRoam(c, ctx, false)
+		err = rc.attemptRoam(c, ctx)
 		if err != nil {
 			return fmt.Errorf("attemptRoam: %w", err)
 		}
@@ -95,45 +93,7 @@ func (rc *roamContext) handleCriticalRoam(c *wpac.Client, ctx context.Context) e
 	return nil
 }
 
-func (rc *roamContext) attemptRoam(
-	c *wpac.Client,
-	ctx context.Context,
-	withRescan bool) error {
-	if withRescan {
-		//select top 4 scored APs for rescan
-		freqs := getFreqsByScore(rc.scoredAPs[0:min(len(rc.scoredAPs), 4)])
-		sp := wpac.ScanParams{
-			Freqs:      freqs,
-			SSID:       rc.ssid,
-			Timeout:    15 * time.Second,
-			RetryCount: 3,
-		}
-		if rc.checkRoam() {
-			slog.Info("Runing confirmation scan to ensure roam is optimal")
-			err := rc.reScan(c, ctx, sp) //rescan to ensure candidate AP is still best
-			if err != nil {
-				if errors.Is(err, ErrScanRetryLimit) {
-					return nil
-				}
-				return fmt.Errorf("rc.reScan: %w", err)
-			}
-			if rc.checkRoam() { //check one more time after rescan
-				err = rc.roamToCandidate(c, ctx)
-				if err != nil {
-					return fmt.Errorf("c.roamToCandidate: %w", err)
-				}
-			} else {
-				rc.roamResultFlag = noCandidates
-				slog.Info(yellow.Render("NO CANDIDATES") +
-					" returning to signal monitoring")
-				return nil
-			}
-		} else {
-			// no better AP in pre-check
-			slog.Debug("no candidate meets threshold, skipping confirmation scan")
-			return nil
-		}
-	} //withRescan == false
+func (rc *roamContext) attemptRoam(c *wpac.Client, ctx context.Context) error {
 	if rc.checkRoam() {
 		err := rc.roamToCandidate(c, ctx)
 		if err != nil {
@@ -142,8 +102,7 @@ func (rc *roamContext) attemptRoam(
 	} else {
 		//no candidate APs
 		rc.roamResultFlag = noCandidates
-		slog.Info(yellow.Render("NO CANDIDATES") +
-			" returning to signal monitoring")
+		slog.Debug("No candidate AP above roaming threshold, returning")
 		return nil
 	}
 	return nil

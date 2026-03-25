@@ -57,20 +57,10 @@ type roamContext struct {
 	lastRoamSuccess  time.Time
 	lastRoamFailure  time.Time
 	lastNoCandidates time.Time
-	noCandCounter    int            // don't need?
-	backoffTrigger   backoffTrigger // don't need?
-	backoffTriggerCt int            // don't need?
-	roamEnterCounter int            //debug counter to see how many times the roam loop is entered consecutively
-	thresholdFlag    thresholdFlag  //don't need?
 	hysteresisActive bool
 	lastTriggerRSSI  int
 	lastEvalTime     time.Time
-	waitForBGScan    bool        // don't need?
-	bgScanAPs        []scoredBSS // don't need?
-	lastBGScan       time.Time   // don't need?
-	bgScanReady      bool        // don't need?
-	bgScanChecked    bool        // don't need?
-	entryScanned     bool        // flag to track the immediate scan when in actively roaming. Prevents scan loop
+	entryScanned     bool //Prevents scan loop
 	roamingTier      roamingTier
 	scanState        scanState
 }
@@ -117,15 +107,6 @@ const (
 	critical
 )
 
-type backoffTrigger int
-
-const (
-	noBackoff backoffTrigger = iota
-	failureBackoff
-	successBackoff
-	noCandidatesBackoff
-)
-
 type roamResultFlag int
 
 const (
@@ -135,20 +116,8 @@ const (
 	unknown
 )
 
-type thresholdFlag int
-
-const (
-	noValue thresholdFlag = iota
-	lowRSSI
-	lowDataRate
-	highRetryRate
-	noCandidateLimit
-	inHysteresis
-)
-
 var ErrScanRetryLimit = errors.New("scan retry limit exceeded")
 
 var green = lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
 var red = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Bold(true)
-var yellow = lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true)
 var blue = lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Bold(true)

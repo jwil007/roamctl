@@ -187,15 +187,6 @@ func getFreqsByRSSI(aps []wpac.RichBSS) []int {
 	return slices.Compact(freqsRaw)
 }
 
-func getFreqsByScore(aps []scoredBSS) []int {
-	var freqsRaw []int
-	for _, ap := range aps {
-		freqsRaw = append(freqsRaw, ap.freq)
-	}
-	slices.Sort(freqsRaw)
-	return slices.Compact(freqsRaw)
-}
-
 func hashBSSIDs(aps []wpac.RichBSS) uint64 {
 	var bssids []string
 	for _, ap := range aps {
