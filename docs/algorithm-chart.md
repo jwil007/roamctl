@@ -6,7 +6,7 @@ flowchart TD
     C -->|Excellent| D[No scan · No roam]
     D 
 
-    C -->|Fair| E[Periodic background scan]
+    C -->|Fair| E[Periodic background scan using known channels]
     E --> H
 
     C -->|Degraded| F[Targeted scan on known channels\nfull sweep if environment changed]
