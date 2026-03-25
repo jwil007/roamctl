@@ -1,6 +1,6 @@
 ```mermaid
 flowchart TD
-    A([Connected to AP]) --> B[Poll signal quality at interval (default 250ms)]
+    A([Connected to AP]) --> B[Poll signal quality at interval - default 250ms]
     B --> C{Signal quality?}
 
     C -->|Excellent| D[No scan · No roam]
