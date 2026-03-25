@@ -1,6 +1,5 @@
 ```mermaid
 flowchart TD
-flowchart TD
     A([Connected to AP]) --> B[Poll signal quality continuously]
     B --> C{Signal quality?}
 
