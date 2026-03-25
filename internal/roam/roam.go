@@ -16,13 +16,9 @@ func (rc *roamContext) handleOppRoam(c *wpac.Client, ctx context.Context) error 
 		slog.Debug("No new scan data, skipping roam attempt")
 		return nil
 	}
-	err := rc.prepScanResults(c)
+	err := rc.evalAndAttemptRoam(c, ctx)
 	if err != nil {
-		return fmt.Errorf("prepScanResults: %w", err)
-	}
-	err = rc.attemptRoam(c, ctx)
-	if err != nil {
-		return fmt.Errorf("attemptRoam: %w", err)
+		return fmt.Errorf("evalAndAttemptRoam: %w", err)
 	}
 	return nil
 }
@@ -36,17 +32,9 @@ func (rc *roamContext) handleActiveRoam(c *wpac.Client, ctx context.Context) err
 		}
 		rc.entryScanned = true
 	}
-	if !rc.checkIfNewScan() {
-		slog.Debug("No new scan data, skipping roam attempt")
-		return nil
-	}
-	err := rc.prepScanResults(c)
+	err := rc.evalAndAttemptRoam(c, ctx)
 	if err != nil {
-		return fmt.Errorf("prepScanResults: %w", err)
-	}
-	err = rc.attemptRoam(c, ctx)
-	if err != nil {
-		return fmt.Errorf("attemptRoam: %w", err)
+		return fmt.Errorf("evalAndAttemptRoam: %w", err)
 	}
 	rc.scanState.mu.RLock()
 	stable := rc.scanState.bssListStable
@@ -71,24 +59,18 @@ func (rc *roamContext) handleCriticalRoam(c *wpac.Client, ctx context.Context) e
 		}
 		rc.entryScannedCrit = true
 	}
-	if !rc.checkIfNewScan() {
-		slog.Debug("No new scan data, skipping roam attempt")
-		return nil
-	}
-	err := rc.prepScanResults(c)
+	err := rc.evalAndAttemptRoam(c, ctx)
 	if err != nil {
-		return fmt.Errorf("prepScanResults: %w", err)
-	}
-	err = rc.attemptRoam(c, ctx)
-	if err != nil {
-		return fmt.Errorf("attemptRoam: %w", err)
+		return fmt.Errorf("evalAndAttemptRoam: %w", err)
 	}
 	rc.scanState.mu.RLock()
 	stable := rc.scanState.bssListStable
 	rc.scanState.mu.RUnlock()
 	if rc.roamResultFlag == noCandidates {
 		if !stable {
-			slog.Info("Running full scan immediately...")
+			slog.Info("Running full scan immediately...",
+				"last_roam_result", rc.roamResultFlag,
+				"bss_list_stable", stable)
 			// break glass full scan
 			err = rc.runFullScan(c, ctx)
 			if err != nil && !errors.Is(err, ErrScanRetryLimit) {
@@ -107,6 +89,25 @@ func (rc *roamContext) handleCriticalRoam(c *wpac.Client, ctx context.Context) e
 	return nil
 }
 
+func (rc *roamContext) evalAndAttemptRoam(
+	c *wpac.Client,
+	ctx context.Context) error {
+	if !rc.checkIfNewScan() {
+		slog.Debug("Skipping roam attempt")
+		return nil
+	}
+	err := rc.prepScanResults(c)
+	if err != nil {
+		return fmt.Errorf("prepScanResults: %w", err)
+	}
+	logScoredAPs(rc)
+	err = rc.attemptRoam(c, ctx)
+	if err != nil {
+		return fmt.Errorf("attemptRoam: %w", err)
+	}
+	return nil
+}
+
 func (rc *roamContext) attemptRoam(c *wpac.Client, ctx context.Context) error {
 	if rc.checkRoam() {
 		err := rc.roamToCandidate(c, ctx)
@@ -116,7 +117,7 @@ func (rc *roamContext) attemptRoam(c *wpac.Client, ctx context.Context) error {
 	} else {
 		//no candidate APs
 		rc.roamResultFlag = noCandidates
-		slog.Debug("No candidate AP above roaming threshold, returning")
+		//slog.Debug("No candidate AP above roaming threshold, returning")
 		return nil
 	}
 	return nil
@@ -133,8 +134,16 @@ func (rc *roamContext) checkRoam() bool {
 				"rssi", rc.lastKnown.RSSI)
 			rc.hysteresisActive = false
 		} else {
+			slog.Debug("RSSI Hysteresis active. Roam not allowed",
+				"rssi", rc.lastKnown.RSSI,
+				"upper_bound", rc.lastTriggerRSSI+rc.cfg.RSSIHysteresisUp,
+				"lower_bound", rc.lastTriggerRSSI-rc.cfg.RSSIHysteresisDown)
 			return false
 		}
+	}
+	if rc.currentAP.bssid == rc.candidateAP.bssid {
+		slog.Info("Current AP is best AP in scan data, skipping roam")
+		return false
 	}
 	switch rc.roamingTier {
 	case unknownTier:
@@ -142,20 +151,44 @@ func (rc *roamContext) checkRoam() bool {
 	case opportunistic:
 		if rc.candidateAP.finalScore-rc.cfg.FairDelta >=
 			rc.currentAP.finalScore {
+			slog.Info("Score delta above threshold, attempting roam...",
+				"candidate_bssid", rc.candidateAP.bssid,
+				"measured_delta", rc.candidateAP.finalScore-rc.currentAP.finalScore,
+				"required_delta", rc.cfg.FairDelta)
 			return true
 		}
+		slog.Info("Score delta below threshold, no roam",
+			"candidate_bssid", rc.candidateAP.bssid,
+			"measured_delta", rc.candidateAP.finalScore-rc.currentAP.finalScore,
+			"required_delta", rc.cfg.FairDelta)
 		return false
 	case active:
 		if rc.candidateAP.finalScore-rc.cfg.DegradedDelta >=
 			rc.currentAP.finalScore {
+			slog.Info("Score delta above threshold, attempting roam...",
+				"candidate_bssid", rc.candidateAP.bssid,
+				"measured_delta", rc.candidateAP.finalScore-rc.currentAP.finalScore,
+				"required_delta", rc.cfg.DegradedDelta)
 			return true
 		}
+		slog.Info("Score delta below threshold, no roam",
+			"candidate_bssid", rc.candidateAP.bssid,
+			"measured_delta", rc.candidateAP.finalScore-rc.currentAP.finalScore,
+			"required_delta", rc.cfg.DegradedDelta)
 		return false
 	case critical:
 		if rc.candidateAP.finalScore-rc.cfg.CriticalDelta >=
 			rc.currentAP.finalScore {
+			slog.Info("Score delta above threshold, attempting roam...",
+				"candidate_bssid", rc.candidateAP.bssid,
+				"measured_delta", rc.candidateAP.finalScore-rc.currentAP.finalScore,
+				"required_delta", rc.cfg.CriticalDelta)
 			return true
 		}
+		slog.Info("Score delta below threshold, no roam",
+			"candidate_bssid", rc.candidateAP.bssid,
+			"measured_delta", rc.candidateAP.finalScore-rc.currentAP.finalScore,
+			"required_delta", rc.cfg.CriticalDelta)
 		return false
 	default:
 		panic(fmt.Sprintf("unknown roaming tier: %d", rc.roamingTier))
@@ -177,15 +210,15 @@ func (rc *roamContext) roamToCandidate(
 		rc.roamResultFlag = unknown
 		return fmt.Errorf("c.Roam(%v): %w", rc.candidateAP.bssid, err)
 	}
-	slog.Info("Roam complete", "stats", result)
 	switch result.Success {
 	case true:
 		slog.Info(green.Render("ROAM SUCCESS"),
 			"bssid", rc.candidateAP.bssid,
 			"rssi", rc.candidateAP.rssi,
 			"band", rc.candidateAP.band,
-			"score", rc.candidateAP.finalScore)
-		slog.Info("Waiting for next trigger...")
+			"score", rc.candidateAP.finalScore,
+			"duration", result.Duration,
+			"message", result.Message)
 		rc.roamResultFlag = success
 		rc.hysteresisActive = true
 		rc.lastTriggerRSSI = rc.lastKnown.RSSI
@@ -200,8 +233,8 @@ func (rc *roamContext) roamToCandidate(
 			"rssi", rc.candidateAP.rssi,
 			"band", rc.candidateAP.band,
 			"score", rc.candidateAP.finalScore,
-			"reason", result.Message)
-		slog.Info("Waiting for next trigger...")
+			"duration", result.Duration,
+			"message", result.Message)
 		rc.roamResultFlag = failure
 		return nil
 	default:
@@ -214,9 +247,15 @@ func (rc *roamContext) checkIfNewScan() bool {
 	lastScan := rc.scanState.lastScanTime
 	rc.scanState.mu.RUnlock()
 	if lastScan.After(rc.lastEvalTime) {
+		slog.Debug("Fresh scan data received")
 		rc.lastEvalTime = time.Now()
 		return true
 	}
+	slog.Debug("Scan not yet fresh",
+		"last_scan_time", lastScan,
+		"last_eval_time", rc.lastEvalTime,
+		"delta", rc.lastEvalTime.Sub(lastScan).Seconds(),
+	)
 	rc.lastEvalTime = time.Now()
 	return false
 }

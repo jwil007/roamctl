@@ -23,7 +23,9 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 		return fmt.Errorf("handleWpaSuppConfig: %w", err)
 	}
 	defer cleanup() //sets wpa_supplicant back to original state
-	slog.Info("Running full channel scan ...")
+	slog.Info("Current SSID",
+		"ssid", rc.ssid)
+	slog.Info("Running full channel scan...")
 	err = rc.runFullScan(c, ctx)
 	if err != nil && !errors.Is(err, ErrScanRetryLimit) {
 		return fmt.Errorf("rc.runFullScan: %w", err)
@@ -31,7 +33,7 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 	//Start polling signal stats
 	slog.Info("Starting signal polling...")
 	sigCh, sigErrCh := c.PollSignal(ctx, cfg.Timing.SigPollInterval)
-	scErrCh := rc.runScanConcurrent(c, ctx)
+	var scErrCh <-chan error
 	cadenceTicker := time.NewTicker(cfg.BGScanInterval)
 	defer cadenceTicker.Stop()
 	for {
@@ -43,24 +45,32 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 			rc.scanState.mu.RUnlock()
 			if !inProgress {
 				if mode != noScan {
-					slog.Info("Running background scan",
+					slog.Info("Running background scan", "scan_mode", mode)
+					scErrCh = rc.runScanConcurrent(c, ctx)
+				} else {
+					slog.Debug("Skipping background scan",
 						"scan_mode", mode)
 				}
-				scErrCh = rc.runScanConcurrent(c, ctx)
 			} else {
 				slog.Info("Backgound scan skipped - scan already in progress")
 			}
 		case con := <-sigCh:
-			if con.BSSID != "" {
+			if con.AvgRSSIBeacon != 0 {
+				con.RSSI = con.AvgRSSIBeacon
+			}
+			if con.BSSID != "" && con.RSSI < -1 {
 				rc.lastKnown = &con
 			}
 			if rc.lastKnown == nil {
+				slog.Debug("last polled signal stats nil, check again next cycle")
 				continue
 			}
 			//slog.Debug("Last polled connection status", "stats", rc.lastKnown)
 			rc.evalTier()
-			if rc.lastKnown.RSSI >= rc.cfg.FairRSSI+rc.cfg.RSSIHysteresisUp {
-				//slog.Debug("Clearing entryScanned flag")
+			if rc.lastKnown.RSSI >= rc.cfg.FairRSSI+rc.cfg.RSSIHysteresisUp &&
+				(rc.entryScanned || rc.entryScannedCrit) {
+				slog.Info("Signal recovered - resetting entry scan flags",
+					"rssi", rc.lastKnown.RSSI)
 				rc.entryScanned = false
 				rc.entryScannedCrit = false
 			}
@@ -95,8 +105,9 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 }
 
 func (rc *roamContext) evalTier() {
+	prevTier := rc.roamingTier
 	switch {
-	case rc.lastKnown.RSSI >= rc.cfg.ExcellentRSSI:
+	case rc.lastKnown.RSSI >= rc.cfg.ExcellentRSSI+rc.tierUpBuffer(noRoam):
 		rc.roamingTier = noRoam
 		rc.scanState.mu.Lock()
 		if rc.scanState.scanMode != fullScan {
@@ -105,7 +116,7 @@ func (rc *roamContext) evalTier() {
 		rc.scanState.mu.Unlock()
 		slog.Debug("roaming tier noRoam",
 			"rssi", rc.lastKnown.RSSI)
-	case rc.lastKnown.RSSI >= rc.cfg.FairRSSI:
+	case rc.lastKnown.RSSI >= rc.cfg.FairRSSI+rc.tierUpBuffer(opportunistic):
 		rc.roamingTier = opportunistic
 		rc.scanState.mu.Lock()
 		if rc.scanState.scanMode != fullScan {
@@ -114,7 +125,7 @@ func (rc *roamContext) evalTier() {
 		rc.scanState.mu.Unlock()
 		slog.Debug("roaming tier opportunistic",
 			"rssi", rc.lastKnown.RSSI)
-	case rc.lastKnown.RSSI >= rc.cfg.DegradedRSSI:
+	case rc.lastKnown.RSSI >= rc.cfg.DegradedRSSI+rc.tierUpBuffer(active):
 		rc.roamingTier = active
 		rc.scanState.mu.Lock()
 		if rc.scanState.scanMode != fullScan {
@@ -133,7 +144,22 @@ func (rc *roamContext) evalTier() {
 		slog.Debug("roaming tier critical",
 			"rssi", rc.lastKnown.RSSI)
 	}
+	if rc.roamingTier != prevTier {
+		slog.Info("Roaming tier changed",
+			"from", prevTier,
+			"to", rc.roamingTier,
+			"rssi", rc.lastKnown.RSSI)
+	}
 }
+
+func (rc *roamContext) tierUpBuffer(evalTier roamingTier) int {
+	if rc.roamingTier > evalTier {
+		slog.Debug("Tier hysteresis in effect")
+		return rc.cfg.TierHysteresis
+	}
+	return 0
+}
+
 func (rc *roamContext) handleWpaSuppConfig(c *wpac.Client) (func(), error) {
 	//Get Current wpa_supplicant status
 	storedConf, err := c.GetConfig()

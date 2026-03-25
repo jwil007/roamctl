@@ -108,6 +108,22 @@ const (
 	critical
 )
 
+func (s roamingTier) String() string {
+	switch s {
+	case unknownTier:
+		return "unknown"
+	case noRoam:
+		return "roam_disabled"
+	case opportunistic:
+		return "opportunistic"
+	case active:
+		return "active_roaming"
+	case critical:
+		return "critical"
+	}
+	return ""
+}
+
 type roamResultFlag int
 
 const (
@@ -116,6 +132,20 @@ const (
 	noCandidates
 	unknown
 )
+
+func (s roamResultFlag) String() string {
+	switch s {
+	case success:
+		return "success"
+	case failure:
+		return "failure"
+	case noCandidates:
+		return "no_candidates"
+	case unknown:
+		return "unknown"
+	}
+	return ""
+}
 
 var ErrScanRetryLimit = errors.New("scan retry limit exceeded")
 

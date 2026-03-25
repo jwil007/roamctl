@@ -30,6 +30,7 @@ type RoamingTiers struct {
 type Stability struct {
 	RSSIHysteresisUp   int `toml:"rssi_hysteresis_up"`
 	RSSIHysteresisDown int `toml:"rssi_hysteresis_down"`
+	TierHysteresis     int `toml:"tier_hysteresis"`
 	//RetryRate          int `toml:"retry_rate"`  // not used, may implement for tier select
 	//DataRate           int `toml:"data_rate"`   // not used, may implement for tier select
 }

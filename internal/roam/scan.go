@@ -83,20 +83,22 @@ func (rc *roamContext) runFullScan(c *wpac.Client, ctx context.Context) error {
 		return fmt.Errorf("c.ScanResults: %w", err)
 	}
 	freqs := getFreqsByRSSI(aps[0:min(len(aps), rc.cfg.MaxBSSCt)])
-	slog.Info("Channels identified for fast scan", "channels", freqs)
 	hash := hashBSSIDs(aps[0:min(len(aps), rc.cfg.MaxBSSCt)])
 	rc.scanState.mu.Lock()
 	rc.scanState.channels = freqs
-	rc.scanState.bssListStable = hash == rc.scanState.bssidHash
 	rc.scanState.bssidHash = hash
+	rc.scanState.bssListStable = true
 	rc.scanState.scanMode = fastScan
 	rc.scanState.mu.Unlock()
+	slog.Info("Full scan complete",
+		"channels", freqs)
 	return nil
 }
 
 func (rc *roamContext) executeScan(c *wpac.Client, ctx context.Context, sp wpac.ScanParams) error {
 	rc.scanState.mu.Lock()
 	for rc.scanState.scanInProgress {
+		slog.Info("Scan in progress, waiting for completion")
 		rc.scanState.cond.Wait()
 	}
 	rc.scanState.scanInProgress = true
@@ -121,12 +123,13 @@ func (rc *roamContext) executeScan(c *wpac.Client, ctx context.Context, sp wpac.
 	duration := time.Since(start)
 	completeTime := time.Now()
 	rc.scanState.mu.Lock()
+	mode := rc.scanState.scanMode
 	rc.scanState.scanInProgress = false
 	rc.scanState.scanDuration = duration
 	rc.scanState.lastScanTime = completeTime
 	rc.scanState.cond.Broadcast()
 	rc.scanState.mu.Unlock()
-	slog.Info("Scan completed", "duration", duration)
+	slog.Info("Scan completed", "scan_mode", mode, "duration", duration)
 	return nil
 }
 
@@ -146,13 +149,12 @@ func (rc *roamContext) prepScanResults(c *wpac.Client) error {
 			rc.currentAP = ap
 		}
 	}
-	logScoredAPs(rc)
 	hash := hashBSSIDs(aps[0:min(len(aps), rc.cfg.MaxBSSCt)])
 	rc.scanState.mu.Lock()
 	rc.scanState.bssListStable = hash == rc.scanState.bssidHash
 	stable := rc.scanState.bssListStable
 	rc.scanState.mu.Unlock()
-	slog.Debug("bssListStable checked", "bool", stable)
+	slog.Debug("bssListStable", "bool", stable)
 	rc.candidateAP = rc.scoredAPs[0]
 	return nil
 }

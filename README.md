@@ -134,6 +134,10 @@ critical_score_delta = 3
 rssi_hysteresis_up = 5
 rssi_hysteresis_down = 5
 
+# This value is used as an upward RSSI buffer when the roaming tier is evaluated
+# It prevents frequent tier oscilation when at an rssi boundry
+tier_hysteresis = 5
+
 [timing]
 # Timings for signal polling (e.g. hosts current RSSI, SNR) and bg scan interval
 sig_poll_interval = "250ms"
