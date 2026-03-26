@@ -8,7 +8,7 @@ interface = "wlan0"
 # These values set the floor of each RSSI tier, which dictate roaming logic
 # They are the floor for each tier. 
 # i.e. if fair_rssi is -67, -68 is in the "degraded" tier.
-excellent_rssi = -58
+excellent_rssi = -62
 fair_rssi = -70
 degraded_rssi = -76
 # values lower than degraded are considered critical
@@ -16,8 +16,8 @@ degraded_rssi = -76
 # Set score deltas required to roam per tier
 # Higher numbers mean candidate AP must be significantly better
 fair_score_delta = 8
-degraded_score_delta = 5
-critical_score_delta = 3
+degraded_score_delta = 4
+critical_score_delta = 2
 
 [stability]
 # These values define upper and lower bounds RSSI must cross before re-roaming
@@ -43,8 +43,8 @@ max_bss_ct = 15
 # Set to 100 for maxmium weight, 0 to ignore category
 rssi = 100
 snr = 0
-qbss_util = 30
-band = 50
+qbss_util = 15
+band = 35
 channel_width = 10
 phy_type = 15
 
@@ -52,7 +52,7 @@ phy_type = 15
 # Used for RSSI and SNR scoring.
 # Values below min are scored 0, values above max are score 100
 # Values between clamps are scored linearly
-min_rssi = -85
+min_rssi = -78
 max_rssi = -25
 min_snr = 10
 max_snr = 50
@@ -60,16 +60,16 @@ max_snr = 50
 # Use the following to adjust various scoring. This is where you can 
 # tweak band pref, cw pref, etc.
 [band_scores]
-2point4ghz = 0
-5ghz = 75
+2point4ghz = 20
+5ghz = 100
 6ghz = 100
 
 [chan_width_scores]
-20mhz = 0
-40mhz = 25
+20mhz = 40
+40mhz = 40
 80mhz = 75
-160mhz = 90
-320mhz = 100
+160mhz = 75
+320mhz = 75
 
 [phy_scores]
 legacy = 0

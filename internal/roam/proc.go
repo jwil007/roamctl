@@ -15,6 +15,7 @@ import (
 func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 	slog.Info("Starting roamctl... exit with ctrl+c")
 	rc := &roamContext{}
+	rc.roamingTier = noRoam
 	rc.cfg = cfg
 	rc.scanState.cond = sync.NewCond(&rc.scanState.mu)
 	slog.Info("Setting wpa_supplicant configuration")
@@ -146,10 +147,17 @@ func (rc *roamContext) evalTier() {
 			"rssi", rc.lastKnown.RSSI)
 	}
 	if rc.roamingTier != prevTier {
-		slog.Info("Roaming tier changed",
-			"from", prevTier,
-			"to", rc.roamingTier,
-			"rssi", rc.lastKnown.RSSI)
+		if rc.roamingTier < prevTier {
+			slog.Info("Tier improved — hysteresis threshold cleared",
+				"from", prevTier,
+				"to", rc.roamingTier,
+				"rssi", rc.lastKnown.RSSI)
+		} else {
+			slog.Info("Tier degraded",
+				"from", prevTier,
+				"to", rc.roamingTier,
+				"rssi", rc.lastKnown.RSSI)
+		}
 	}
 }
 

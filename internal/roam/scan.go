@@ -73,6 +73,9 @@ func (rc *roamContext) runFullScan(c *wpac.Client, ctx context.Context) error {
 		Timeout:    20 * time.Second,
 		RetryCount: 3,
 	}
+	rc.scanState.mu.Lock()
+	rc.scanState.scanMode = fullScan
+	rc.scanState.mu.Unlock()
 	err := rc.executeScan(c, ctx, sp)
 	if err != nil {
 		return fmt.Errorf("executeScan: %w", err)
@@ -97,13 +100,13 @@ func (rc *roamContext) runFullScan(c *wpac.Client, ctx context.Context) error {
 
 func (rc *roamContext) executeScan(c *wpac.Client, ctx context.Context, sp wpac.ScanParams) error {
 	rc.scanState.mu.Lock()
-	mode := rc.scanState.scanMode
-	stable := rc.scanState.bssListStable
 	for rc.scanState.scanInProgress {
-		slog.Info("Scan in progress, waiting for completion")
+		slog.Info("Execute Scan: Scan in progress, waiting for completion")
 		rc.scanState.cond.Wait()
 	}
 	rc.scanState.scanInProgress = true
+	mode := rc.scanState.scanMode
+	stable := rc.scanState.bssListStable
 	rc.scanState.mu.Unlock()
 	slog.Info("Scan dispatched",
 		"trigger_tier", rc.roamingTier,
@@ -132,7 +135,6 @@ func (rc *roamContext) executeScan(c *wpac.Client, ctx context.Context, sp wpac.
 	duration := time.Since(start)
 	completeTime := time.Now()
 	rc.scanState.mu.Lock()
-	mode = rc.scanState.scanMode
 	rc.scanState.scanInProgress = false
 	rc.scanState.scanDuration = duration
 	rc.scanState.lastScanTime = completeTime
@@ -196,7 +198,6 @@ func hashBSSIDs(aps []wpac.RichBSS) uint64 {
 }
 
 func logScoredAPs(rc *roamContext) {
-	slog.Info("Most recent scan data")
 	for _, a := range rc.scoredAPs {
 		if a.bssid == rc.lastKnown.BSSID {
 			slog.Info(blue.Render("current ap"), "bss", a)
