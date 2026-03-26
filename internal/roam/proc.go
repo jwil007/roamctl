@@ -65,7 +65,7 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 				slog.Debug("last polled signal stats nil, check again next cycle")
 				continue
 			}
-			//slog.Debug("Last polled connection status", "stats", rc.lastKnown)
+			slog.Debug("Last polled connection status", "stats", rc.lastKnown)
 			rc.evalTier()
 			if rc.lastKnown.RSSI >= rc.cfg.FairRSSI+rc.cfg.TierHysteresis &&
 				(rc.entryScanned || rc.entryScannedCrit) {

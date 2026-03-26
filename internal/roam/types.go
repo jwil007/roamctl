@@ -128,10 +128,10 @@ func (s roamingTier) String() string {
 type roamResultFlag int
 
 const (
-	success roamResultFlag = iota
+	unknown roamResultFlag = iota
+	success
 	failure
 	noCandidates
-	unknown
 )
 
 func (s roamResultFlag) String() string {

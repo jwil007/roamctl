@@ -97,12 +97,21 @@ func (rc *roamContext) runFullScan(c *wpac.Client, ctx context.Context) error {
 
 func (rc *roamContext) executeScan(c *wpac.Client, ctx context.Context, sp wpac.ScanParams) error {
 	rc.scanState.mu.Lock()
+	mode := rc.scanState.scanMode
+	stable := rc.scanState.bssListStable
 	for rc.scanState.scanInProgress {
 		slog.Info("Scan in progress, waiting for completion")
 		rc.scanState.cond.Wait()
 	}
 	rc.scanState.scanInProgress = true
 	rc.scanState.mu.Unlock()
+	slog.Info("Scan dispatched",
+		"trigger_tier", rc.roamingTier,
+		"last_result", rc.roamResultFlag,
+		"scan_mode", mode,
+		"entry_scanned", rc.entryScanned,
+		"entry_scanned_crit", rc.entryScannedCrit,
+		"bss_stable", stable)
 	start := time.Now()
 	err := c.Scan(ctx, sp)
 	if err != nil {
@@ -123,7 +132,7 @@ func (rc *roamContext) executeScan(c *wpac.Client, ctx context.Context, sp wpac.
 	duration := time.Since(start)
 	completeTime := time.Now()
 	rc.scanState.mu.Lock()
-	mode := rc.scanState.scanMode
+	mode = rc.scanState.scanMode
 	rc.scanState.scanInProgress = false
 	rc.scanState.scanDuration = duration
 	rc.scanState.lastScanTime = completeTime

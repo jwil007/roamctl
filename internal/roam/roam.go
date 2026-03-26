@@ -12,10 +12,6 @@ import (
 )
 
 func (rc *roamContext) handleOppRoam(c *wpac.Client, ctx context.Context) error {
-	if !rc.checkIfNewScan() {
-		slog.Debug("No new scan data, skipping roam attempt")
-		return nil
-	}
 	err := rc.evalAndAttemptRoam(c, ctx)
 	if err != nil {
 		return fmt.Errorf("evalAndAttemptRoam: %w", err)
@@ -38,9 +34,10 @@ func (rc *roamContext) handleActiveRoam(c *wpac.Client, ctx context.Context) err
 	}
 	rc.scanState.mu.RLock()
 	stable := rc.scanState.bssListStable
+	mode := rc.scanState.scanMode
 	rc.scanState.mu.RUnlock()
 	if rc.roamResultFlag == noCandidates {
-		if !stable {
+		if !stable && mode != fullScan {
 			slog.Info("BSS list has changed, requesting full channel scan",
 				"roam_tier", rc.roamingTier)
 			rc.scanState.mu.Lock()
