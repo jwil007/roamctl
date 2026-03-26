@@ -62,6 +62,7 @@ type roamContext struct {
 	lastEvalTime     time.Time
 	entryScanned     bool //Prevents scan loop
 	entryScannedCrit bool
+	fullScannedCrit  bool
 	roamingTier      roamingTier
 	scanState        scanState
 }

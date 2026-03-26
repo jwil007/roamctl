@@ -41,7 +41,8 @@ func (rc *roamContext) handleActiveRoam(c *wpac.Client, ctx context.Context) err
 	rc.scanState.mu.RUnlock()
 	if rc.roamResultFlag == noCandidates {
 		if !stable {
-			slog.Info("BSS list has changed, requesting full channel scan")
+			slog.Info("BSS list has changed, requesting full channel scan",
+				"roam_tier", rc.roamingTier)
 			rc.scanState.mu.Lock()
 			rc.scanState.scanMode = fullScan
 			rc.scanState.mu.Unlock()
@@ -67,22 +68,40 @@ func (rc *roamContext) handleCriticalRoam(c *wpac.Client, ctx context.Context) e
 	stable := rc.scanState.bssListStable
 	rc.scanState.mu.RUnlock()
 	if rc.roamResultFlag == noCandidates {
-		if !stable {
-			slog.Info("Running full scan immediately...",
-				"last_roam_result", rc.roamResultFlag,
-				"bss_list_stable", stable)
-			// break glass full scan
+		if !rc.fullScannedCrit {
+			slog.Info("No candidates found, running break-glass full scan...")
 			err = rc.runFullScan(c, ctx)
 			if err != nil && !errors.Is(err, ErrScanRetryLimit) {
 				return fmt.Errorf("runFullScan: %w", err)
 			}
-			err = rc.prepScanResults(c)
+			err := rc.prepScanResults(c)
 			if err != nil {
 				return fmt.Errorf("prepScanResults: %w", err)
 			}
+			logScoredAPs(rc)
 			err = rc.attemptRoam(c, ctx)
 			if err != nil {
 				return fmt.Errorf("attemptRoam: %w", err)
+			}
+			rc.fullScannedCrit = true
+		} else {
+			if !stable {
+				slog.Info("BSS list has changed, running full scan...",
+					"last_roam_result", rc.roamResultFlag,
+					"roam_tier", rc.roamingTier)
+				err = rc.runFullScan(c, ctx)
+				if err != nil && !errors.Is(err, ErrScanRetryLimit) {
+					return fmt.Errorf("runFullScan: %w", err)
+				}
+				err := rc.prepScanResults(c)
+				if err != nil {
+					return fmt.Errorf("prepScanResults: %w", err)
+				}
+				logScoredAPs(rc)
+				err = rc.attemptRoam(c, ctx)
+				if err != nil {
+					return fmt.Errorf("attemptRoam: %w", err)
+				}
 			}
 		}
 	}

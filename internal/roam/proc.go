@@ -67,12 +67,13 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 			}
 			//slog.Debug("Last polled connection status", "stats", rc.lastKnown)
 			rc.evalTier()
-			if rc.lastKnown.RSSI >= rc.cfg.FairRSSI+rc.cfg.RSSIHysteresisUp &&
+			if rc.lastKnown.RSSI >= rc.cfg.FairRSSI+rc.cfg.TierHysteresis &&
 				(rc.entryScanned || rc.entryScannedCrit) {
 				slog.Info("Signal recovered - resetting entry scan flags",
 					"rssi", rc.lastKnown.RSSI)
 				rc.entryScanned = false
 				rc.entryScannedCrit = false
+				rc.fullScannedCrit = false
 			}
 			if rc.roamingTier == opportunistic {
 				err = rc.handleOppRoam(c, ctx)
