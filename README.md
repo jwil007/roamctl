@@ -115,7 +115,6 @@ interface = "wlan0"
 
 [roaming_tiers]
 # These values set the floor of each RSSI tier, which dictate roaming logic
-# They are the floor for each tier. 
 # i.e. if fair_rssi is -67, -68 is in the "degraded" tier.
 excellent_rssi = -62
 fair_rssi = -70
