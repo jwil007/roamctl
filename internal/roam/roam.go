@@ -128,11 +128,18 @@ func (rc *roamContext) checkRoam() bool {
 				"rssi", rc.lastKnown.RSSI)
 			rc.hysteresisActive = false
 		} else {
-			slog.Debug("RSSI Hysteresis active. Roam not allowed",
-				"rssi", rc.lastKnown.RSSI,
-				"upper_bound", rc.lastTriggerRSSI+rc.cfg.RSSIHysteresisUp,
-				"lower_bound", rc.lastTriggerRSSI-rc.cfg.RSSIHysteresisDown)
-			return false
+			if rc.candidateAP.finalScore-rc.currentAP.finalScore >= rc.cfg.FairDelta*2 {
+				slog.Info("Score delta overrides hysteresis, roam attempt allowed",
+					"measured_delta", rc.candidateAP.finalScore-rc.currentAP.finalScore,
+					"override_threshold", rc.cfg.FairDelta*2)
+				rc.hysteresisActive = false
+			} else {
+				slog.Debug("RSSI Hysteresis active. Roam not allowed",
+					"rssi", rc.lastKnown.RSSI,
+					"upper_bound", rc.lastTriggerRSSI+rc.cfg.RSSIHysteresisUp,
+					"lower_bound", rc.lastTriggerRSSI-rc.cfg.RSSIHysteresisDown)
+				return false
+			}
 		}
 	}
 	if rc.currentAP.bssid == rc.candidateAP.bssid {
