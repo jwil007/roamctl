@@ -21,6 +21,7 @@ func (rc *roamContext) handleOppRoam(c *wpac.Client, ctx context.Context) error 
 	if err != nil {
 		return fmt.Errorf("evalAndAttemptRoam: %w", err)
 	}
+	rc.fullScanIfBSSIDsChanged()
 	return nil
 }
 
@@ -42,19 +43,7 @@ func (rc *roamContext) handleActiveRoam(c *wpac.Client, ctx context.Context) err
 	if err != nil {
 		return fmt.Errorf("evalAndAttemptRoam: %w", err)
 	}
-	rc.scanState.mu.RLock()
-	stable := rc.scanState.bssListStable
-	mode := rc.scanState.scanMode
-	rc.scanState.mu.RUnlock()
-	if rc.roamResultFlag == noCandidates {
-		if !stable && mode != fullScan {
-			slog.Info("BSS list has changed, requesting full channel scan",
-				"roam_tier", rc.roamingTier)
-			rc.scanState.mu.Lock()
-			rc.scanState.scanMode = fullScan
-			rc.scanState.mu.Unlock()
-		}
-	}
+	rc.fullScanIfBSSIDsChanged()
 	return nil
 }
 
@@ -286,4 +275,20 @@ func (rc *roamContext) checkIfNewScan() bool {
 		"delta", rc.lastEvalTime.Sub(lastScan).Seconds(),
 	)
 	return false
+}
+
+func (rc *roamContext) fullScanIfBSSIDsChanged() {
+	rc.scanState.mu.RLock()
+	stable := rc.scanState.bssListStable
+	mode := rc.scanState.scanMode
+	rc.scanState.mu.RUnlock()
+	if rc.roamResultFlag == noCandidates {
+		if !stable && mode != fullScan {
+			slog.Info("BSS list has changed, requesting full channel scan",
+				"roam_tier", rc.roamingTier)
+			rc.scanState.mu.Lock()
+			rc.scanState.scanMode = fullScan
+			rc.scanState.mu.Unlock()
+		}
+	}
 }
