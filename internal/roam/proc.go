@@ -31,6 +31,7 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 	if err != nil && !errors.Is(err, ErrScanRetryLimit) {
 		return fmt.Errorf("rc.runFullScan: %w", err)
 	}
+	rc.lastEvalTime = time.Now() //set lastEvalTime - prevents the first roam attempt from using the initial scan
 	//Start polling signal stats
 	slog.Info("Starting signal polling...")
 	sigCh, sigErrCh := c.PollSignal(ctx, cfg.Timing.SigPollInterval)
