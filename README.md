@@ -42,6 +42,8 @@ The roaming algorithm consists continuous signal polling, concurrent background 
 ### Roaming Tiers
 There are four tiers which set roaming behavior to optimize roaming in a wide variety of environments. The tiers are based on RSSI breakpoints, which are user configurable.
 
+There also exists a connection health monitoring system, which looks at retry rate and data rate - if the connection is determined to be unhealthy, the Critical tier is entered to find a better AP. Connection health metrics are also user configurable.
+
 #### Excellent | Roaming Disabled
 In the Excellent tier, background scanning is paused and no roaming will occur.
 
