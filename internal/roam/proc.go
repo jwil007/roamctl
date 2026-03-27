@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sync"
 	"time"
 
@@ -16,6 +17,7 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 	slog.Info("Starting roamctl... exit with ctrl+c")
 	rc := &roamContext{}
 	rc.roamingTier = noRoam
+	rc.lastRoamAttempt = time.Now()
 	rc.cfg = cfg
 	rc.scanState.cond = sync.NewCond(&rc.scanState.mu)
 	slog.Info("Setting wpa_supplicant configuration")
@@ -68,9 +70,16 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 				continue
 			}
 			slog.Debug("Last polled connection status", "stats", rc.lastKnown)
+			if time.Since(rc.lastRoamAttempt) >= 2*time.Second {
+				rc.checkConnectionHealth()
+			} else {
+				slog.Debug("checkConnectionHealth skipped, backoff timer",
+					"time remaining", 2*time.Second-time.Since(rc.lastRoamAttempt))
+			}
 			rc.evalTier()
 			if rc.lastKnown.RSSI >= rc.cfg.FairRSSI+rc.cfg.TierHysteresis &&
-				(rc.entryScanned || rc.entryScannedCrit) {
+				(rc.entryScanned || rc.entryScannedCrit) &&
+				!rc.unhealthyConn {
 				slog.Info("Signal recovered - resetting entry scan flags",
 					"rssi", rc.lastKnown.RSSI)
 				rc.entryScanned = false
@@ -109,6 +118,23 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 
 func (rc *roamContext) evalTier() {
 	prevTier := rc.roamingTier
+	if rc.unhealthyConn {
+		if !rc.unhealthyLogged {
+			slog.Info("Tier degraded to critical, unhealthy connection",
+				"retry_rate", rc.lastKnown.RetryRate,
+				"retry_limit", rc.cfg.RetryRate,
+				"data_bitrate", max(rc.lastKnown.TxBitrate, rc.lastKnown.RxBitrate),
+				"dr_limit", rc.cfg.DataRate*1000000)
+			rc.unhealthyLogged = true
+		}
+		rc.roamingTier = critical
+		rc.scanState.mu.Lock()
+		if rc.scanState.scanMode != fullScan {
+			rc.scanState.scanMode = fastScan
+		}
+		rc.scanState.mu.Unlock()
+		return
+	}
 	switch {
 	case rc.lastKnown.RSSI >= rc.cfg.ExcellentRSSI+rc.tierUpBuffer(noRoam):
 		rc.roamingTier = noRoam
@@ -168,6 +194,36 @@ func (rc *roamContext) tierUpBuffer(evalTier roamingTier) int {
 		return rc.cfg.TierHysteresis
 	}
 	return 0
+}
+
+func (rc *roamContext) checkConnectionHealth() {
+	legacyRates := []int{1000000, 2000000, 5500000, 6000000, 9000000, 11000000,
+		12000000, 18000000, 24000000, 36000000, 48000000, 54000000}
+	if rc.lastKnown.TxBitrate < 1000000 || rc.lastKnown.RxBitrate < 1000000 {
+		slog.Debug("Invalid bitrate, skipping connection health check",
+			"tx_bitrate", rc.lastKnown.TxBitrate,
+			"rx_bitrate", rc.lastKnown.RxBitrate)
+		rc.unhealthyConn = false
+		return
+	}
+	if slices.Contains(legacyRates, max(rc.lastKnown.TxBitrate, rc.lastKnown.RxBitrate)) {
+		slog.Debug("Device using legacy rates, skipping connection health check",
+			"tx_bitrate", rc.lastKnown.TxBitrate,
+			"rx_bitrate", rc.lastKnown.RxBitrate)
+		rc.unhealthyConn = false
+		return
+	}
+	if rc.lastKnown.RetryRate >= rc.cfg.RetryRate ||
+		max(rc.lastKnown.TxBitrate, rc.lastKnown.RxBitrate) <= rc.cfg.DataRate*1000000 {
+		slog.Debug("Current connection unhealthy",
+			"retry_rate", rc.lastKnown.RetryRate,
+			"retry_limit", rc.cfg.RetryRate,
+			"data_bitrate", max(rc.lastKnown.TxBitrate, rc.lastKnown.RxBitrate),
+			"dr_limit", rc.cfg.DataRate*1000000)
+		rc.unhealthyConn = true
+		return
+	}
+	rc.unhealthyConn = false
 }
 
 func (rc *roamContext) handleWpaSuppConfig(c *wpac.Client) (func(), error) {

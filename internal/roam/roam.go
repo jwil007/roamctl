@@ -202,6 +202,7 @@ func (rc *roamContext) roamToCandidate(
 			return nil
 		}
 		rc.roamResultFlag = unknown
+		rc.unhealthyConn = false
 		return fmt.Errorf("c.Roam(%v): %w", rc.candidateAP.bssid, err)
 	}
 	switch result.Success {
@@ -214,7 +215,9 @@ func (rc *roamContext) roamToCandidate(
 			"duration", result.Duration,
 			"message", result.Message)
 		rc.roamResultFlag = success
+		rc.lastRoamAttempt = time.Now()
 		rc.hysteresisActive = true
+		rc.unhealthyConn = false
 		rc.lastTriggerRSSI = rc.lastKnown.RSSI
 		slog.Debug("RSSI Hysteresis active. Signal change needed next roam attempt",
 			"current", rc.lastKnown.RSSI,
@@ -230,6 +233,8 @@ func (rc *roamContext) roamToCandidate(
 			"duration", result.Duration,
 			"message", result.Message)
 		rc.roamResultFlag = failure
+		rc.lastRoamAttempt = time.Now()
+		rc.unhealthyConn = false
 		return nil
 	default:
 		panic(fmt.Sprintf("unknown roam result status: %v", result.Success))

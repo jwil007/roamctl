@@ -160,6 +160,21 @@ func (rc *roamContext) prepScanResults(c *wpac.Client) error {
 			rc.currentAP = ap
 		}
 	}
+	if rc.unhealthyConn {
+		slog.Info("Current AP connection unhealthy, penalizing its score",
+			"original_score", rc.currentAP.finalScore,
+			"modified_score", rc.currentAP.finalScore-rc.cfg.UnhealthyScoreMod)
+		rc.currentAP.finalScore = rc.currentAP.finalScore - rc.cfg.UnhealthyScoreMod
+		for i := range rc.scoredAPs {
+			if rc.scoredAPs[i].bssid == rc.lastKnown.BSSID {
+				rc.scoredAPs[i].finalScore -= rc.cfg.UnhealthyScoreMod
+				break
+			}
+		}
+	}
+	slices.SortFunc(rc.scoredAPs, func(a, b scoredBSS) int {
+		return b.finalScore - a.finalScore
+	})
 	hash := hashBSSIDs(aps[0:min(len(aps), rc.cfg.MaxBSSCt)])
 	rc.scanState.mu.Lock()
 	rc.scanState.bssListStable = hash == rc.scanState.bssidHash
@@ -198,9 +213,10 @@ func hashBSSIDs(aps []wpac.RichBSS) uint64 {
 }
 
 func logScoredAPs(rc *roamContext) {
+	slog.Info(blue.Render("current ap"), "bss", rc.currentAP)
 	for _, a := range rc.scoredAPs {
 		if a.bssid == rc.lastKnown.BSSID {
-			slog.Info(blue.Render("current ap"), "bss", a)
+			continue
 		} else {
 			slog.Info("candidate ap", "bss", a)
 		}

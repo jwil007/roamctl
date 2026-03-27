@@ -62,6 +62,26 @@ func (cfg *Config) Validate() error {
 			"stability.rssi_hysteresis_down %v invalid. Must be in range 0 to 15",
 			cfg.Stability.RSSIHysteresisDown))
 	}
+	if cfg.Stability.TierHysteresis > 20 || cfg.Stability.TierHysteresis < 0 {
+		errs = append(errs, fmt.Sprintf(
+			"stability.tier_hysteresis %v invalid. Must be in range 0 to 20",
+			cfg.Stability.TierHysteresis))
+	}
+	if cfg.Stability.RetryRate < 0 || cfg.Stability.RetryRate > 100 {
+		errs = append(errs, fmt.Sprintf(
+			"stability.retry_rate %v invalid. Must be in range 0 to 100",
+			cfg.Stability.RetryRate))
+	}
+	if cfg.Stability.DataRate < 0 {
+		errs = append(errs, fmt.Sprintf(
+			"stability.data_rate %v invalid. Must be >= 0",
+			cfg.Stability.DataRate))
+	}
+	if !validScore(cfg.Stability.UnhealthyScoreMod) {
+		errs = append(errs, fmt.Sprintf(
+			"stability.unhealthy_score_mod %v invalid. Must be in range 0 to 100",
+			cfg.Stability.UnhealthyScoreMod))
+	}
 
 	// ScoreWeights
 	if !validScore(cfg.ScoreWeights.RSSI) {
@@ -93,6 +113,13 @@ func (cfg *Config) Validate() error {
 		errs = append(errs, fmt.Sprintf(
 			"score_weights.phy_type %v invalid. Must be in range 0 to 100",
 			cfg.ScoreWeights.PHYType))
+	}
+
+	//Timing
+	if cfg.Timing.MaxBSSCt < 1 {
+		errs = append(errs, fmt.Sprintf(
+			"timing.max_bss_ct %v invalid. Must be >= 1",
+			cfg.Timing.MaxBSSCt))
 	}
 
 	// ScoreClamps

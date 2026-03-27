@@ -54,9 +54,7 @@ type roamContext struct {
 	currentAP        scoredBSS
 	lastKnown        *wpac.ConnectionStatus
 	roamResultFlag   roamResultFlag
-	lastRoamSuccess  time.Time
-	lastRoamFailure  time.Time
-	lastNoCandidates time.Time
+	lastRoamAttempt  time.Time
 	hysteresisActive bool
 	lastTriggerRSSI  int
 	lastEvalTime     time.Time
@@ -65,6 +63,8 @@ type roamContext struct {
 	fullScannedCrit  bool
 	roamingTier      roamingTier
 	scanState        scanState
+	unhealthyConn    bool
+	unhealthyLogged  bool
 }
 
 type scanState struct {

@@ -19,6 +19,13 @@ degraded_score_delta = 4
 critical_score_delta = 2
 
 [stability]
+# set maxmimum retry rate (percent) or minimum data rate (Mbps)
+# roam is entered when
+retry_rate = 50
+data_rate = 20 #Mbps
+# modifier to penalize score of unhealthy AP, needed to encourage roaming to different AP
+unhealthy_score_mod = 20
+
 # These values define upper and lower bounds RSSI must cross before re-roaming
 # This is meant to prevent ping-ponging when at RSSI boundry
 rssi_hysteresis_up = 5
@@ -108,6 +115,13 @@ rssi_hysteresis_up = 5
 rssi_hysteresis_down = 5
 tier_hysteresis = 5
 
+# set maxmimum retry rate (percent) or minimum data rate (Mbps)
+# roam is entered when
+retry_rate = 50
+data_rate = 20 #Mbps
+# modifier to penalize score of unhealthy AP, needed to encourage roaming to different AP
+unhealthy_score_mod = 20
+
 
 [timing]
 sig_poll_interval = "250ms"
@@ -179,6 +193,13 @@ critical_score_delta = 4
 rssi_hysteresis_up = 4
 rssi_hysteresis_down = 4
 tier_hysteresis = 4
+
+# set maxmimum retry rate (percent) or minimum data rate (Mbps)
+# roam is entered when
+retry_rate = 50
+data_rate = 20 #Mbps
+# modifier to penalize score of unhealthy AP, needed to encourage roaming to different AP
+unhealthy_score_mod = 20
 
 
 [timing]
