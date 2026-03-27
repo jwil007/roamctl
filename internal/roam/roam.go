@@ -12,11 +12,6 @@ import (
 )
 
 func (rc *roamContext) handleOppRoam(c *wpac.Client, ctx context.Context) error {
-	if !rc.checkIfNewScan() {
-		slog.Debug("Skipping roam attempt")
-		return nil
-	}
-	slog.Info("Evaluating candidates", "trigger", "opportunistic_roam")
 	err := rc.evalAndAttemptRoam(c, ctx)
 	if err != nil {
 		return fmt.Errorf("evalAndAttemptRoam: %w", err)
@@ -34,11 +29,6 @@ func (rc *roamContext) handleActiveRoam(c *wpac.Client, ctx context.Context) err
 		}
 		rc.entryScanned = true
 	}
-	if !rc.checkIfNewScan() {
-		slog.Debug("Skipping roam attempt")
-		return nil
-	}
-	slog.Info("Evaluating candidates", "trigger", "active_roam")
 	err := rc.evalAndAttemptRoam(c, ctx)
 	if err != nil {
 		return fmt.Errorf("evalAndAttemptRoam: %w", err)
@@ -56,11 +46,6 @@ func (rc *roamContext) handleCriticalRoam(c *wpac.Client, ctx context.Context) e
 		}
 		rc.entryScannedCrit = true
 	}
-	if !rc.checkIfNewScan() {
-		slog.Debug("Skipping roam attempt")
-		return nil
-	}
-	slog.Info("Evaluating candidates", "trigger", "critical_roam")
 	err := rc.evalAndAttemptRoam(c, ctx)
 	if err != nil {
 		return fmt.Errorf("evalAndAttemptRoam: %w", err)
@@ -75,15 +60,9 @@ func (rc *roamContext) handleCriticalRoam(c *wpac.Client, ctx context.Context) e
 			if err != nil && !errors.Is(err, ErrScanRetryLimit) {
 				return fmt.Errorf("runFullScan: %w", err)
 			}
-			err := rc.prepScanResults(c)
+			err = rc.evalAndAttemptRoam(c, ctx)
 			if err != nil {
-				return fmt.Errorf("prepScanResults: %w", err)
-			}
-			slog.Info("Evaluating candidates", "trigger", "break_glass")
-			logScoredAPs(rc)
-			err = rc.attemptRoam(c, ctx)
-			if err != nil {
-				return fmt.Errorf("attemptRoam: %w", err)
+				return fmt.Errorf("evalAndAttemptRoam: %w", err)
 			}
 			rc.fullScannedCrit = true
 		} else {
@@ -95,15 +74,9 @@ func (rc *roamContext) handleCriticalRoam(c *wpac.Client, ctx context.Context) e
 				if err != nil && !errors.Is(err, ErrScanRetryLimit) {
 					return fmt.Errorf("runFullScan: %w", err)
 				}
-				err := rc.prepScanResults(c)
+				err = rc.evalAndAttemptRoam(c, ctx)
 				if err != nil {
-					return fmt.Errorf("prepScanResults: %w", err)
-				}
-				slog.Info("Evaluating candidates", "trigger", "critical_roam_unstable_bss_list")
-				logScoredAPs(rc)
-				err = rc.attemptRoam(c, ctx)
-				if err != nil {
-					return fmt.Errorf("attemptRoam: %w", err)
+					return fmt.Errorf("evalAndAttemptRoam: %w", err)
 				}
 			}
 		}
@@ -114,14 +87,17 @@ func (rc *roamContext) handleCriticalRoam(c *wpac.Client, ctx context.Context) e
 func (rc *roamContext) evalAndAttemptRoam(
 	c *wpac.Client,
 	ctx context.Context) error {
-	err := rc.prepScanResults(c)
-	if err != nil {
-		return fmt.Errorf("prepScanResults: %w", err)
-	}
-	logScoredAPs(rc)
-	err = rc.attemptRoam(c, ctx)
-	if err != nil {
-		return fmt.Errorf("attemptRoam: %w", err)
+	if rc.checkIfNewScan() {
+		slog.Info("Evaluating candidates", "roaming_tier", rc.roamingTier)
+		err := rc.prepScanResults(c)
+		if err != nil {
+			return fmt.Errorf("prepScanResults: %w", err)
+		}
+		logScoredAPs(rc)
+		err = rc.attemptRoam(c, ctx)
+		if err != nil {
+			return fmt.Errorf("attemptRoam: %w", err)
+		}
 	}
 	return nil
 }
