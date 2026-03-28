@@ -201,6 +201,9 @@ func (rc *roamContext) roamToCandidate(
 	c *wpac.Client,
 	ctx context.Context,
 ) error {
+	if rc.candidateAP.bssid == "" {
+		return fmt.Errorf("roamToCandidate: roam aborted, empty BSSID")
+	}
 	result, err := c.Roam(ctx, rc.candidateAP.bssid)
 	if err != nil {
 		if strings.Contains(err.Error(), "timed out waiting for event") {

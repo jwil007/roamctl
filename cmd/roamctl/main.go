@@ -71,7 +71,7 @@ func run() error {
 	logger := charmlog.New(os.Stdout)
 	logger.SetLevel(charmlog.Level(logLevel))
 	logger.SetReportTimestamp(true)
-	logger.SetTimeFormat("15:04:05.000")
+	//logger.SetTimeFormat("15:04:05.000")
 	slog.SetDefault(slog.New(logger))
 
 	//read and validate config file

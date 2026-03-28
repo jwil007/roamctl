@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"strings"
 
@@ -53,32 +52,13 @@ func editConfig(path string) error {
 	return fmt.Errorf("no text editor found, edit file manually at %s", path)
 }
 
-func getConfigDir() (string, error) {
-	if sudoUser := os.Getenv("SUDO_USER"); sudoUser != "" {
-		slog.Info("Running as sudo...")
-		u, err := user.Lookup(sudoUser)
-		if err != nil {
-			return "", fmt.Errorf("user.Lookup: %w", err)
-		}
-		return filepath.Join(u.HomeDir, ".config", "roamctl"), nil
-	}
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("os.UserConfigDir: %w", err)
-	}
-	return filepath.Join(configDir, "roamctl"), nil
-}
-
 func initConfigFile(template *string) (string, error) {
-	configDir, err := getConfigDir()
+	configDir := "/etc/roamctl"
 	configPath := filepath.Join(configDir, "config.toml")
-	if err != nil {
-		return "", fmt.Errorf("getConfigDir: %w", err)
-	}
-	if err = os.MkdirAll(configDir, 0755); err != nil {
+	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return "", fmt.Errorf("os.MkdirAll: %w", err)
 	}
-	if _, err = os.Stat(configPath); os.IsNotExist(err) {
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		f, err := os.Create(configPath)
 		if err != nil {
 			return "", fmt.Errorf("os.Create: %w", err)
@@ -96,16 +76,25 @@ func initConfigFile(template *string) (string, error) {
 	switch *template {
 	case "base":
 		slog.Info("Overwriting config.toml to default values...")
-		err = os.WriteFile(configPath,
+		err := os.WriteFile(configPath,
 			[]byte(strings.Replace(defaultConfigTemplate, `"wlan0"`, `"`+iface+`"`, 1)), 0755)
+		if err != nil {
+			return "", fmt.Errorf("os.WriteFile: %w", err)
+		}
 	case "macos":
 		slog.Info("Overwriting config.toml to MacOS template...")
-		err = os.WriteFile(configPath,
+		err := os.WriteFile(configPath,
 			[]byte(strings.Replace(macOSTemplate, `"wlan0"`, `"`+iface+`"`, 1)), 0755)
+		if err != nil {
+			return "", fmt.Errorf("os.WriteFile: %w", err)
+		}
 	case "ios":
 		slog.Info("Overwriting config.toml to iOS template...")
-		err = os.WriteFile(configPath,
+		err := os.WriteFile(configPath,
 			[]byte(strings.Replace(iOSTemplate, `"wlan0"`, `"`+iface+`"`, 1)), 0755)
+		if err != nil {
+			return "", fmt.Errorf("os.WriteFile: %w", err)
+		}
 	}
 	return configPath, nil
 }

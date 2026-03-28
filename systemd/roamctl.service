@@ -1,0 +1,12 @@
+[Unit]
+Description=roamctl Wi-Fi roaming daemon
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+ExecStart=/usr/local/bin/roamctl
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

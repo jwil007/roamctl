@@ -17,6 +17,13 @@ import (
 func (c *Client) cmd(command string) ([]byte, error) {
 	c.cmdMu.Lock()
 	defer c.cmdMu.Unlock()
+	err := c.CC.SetDeadline(time.Now().Add(2 * time.Second))
+	if err != nil {
+		return nil, fmt.Errorf("could not set read deadline: %w", err)
+	}
+	defer func() {
+		_ = c.CC.SetDeadline(time.Time{})
+	}()
 	buf := make([]byte, 4096)
 	_, wErr := c.CC.Write([]byte(command))
 	if wErr != nil {
@@ -30,6 +37,13 @@ func (c *Client) cmd(command string) ([]byte, error) {
 }
 
 func (c *Client) cmdP(command string) ([]byte, error) {
+	err := c.PC.SetDeadline(time.Now().Add(2 * time.Second))
+	if err != nil {
+		return nil, fmt.Errorf("could not set read deadline: %w", err)
+	}
+	defer func() {
+		_ = c.PC.SetDeadline(time.Time{})
+	}()
 	buf := make([]byte, 4096)
 	_, wErr := c.PC.Write([]byte(command))
 	if wErr != nil {
