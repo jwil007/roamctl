@@ -63,7 +63,7 @@ else
   SELECTED=$(echo "$IFACES" | sed -n "${SELECTION}p")
   if [ -n "$SELECTED" ]; then
     echo "Setting interface to $SELECTED..."
-    sudo roamctl -interface "$SELECTED"
+    sudo roamctl -iface "$SELECTED"
   else
     echo "Invalid selection. You can set the interface later with: sudo roamctl -interface <name>"
   fi
