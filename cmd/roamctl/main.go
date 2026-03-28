@@ -44,6 +44,13 @@ func run() error {
 		fmt.Println(version)
 		os.Exit(0)
 	}
+	ifaceSet := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "iface" {
+			ifaceSet = true
+		}
+	})
+
 	if flag.NArg() > 0 {
 		_, _ = fmt.Fprintf(os.Stderr, "error: unexpected argument(s): %v\n", flag.Args())
 		flag.Usage()
@@ -79,7 +86,7 @@ func run() error {
 	}
 	if running {
 		fmt.Printf("roamctl daemon is already running at PID %d.\n"+
-			"Stop it first with: sudo systemctl stop roamctl", pid)
+			"Stop it first with sudo systemctl stop roamctl", pid)
 		os.Exit(0)
 	}
 
@@ -98,9 +105,9 @@ func run() error {
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("cfg.Validate: %w", err)
 	}
-	if *edit == true || *template != "" {
-		fmt.Println("Config change saved. If running roamctl as a daemon, " +
-			"run sudo systemctl restart roamctl to apply changes")
+	if *edit == true || *template != "" || ifaceSet {
+		fmt.Println("Changes saved to file at /etc/roamctl/config.toml.\nIf running roamctl as a daemon, " +
+			"apply changes with sudo systemctl restart roamctl")
 		os.Exit(0)
 	}
 

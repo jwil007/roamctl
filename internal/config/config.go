@@ -22,7 +22,6 @@ func HandleConfig(template *string, iface *string, edit *bool) (*Config, error) 
 			return nil, fmt.Errorf("editConfig: %w", err)
 		}
 	}
-	slog.Info("Config file location", "path", path)
 	cfg, err := parseConfig(path)
 	if err != nil {
 		return nil, fmt.Errorf("parseConfig: %w", err)
