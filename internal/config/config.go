@@ -12,8 +12,8 @@ import (
 	"github.com/charmbracelet/log"
 )
 
-func HandleConfig(template *string, edit *bool) (*Config, error) {
-	path, err := initConfigFile(template)
+func HandleConfig(template *string, iface *string, edit *bool) (*Config, error) {
+	path, err := initConfigFile(template, iface)
 	if err != nil {
 		return nil, fmt.Errorf("initConfigFile: %w", err)
 	}
@@ -52,9 +52,13 @@ func editConfig(path string) error {
 	return fmt.Errorf("no text editor found, edit file manually at %s", path)
 }
 
-func initConfigFile(template *string) (string, error) {
+func initConfigFile(template *string, ifacePtr *string) (string, error) {
 	configDir := "/etc/roamctl"
 	configPath := filepath.Join(configDir, "config.toml")
+	iface := readIfaceFromFile(configPath)
+	if *ifacePtr != "wlan0" {
+		iface = *ifacePtr
+	}
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return "", fmt.Errorf("os.MkdirAll: %w", err)
 	}
@@ -72,7 +76,6 @@ func initConfigFile(template *string) (string, error) {
 			return "", fmt.Errorf("encodeConfig: %w", err)
 		}
 	}
-	iface := readIfaceFromFile(configPath)
 	switch *template {
 	case "base":
 		slog.Info("Overwriting config.toml to default values...")
@@ -95,7 +98,18 @@ func initConfigFile(template *string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("os.WriteFile: %w", err)
 		}
+	case "":
+		f, err := os.ReadFile(configPath)
+		if err != nil {
+			return "", fmt.Errorf("os.ReadFile: %w", err)
+		}
+		updated := strings.Replace(string(f), `"wlan0"`, `"`+iface+`"`, 1)
+		err = os.WriteFile(configPath, []byte(updated), 0755)
+		if err != nil {
+			return "", fmt.Errorf("os.WriteFile: %w", err)
+		}
 	}
+
 	return configPath, nil
 }
 

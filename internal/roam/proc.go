@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"slices"
 	"sync"
 	"time"
@@ -28,6 +29,8 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 	defer cleanup() //sets wpa_supplicant back to original state
 	slog.Info("Current SSID",
 		"ssid", rc.ssid)
+	slog.Info("Selected interface",
+		"iface", c.Iface)
 	slog.Info("Running full channel scan...")
 	err = rc.runFullScan(c, ctx)
 	if err != nil && !errors.Is(err, ErrScanRetryLimit) {
@@ -106,7 +109,12 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 			}
 		case err = <-sigErrCh:
 			if err != nil {
-				return fmt.Errorf("c.PollSignal: %w", err)
+				if errors.Is(err, os.ErrDeadlineExceeded) {
+					slog.Warn("Signal poll read deadline exceeded")
+					continue
+				} else {
+					return fmt.Errorf("c.PollSignal: %w", err)
+				}
 			}
 		case err = <-scErrCh:
 			if err != nil && !errors.Is(err, ErrScanRetryLimit) {

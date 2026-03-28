@@ -42,4 +42,48 @@ chmod +x /tmp/roamctl
 echo "Installing to $INSTALL_DIR/$BINARY_NAME..."
 sudo mv /tmp/roamctl "$INSTALL_DIR/$BINARY_NAME"
 
-echo "Done! Run: roamctl"
+echo "roamctl installed successfully!"
+
+# Detect wireless interfaces
+echo "Detecting wireless interfaces..."
+# shellcheck disable=SC2011
+IFACES=$(ls /sys/class/net/ | xargs -I{} sh -c 'test -d /sys/class/net/{}/wireless && echo {}' 2>/dev/null || true)
+if [ -z "$IFACES" ]; then
+  echo "No wireless interfaces found. You can set the interface later with: sudo roamctl -interface <name>"
+else
+  echo "Available wireless interfaces:"
+  i=1
+  for iface in $IFACES; do
+    echo "  $i) $iface"
+    i=$((i+1))
+  done
+  printf "Select interface [1]: "
+  read -r SELECTION
+  SELECTION=${SELECTION:-1}
+  SELECTED=$(echo "$IFACES" | sed -n "${SELECTION}p")
+  if [ -n "$SELECTED" ]; then
+    echo "Setting interface to $SELECTED..."
+    sudo roamctl -interface "$SELECTED"
+  else
+    echo "Invalid selection. You can set the interface later with: sudo roamctl -interface <name>"
+  fi
+fi
+
+# Systemd service install
+UNIT_URL="https://raw.githubusercontent.com/$REPO/master/systemd/roamctl.service"
+printf "Install roamctl as a systemd service? [y/N]: "
+read -r INSTALL_SERVICE
+if [ "$INSTALL_SERVICE" = "y" ] || [ "$INSTALL_SERVICE" = "Y" ]; then
+  echo "Installing systemd service..."
+  curl -fsSL "$UNIT_URL" -o /tmp/roamctl.service
+  sudo mv /tmp/roamctl.service /etc/systemd/system/roamctl.service
+  sudo systemctl daemon-reload
+  echo "Service installed."
+  printf "Enable roamctl at boot? [y/N]: "
+  read -r ENABLE_SERVICE
+  if [ "$ENABLE_SERVICE" = "y" ] || [ "$ENABLE_SERVICE" = "Y" ]; then
+    sudo systemctl enable roamctl
+    echo "roamctl enabled at boot."
+  fi
+  echo "To start roamctl now, run: sudo systemctl start roamctl"
+fi

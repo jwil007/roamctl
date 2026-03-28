@@ -17,7 +17,7 @@ import (
 func (c *Client) cmd(command string) ([]byte, error) {
 	c.cmdMu.Lock()
 	defer c.cmdMu.Unlock()
-	err := c.CC.SetDeadline(time.Now().Add(2 * time.Second))
+	err := c.CC.SetDeadline(time.Now().Add(10 * time.Second))
 	if err != nil {
 		return nil, fmt.Errorf("could not set read deadline: %w", err)
 	}
@@ -37,7 +37,7 @@ func (c *Client) cmd(command string) ([]byte, error) {
 }
 
 func (c *Client) cmdP(command string) ([]byte, error) {
-	err := c.PC.SetDeadline(time.Now().Add(2 * time.Second))
+	err := c.PC.SetDeadline(time.Now().Add(10 * time.Second))
 	if err != nil {
 		return nil, fmt.Errorf("could not set read deadline: %w", err)
 	}

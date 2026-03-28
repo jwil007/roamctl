@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -37,6 +38,7 @@ func run() error {
 	edit := flag.Bool("edit", false, "edit config file")
 	template := flag.String("template", "", "select config template (base, macos, ios)")
 	levelStr := flag.String("level", "info", "log level (debug, info)")
+	iface := flag.String("iface", "wlan0", "interface to use")
 	flag.Parse()
 	if *versionFlag {
 		fmt.Println(version)
@@ -66,6 +68,20 @@ func run() error {
 	default:
 		logLevel = slog.LevelInfo
 	}
+	defer func() {
+		_ = os.Remove("/run/roamctl.pid")
+	}()
+
+	//check if process already running
+	running, pid, err := handlePIDFile()
+	if err != nil {
+		return fmt.Errorf("checkPIDFromFile: %w", err)
+	}
+	if running {
+		fmt.Printf("roamctl daemon is already running at PID %d.\n"+
+			"Stop it first with: sudo systemctl stop roamctl", pid)
+		os.Exit(0)
+	}
 
 	//init logging
 	logger := charmlog.New(os.Stdout)
@@ -75,12 +91,17 @@ func run() error {
 	slog.SetDefault(slog.New(logger))
 
 	//read and validate config file
-	cfg, err := config.HandleConfig(template, edit)
+	cfg, err := config.HandleConfig(template, iface, edit)
 	if err != nil {
 		return fmt.Errorf("roam.HandleConfig: %w", err)
 	}
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("cfg.Validate: %w", err)
+	}
+	if *edit == true || *template != "" {
+		fmt.Println("Config change saved. If running roamctl as a daemon, " +
+			"run sudo systemctl restart roamctl to apply changes")
+		os.Exit(0)
 	}
 
 	//open wpa_supplicant control interface unix socket
@@ -109,4 +130,22 @@ func run() error {
 		return fmt.Errorf("roam.ProcessLoop: %v", err)
 	}
 	return nil
+}
+
+func handlePIDFile() (bool, int, error) {
+	path := "/run/roamctl.pid"
+	pid := os.Getpid()
+	if data, err := os.ReadFile(path); err == nil {
+		pidRead, err := strconv.Atoi(strings.TrimSpace(string(data)))
+		if err == nil {
+			if syscall.Kill(pidRead, 0) == nil {
+				return true, pidRead, nil
+			}
+		}
+	}
+	err := os.WriteFile(path, []byte(strconv.Itoa(pid)), 0644)
+	if err != nil {
+		return false, 0, fmt.Errorf("os.WriteFile: %w", err)
+	}
+	return false, 0, nil
 }
