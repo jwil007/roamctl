@@ -114,6 +114,16 @@ func (cfg *Config) Validate() error {
 			"score_weights.phy_type %v invalid. Must be in range 0 to 100",
 			cfg.ScoreWeights.PHYType))
 	}
+	if !validRSSI(cfg.ScoreWeights.RSSIKnee) {
+		errs = append(errs, fmt.Sprintf(
+			"score_weights.rssi_knee %v invalid. Must be in range -128 to 0",
+			cfg.ScoreWeights.RSSIKnee))
+	}
+	if cfg.ScoreWeights.RSSIExponent < 0 || cfg.ScoreWeights.RSSIExponent > 4 {
+		errs = append(errs, fmt.Sprintf(
+			"score_weights.rssi_exponent %v invalid. Must be in range 0 to 4",
+			cfg.ScoreWeights.RSSIExponent))
+	}
 
 	//Timing
 	if cfg.Timing.MaxBSSCt < 1 {

@@ -14,6 +14,11 @@ import (
 func (rc *roamContext) handleOppRoam(c *wpac.Client, ctx context.Context) error {
 	err := rc.evalAndAttemptRoam(c, ctx)
 	if err != nil {
+		if strings.Contains(err.Error(), "output not \"OK\": FAIL") {
+			slog.Error("Roam control interface command failed",
+				"bssid", rc.candidateAP.bssid)
+			return nil
+		}
 		return fmt.Errorf("evalAndAttemptRoam: %w", err)
 	}
 	rc.fullScanIfBSSIDsChanged()

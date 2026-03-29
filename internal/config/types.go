@@ -43,14 +43,16 @@ type Timing struct {
 }
 
 type ScoreWeights struct {
-	RSSI         int `toml:"rssi"`
-	SNR          int `toml:"snr"`
-	Band         int `toml:"band"`
-	ChannelWidth int `toml:"channel_width"`
-	EstThruput   int `toml:"-"`
-	QBSSUtil     int `toml:"qbss_util"`
-	QBSSStaCt    int `toml:"-"`
-	PHYType      int `toml:"phy_type"`
+	RSSI         int     `toml:"rssi"`
+	SNR          int     `toml:"snr"`
+	Band         int     `toml:"band"`
+	ChannelWidth int     `toml:"channel_width"`
+	EstThruput   int     `toml:"-"`
+	QBSSUtil     int     `toml:"qbss_util"`
+	QBSSStaCt    int     `toml:"-"`
+	PHYType      int     `toml:"phy_type"`
+	RSSIKnee     int     `toml:"rssi_knee"`
+	RSSIExponent float64 `toml:"rssi_exponent"`
 }
 
 type ScoreClamps struct {

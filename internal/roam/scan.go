@@ -168,6 +168,9 @@ func (rc *roamContext) prepScanResults(c *wpac.Client) error {
 		for i := range rc.scoredAPs {
 			if rc.scoredAPs[i].bssid == rc.lastKnown.BSSID {
 				rc.scoredAPs[i].finalScore -= rc.cfg.UnhealthyScoreMod
+				if rc.scoredAPs[i].finalScore < 0 {
+					rc.scoredAPs[i].finalScore = 0
+				}
 				break
 			}
 		}

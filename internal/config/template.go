@@ -14,9 +14,9 @@ degraded_rssi = -73
 
 # Set score deltas required to roam per tier
 # Higher numbers mean candidate AP must be significantly better
-fair_score_delta = 8
-degraded_score_delta = 4
-critical_score_delta = 2
+fair_score_delta = 9
+degraded_score_delta = 8
+critical_score_delta = 7
 
 [stability]
 # set maxmimum retry rate (percent) or minimum data rate (Mbps)
@@ -38,7 +38,7 @@ tier_hysteresis = 5
 [timing]
 # Timings for signal polling (e.g. hosts current RSSI, SNR) and bg scan interval
 sig_poll_interval = "250ms"
-base_scan_interval = "15s"
+base_scan_interval = "30s"
 
 # Defines number of bssids used to build fast-scan channel list
 # In very dense environments, this number can be tuned to optimize channel scanning
@@ -54,11 +54,15 @@ band = 35
 channel_width = 10
 phy_type = 15
 
+# RSSI has a multiplicative below the knee, using an exponential curve
+rssi_knee = -68
+rssi_exponent = 1.8
+
 [score_clamps]
 # Used for RSSI and SNR scoring.
 # Values below min are scored 0, values above max are score 100
 # Values between clamps are scored linearly
-min_rssi = -78
+min_rssi = -82
 max_rssi = -25
 min_snr = 10
 max_snr = 50
@@ -67,7 +71,7 @@ max_snr = 50
 # tweak band pref, cw pref, etc.
 [band_scores]
 2point4ghz = 20
-5ghz = 100
+5ghz = 80
 6ghz = 100
 
 [chan_width_scores]
@@ -139,6 +143,10 @@ channel_width = 10
 # Apple prefers newer PHY generations (Wi-Fi 7 > 6 > 5 > 4)
 phy_type = 15
 
+# RSSI has a multiplicative below the knee, using an exponential curve
+rssi_knee = -67
+rssi_exponent = 2.5
+
 [score_clamps]
 min_rssi = -85
 max_rssi = -25
@@ -196,8 +204,8 @@ tier_hysteresis = 4
 
 # set maxmimum retry rate (percent) or minimum data rate (Mbps)
 # roam is entered when
-retry_rate = 50
-data_rate = 20 #Mbps
+retry_rate = 75
+data_rate = 10 #Mbps
 # modifier to penalize score of unhealthy AP, needed to encourage roaming to different AP
 unhealthy_score_mod = 20
 
@@ -217,6 +225,10 @@ band = 50
 channel_width = 10
 # Apple prefers newer PHY generations (Wi-Fi 7 > 6 > 5 > 4)
 phy_type = 15
+
+# RSSI has a multiplicative below the knee, using an exponential curve
+rssi_knee = -67
+rssi_exponent = 2.5
 
 [score_clamps]
 min_rssi = -85

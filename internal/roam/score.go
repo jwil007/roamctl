@@ -1,6 +1,7 @@
 package roam
 
 import (
+	"math"
 	"slices"
 
 	"github.com/jwil007/roamctl/internal/config"
@@ -20,26 +21,60 @@ func scoreAll(aps []wpac.RichBSS, cfg *config.Config) []scoredBSS {
 }
 
 func score(bss wpac.RichBSS, cfg *config.Config) scoredBSS {
-	rs := cfg.ScoreWeights.RSSI * scoreRSSI(bss.RSSI, cfg) / 100
+	if bss.RSSI >= cfg.RSSIKnee {
+		rs := cfg.ScoreWeights.RSSI * scoreRSSI(bss.RSSI, cfg) / 100
+		ss := cfg.SNR * scoreSNR(bss.SNR, cfg) / 100
+		bs := cfg.Band * scoreBand(bss.Band, cfg) / 100
+		cws := cfg.ChannelWidth * scoreCW(bss.ChannelWidth, cfg) / 100
+		us := cfg.QBSSUtil * scoreUtil(bss.QBSSUtil) / 100
+		ps := cfg.PHYType * scorePhy(bss.PHYType, cfg) / 100
+		totalWeight := cfg.ScoreWeights.RSSI + cfg.SNR + cfg.Band + cfg.ChannelWidth + cfg.QBSSUtil + cfg.PHYType
+		scoreSum := rs + ss + bs + cws + us + ps
+		if totalWeight == 0 {
+			return scoredBSS{}
+		}
+		finalScore := scoreSum * 100 / totalWeight
+		return scoredBSS{
+			bssid:      bss.BSSID,
+			freq:       bss.Freq,
+			channelNum: bss.ChannelNum,
+			finalScore: finalScore,
+			rssiScore:  rs,
+			rssi:       bss.RSSI,
+			snrScore:   ss,
+			snr:        bss.SNR,
+			bandScore:  bs,
+			band:       bss.Band,
+			cwScore:    cws,
+			cw:         bss.ChannelWidth,
+			utilScore:  us,
+			util:       bss.QBSSUtil,
+			phyScore:   ps,
+			phy:        bss.PHYType,
+			age:        bss.Age,
+		}
+	}
+	// below knee
+	rs := rssiMultiplier(bss.RSSI, cfg)
+	kneeRS := cfg.ScoreWeights.RSSI * scoreRSSI(cfg.RSSIKnee, cfg) / 100
 	ss := cfg.SNR * scoreSNR(bss.SNR, cfg) / 100
 	bs := cfg.Band * scoreBand(bss.Band, cfg) / 100
 	cws := cfg.ChannelWidth * scoreCW(bss.ChannelWidth, cfg) / 100
-	//es := cfg.EstThruput * cfg.scoreET(bss.EstThruput) / 100
 	us := cfg.QBSSUtil * scoreUtil(bss.QBSSUtil) / 100
-	//sts := cfg.QBSSStaCt * cfg.scoreStaCt(bss.QBSSStaCt) / 100
 	ps := cfg.PHYType * scorePhy(bss.PHYType, cfg) / 100
 	totalWeight := cfg.ScoreWeights.RSSI + cfg.SNR + cfg.Band + cfg.ChannelWidth + cfg.QBSSUtil + cfg.PHYType
-	scoreSum := rs + ss + bs + cws + us + ps
+	scoreSum := kneeRS + ss + bs + cws + us + ps
 	if totalWeight == 0 {
 		return scoredBSS{}
 	}
-	finalScore := scoreSum * 100 / totalWeight
+	kneeCeiling := scoreSum * 100 / totalWeight
+	finalScore := int(rs * float64(kneeCeiling))
 	return scoredBSS{
 		bssid:      bss.BSSID,
 		freq:       bss.Freq,
 		channelNum: bss.ChannelNum,
 		finalScore: finalScore,
-		rssiScore:  rs,
+		rssiScore:  scoreRSSI(bss.RSSI, cfg),
 		rssi:       bss.RSSI,
 		snrScore:   ss,
 		snr:        bss.SNR,
@@ -68,6 +103,17 @@ func scoreRSSI(rssi int, cfg *config.Config) int {
 		score = 0
 	}
 	return score
+}
+
+func rssiMultiplier(rssi int, cfg *config.Config) float64 {
+	if cfg.RSSIKnee == cfg.MinRSSI {
+		return 0
+	}
+	t := float64(rssi-cfg.MinRSSI) / float64(cfg.RSSIKnee-cfg.MinRSSI)
+	if t < 0 {
+		t = 0
+	}
+	return math.Pow(t, cfg.RSSIExponent)
 }
 
 func scoreSNR(snr int, cfg *config.Config) int {
@@ -121,21 +167,11 @@ func scoreCW(cw wpac.ChannelWidth, cfg *config.Config) int {
 	return score
 }
 
-//func (c *Config) scoreET(et int) int {
-//	var score int
-//	return score
-//}
-
 func scoreUtil(util uint8) int {
 	var score int
 	score = (255 - int(util)) * 100 / 255
 	return score
 }
-
-//func (c *Config) scoreStaCt(sc uint16) int {
-//	var score int
-//	return score
-//}
 
 func scorePhy(phy wpac.PHYType, cfg *config.Config) int {
 	var score int
