@@ -14,8 +14,17 @@ Output is shown in the terminal using structured logging with timestamps and log
 ### One-line install
 Automatically downloads and installs the Linux binary for AMD64, ARM64, or ARM32 devices. 
 ```
-curl -fsSL https://raw.githubusercontent.com/jwil007/roamctl/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/jwil007/roamctl/master/install.sh -o /tmp/install.sh && bash /tmp/install.sh
 ```
+This script provides the option to install roamctl as a systemd service. If running as a systemd service, start with:
+```
+sudo systemd start roamctl
+```
+View logs with:
+```
+journalctl -u roamctl -f
+```
+Run in the foreground to see logs in stdout, or edit configuration settings by running `sudo roamctl` and appending any flags. See [Usage](#Usage) for details.
 ### Build from source
 <details>
   <summary>Click to expand</summary>
@@ -72,19 +81,47 @@ A number of stability guards are in place to prevent excessive roaming, scanning
 > While effort has been made to ensure stability in various edge cases, this is not a battle-tested roaming algorithm. It is meant primarily to be a tool for Wi-Fi engineers, allowing easy access to test and simulate client behavior.
 
 ## Usage
-Connect to an SSID. Run with `roamctl`. Exit with `ctrl+c`.
 
-Some Linux distros require elevated permissions.
+### Daemon mode
+The install.sh script, which is run when you use the quick start curl command, provides the option to install roamctl as a systemd service. This allows roamctl to run in the background like any other system daemon.
 
-If you get a permission error, run with `sudo`. 
+Start the service:
+```
+sudo systemd start roamctl
+```
+Stop the service:
+```
+sudo systemd stop roamctl
+```
+View logs:
+```
+journalctl -u roamctl -f
+```
+Enable at boot:
+```
+sudo systemd stop roamctl
+```
+
+### Foreground mode
+Connect to an SSID. Run with `sudo roamctl`. Exit with `ctrl+c`.
 
 ### Flags:
+Use these arguments to make configuration changes or view debug logs. Run with `sudo roamctl -<ARG> <value>`
 
 `-edit` : Edit config file. Checks for $EDITOR env variable, otherwise tries nano, then vi.
+
+`-iface`: Specify wireless interface. Default is `wlan0`.
 
 `-level` : Set log level. Options are `info` or `debug`. Default is `info`
 
 `-template`: Select config template. Options are `base`, `macos`, and `ios`.
+
+### Uninstall
+This one line command removes all system files and systemd service configuration.
+```
+sudo systemctl stop roamctl; sudo systemctl disable roamctl; sudo rm /etc/systemd/system/roamctl.service; sudo rm -rf /etc/roamctl; sudo rm /usr/local/bin/roamctl
+```
+
 
 ## A note on 6GHz
 The version of wpa_supplicant that ships with most Debian based distros (v2.10) may not reliably find 6GHz APs in the scan results. If you're testing 6GHz roaming, check your version with `wpa_supplicant -v`. If you have v2.11 or newer, 6GHz should be reliable.
