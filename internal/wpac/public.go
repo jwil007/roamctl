@@ -69,10 +69,11 @@ func (c *Client) Roam(ctx context.Context, bssid string) (RoamStats, error) {
 }
 
 func (c *Client) GetConfig() (WPAConfig, error) {
-	ssid, err := c.getSSID()
+	status, err := c.getStatus()
 	if err != nil {
-		return WPAConfig{}, fmt.Errorf("getSSID: %w", err)
+		return WPAConfig{}, fmt.Errorf("c.getStatus: %w", err)
 	}
+	ssid := status.SSID
 	networkID, err := c.getNetworkID()
 	if err != nil {
 		return WPAConfig{}, fmt.Errorf("getNetworkID: %w", err)

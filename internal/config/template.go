@@ -19,6 +19,10 @@ degraded_score_delta = 8
 critical_score_delta = 7
 
 [stability]
+# sets cooldown duration after connection changed
+# prevents roaming while cooldown is in effect
+connection_cooldown = "10s"
+
 # set maxmimum retry rate (percent) or minimum data rate (Mbps)
 # roam is entered when
 retry_rate = 50
@@ -113,6 +117,10 @@ degraded_score_delta = 12
 critical_score_delta = 6
 
 [stability]
+# sets cooldown duration after connection changed
+# prevents roaming while cooldown is in effect
+connection_cooldown = "10s"
+
 # 12 dB stronger requirement from Apple effectively acts as hysteresis
 # These values approximate that behavior at the tier boundary
 rssi_hysteresis_up = 5
@@ -197,6 +205,10 @@ degraded_score_delta = 8
 critical_score_delta = 4
 
 [stability]
+# sets cooldown duration after connection changed
+# prevents roaming while cooldown is in effect
+connection_cooldown = "10s"
+
 # iOS roams more aggressively than macOS — tighter hysteresis reflects this
 rssi_hysteresis_up = 4
 rssi_hysteresis_down = 4

@@ -46,6 +46,10 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 	for {
 		select {
 		case <-cadenceTicker.C:
+			if time.Since(rc.lastConnChange) <= cfg.ConnectionCooldown {
+				slog.Debug("Background scan skipped, connection cooldown active")
+				continue
+			}
 			rc.scanState.mu.RLock()
 			inProgress := rc.scanState.scanInProgress
 			mode := rc.scanState.scanMode
@@ -62,6 +66,10 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 				slog.Info("Backgound scan skipped - scan already in progress")
 			}
 		case con := <-sigCh:
+			var prevBSSID string
+			if rc.lastKnown != nil {
+				prevBSSID = rc.lastKnown.BSSID
+			}
 			if con.AvgRSSIBeacon != 0 {
 				con.RSSI = con.AvgRSSIBeacon
 			}
@@ -72,12 +80,21 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 				slog.Debug("last polled signal stats nil, check again next cycle")
 				continue
 			}
+			if rc.lastKnown.BSSID != prevBSSID && prevBSSID != "" {
+				rc.lastConnChange = time.Now()
+			}
+			if time.Since(rc.lastConnChange) <= cfg.ConnectionCooldown {
+				slog.Debug("Connection cooldown in effect",
+					"remaining", cfg.ConnectionCooldown-time.Since(rc.lastConnChange))
+				continue
+			}
 			slog.Debug("Last polled connection status", "stats", rc.lastKnown)
 			if time.Since(rc.lastRoamAttempt) >= 2*time.Second {
 				rc.checkConnectionHealth()
 			} else {
 				slog.Debug("checkConnectionHealth skipped, backoff timer",
 					"time remaining", 2*time.Second-time.Since(rc.lastRoamAttempt))
+				continue
 			}
 			rc.evalTier()
 			if rc.lastKnown.RSSI >= rc.cfg.FairRSSI+rc.cfg.TierHysteresis &&

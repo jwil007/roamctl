@@ -65,6 +65,7 @@ type roamContext struct {
 	scanState        scanState
 	unhealthyConn    bool
 	unhealthyLogged  bool
+	lastConnChange   time.Time
 }
 
 type scanState struct {

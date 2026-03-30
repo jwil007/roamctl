@@ -230,6 +230,7 @@ func (rc *roamContext) roamToCandidate(
 			"duration", result.Duration,
 			"message", result.Message)
 		rc.roamResultFlag = success
+		rc.lastConnChange = time.Now()
 		rc.lastRoamAttempt = time.Now()
 		rc.hysteresisActive = true
 		rc.unhealthyConn = false
