@@ -78,7 +78,16 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 				continue
 			}
 			if rc.lastKnown.BSSID != prevBSSID && prevBSSID != "" {
+				slog.Info("Connection change detected",
+					"prev_bssid", prevBSSID,
+					"new_bssid", rc.lastKnown.BSSID,
+					"cooldown", rc.cfg.ConnectionCooldown)
 				rc.onConnectionChange()
+			}
+			if con.WPAState != "COMPLETED" {
+				slog.Info("wpa_state not COMPLETED, skipping poll",
+					"wpa_state", con.WPAState)
+				continue
 			}
 			if con.RSSI >= -1 {
 				slog.Debug("Invalid RSSI, skipping poll", "rssi", con.RSSI)
@@ -87,7 +96,7 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 			rc.lastKnown.RSSI = rc.smoothRSSI(con.RSSI)
 			slog.Debug("Last polled connection status", "stats", rc.lastKnown)
 			if time.Since(rc.lastConnChange) <= cfg.ConnectionCooldown {
-				slog.Info("Connection cooldown in effect",
+				slog.Debug("Connection cooldown in effect",
 					"remaining", cfg.ConnectionCooldown-time.Since(rc.lastConnChange))
 				continue
 			}
