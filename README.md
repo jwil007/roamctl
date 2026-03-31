@@ -3,7 +3,7 @@ roamctl is a Linux utility that provides a fully configurable Wi-Fi roaming algo
 
 This utility may serve as a replacement wpa_supplicant's standard roaming module,`bgscan`. The goal is to coexist with your existing Wi-Fi networking stack, and not to replace wpa_supplicant or NetworkManager's core functionality. Therefore, roamctl can act as a more sophisticated and configurable roaming algorithm while leaving the rest of your Linux network configuration as-is.
 
-The core of roamctl is a highly configurable roaming algorithm. It consists of signal and connection quality monitoring, a multi tiered roaming agressiveness hierarchy, and a score-based algorithm to determine the "best" AP to roam to.
+The core of roamctl is a highly configurable roaming algorithm. It consists of signal and connection quality monitoring, a multi tiered roaming aggressiveness hierarchy, and a score-based algorithm to determine the "best" AP to roam to.
 
 The roaming algorithm allows optimizing roaming performance, or it can be used to test unique scenarios. For one example, band preference can be defined: `6ghz = 100`, `5ghz = 60`, `2point4ghz = 20` will aggressively bias toward 6GHz.  See [Configuration](#Configuration) for full parameter reference.
 
