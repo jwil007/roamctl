@@ -1,6 +1,8 @@
 # roamctl
 roamctl is a Linux utility that provides a fully configurable Wi-Fi roaming algorithm. It is written in Go, and exclusively utilizes the wpa_supplicant control interface for Wi-Fi operations. For more info on the wpa_supplicant control interface, read the official docs https://w1.fi/wpa_supplicant/devel/ctrl_iface_page.html.
 
+This utility may serve as a replacement wpa_supplicant's standard roaming module,`bgscan`. The goal is to coexist with wpa_supplicant, and not to replace wpa_supplicant or NetworkManager's core functionality. Therefore, roamctl can act as a more sophisticated and configurable roaming algorithm while leaving the rest of your Linux network configuration as-is.
+
 While running, roamctl disables wpa_supplicant's autonomous roaming and instead uses a configurable roaming algorithm. The algorithm is score based, using a method to score each BSSID in the scan data to make a roaming decision. When the program exits, the original wpa_supplicant configuration and roaming behavior is restored.
 
 The configurable roaming algorithm allows full control of the roaming behavior, and can be used to test unique scenarios.  For one example, band preference is completely configurable: `6ghz = 100`, `5ghz = 60`, `2point4ghz = 20` will aggressively bias toward 6GHz.  See [Configuration](#Configuration) for full parameter reference.
@@ -16,9 +18,9 @@ Automatically downloads and installs the Linux binary for AMD64, ARM64, or ARM32
 ```
 curl -fsSL https://raw.githubusercontent.com/jwil007/roamctl/master/install.sh -o /tmp/install.sh && bash /tmp/install.sh
 ```
-This script provides the option to install roamctl as a systemd service. If running as a systemd service, start with:
+This script provides the option to install roamctl as a systemctl service. If running as a systemd service, start with:
 ```
-sudo systemd start roamctl
+sudo systemctl start roamctl
 ```
 View logs with:
 ```
@@ -87,11 +89,11 @@ The install.sh script, which is run when you use the quick start curl command, p
 
 Start the service:
 ```
-sudo systemd start roamctl
+sudo systemctl start roamctl
 ```
 Stop the service:
 ```
-sudo systemd stop roamctl
+sudo systemctl stop roamctl
 ```
 View logs:
 ```
@@ -99,7 +101,7 @@ journalctl -u roamctl -f
 ```
 Enable at boot:
 ```
-sudo systemd enable roamctl
+sudo systemctl enable roamctl
 ```
 
 ### Foreground mode
@@ -117,9 +119,9 @@ Use these arguments to make configuration changes or view debug logs. Run with `
 `-template`: Select config template. Options are `base`, `macos`, and `ios`.
 
 ### Uninstall
-This one line command removes all system files and systemd service configuration.
+This one line command removes all system files and systemctl service configuration.
 ```
-sudo systemctl stop roamctl; sudo systemctl disable roamctl; sudo rm /etc/systemd/system/roamctl.service; sudo rm -rf /etc/roamctl; sudo rm /usr/local/bin/roamctl
+sudo systemctl stop roamctl; sudo systemctl disable roamctl; sudo rm /etc/systemctl/system/roamctl.service; sudo rm -rf /etc/roamctl; sudo rm /usr/local/bin/roamctl
 ```
 
 
