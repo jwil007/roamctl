@@ -115,6 +115,8 @@ func (rc *roamContext) executeScan(c *wpac.Client, ctx context.Context, sp wpac.
 	for rc.scanState.scanInProgress {
 		slog.Info("Execute Scan: Scan in progress, waiting for completion")
 		rc.scanState.cond.Wait()
+		slog.Info("Execute Scan: in-progress scan completed")
+		return nil
 	}
 	rc.scanState.scanInProgress = true
 	mode := rc.scanState.scanMode
@@ -234,6 +236,39 @@ func logScoredAPs(rc *roamContext) {
 			continue
 		} else {
 			slog.Info("candidate ap", "bss", a)
+		}
+	}
+}
+
+func (rc *roamContext) checkIfNewScan() bool {
+	rc.scanState.mu.RLock()
+	lastScan := rc.scanState.lastScanTime
+	rc.scanState.mu.RUnlock()
+	if lastScan.After(rc.lastEvalTime) {
+		slog.Debug("Fresh scan data received")
+		rc.lastEvalTime = time.Now()
+		return true
+	}
+	slog.Debug("Scan not yet fresh",
+		"last_scan_time", lastScan,
+		"last_eval_time", rc.lastEvalTime,
+		"delta", rc.lastEvalTime.Sub(lastScan).Seconds(),
+	)
+	return false
+}
+
+func (rc *roamContext) fullScanIfBSSIDsChanged() {
+	rc.scanState.mu.RLock()
+	stable := rc.scanState.bssListStable
+	mode := rc.scanState.scanMode
+	rc.scanState.mu.RUnlock()
+	if rc.roamResultFlag == noCandidates {
+		if !stable && mode != fullScan {
+			slog.Info("BSS list has changed, requesting full channel scan",
+				"roam_tier", rc.roamingTier)
+			rc.scanState.mu.Lock()
+			rc.scanState.scanMode = fullScan
+			rc.scanState.mu.Unlock()
 		}
 	}
 }

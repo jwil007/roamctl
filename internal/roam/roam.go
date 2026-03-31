@@ -250,36 +250,3 @@ func (rc *roamContext) roamToCandidate(
 		panic(fmt.Sprintf("unknown roam result status: %v", result.Success))
 	}
 }
-
-func (rc *roamContext) checkIfNewScan() bool {
-	rc.scanState.mu.RLock()
-	lastScan := rc.scanState.lastScanTime
-	rc.scanState.mu.RUnlock()
-	if lastScan.After(rc.lastEvalTime) {
-		slog.Debug("Fresh scan data received")
-		rc.lastEvalTime = time.Now()
-		return true
-	}
-	slog.Debug("Scan not yet fresh",
-		"last_scan_time", lastScan,
-		"last_eval_time", rc.lastEvalTime,
-		"delta", rc.lastEvalTime.Sub(lastScan).Seconds(),
-	)
-	return false
-}
-
-func (rc *roamContext) fullScanIfBSSIDsChanged() {
-	rc.scanState.mu.RLock()
-	stable := rc.scanState.bssListStable
-	mode := rc.scanState.scanMode
-	rc.scanState.mu.RUnlock()
-	if rc.roamResultFlag == noCandidates {
-		if !stable && mode != fullScan {
-			slog.Info("BSS list has changed, requesting full channel scan",
-				"roam_tier", rc.roamingTier)
-			rc.scanState.mu.Lock()
-			rc.scanState.scanMode = fullScan
-			rc.scanState.mu.Unlock()
-		}
-	}
-}
