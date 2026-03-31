@@ -82,7 +82,7 @@ A number of stability guards are in place to prevent excessive roaming, scanning
 ## Usage
 
 ### Daemon mode
-Use the one-line install from [Quick Start](#Quick-Start) for automated setup. For manual setup, move the `roamctl.service` file into the `/etc/systemd/service`, then run `sudo systemctl daemon-reload`.
+Use the one-line install from [Quick Start](#Quick-Start) for automated setup. For manual setup, move the `roamctl.service` file into the `/etc/systemd/service/` directory, then run `sudo systemctl daemon-reload`.
 
 
 Start the service:
