@@ -67,8 +67,10 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 			}
 		case con := <-sigCh:
 			var prevBSSID string
+			var prevSSID string
 			if rc.lastKnown != nil {
 				prevBSSID = rc.lastKnown.BSSID
+				prevSSID = rc.lastKnown.SSID
 			}
 			if con.BSSID != "" && con.RSSI < -1 {
 				rc.lastKnown = &con
@@ -76,6 +78,10 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 			if rc.lastKnown == nil {
 				slog.Debug("last polled signal stats nil, check again next cycle")
 				continue
+			}
+			if rc.lastKnown.SSID != prevSSID && prevSSID != "" {
+				return fmt.Errorf("SSID change detected, exiting."+
+					" prev_ssid: %v, new_ssid: %v", prevSSID, rc.lastKnown.SSID)
 			}
 			if rc.lastKnown.BSSID != prevBSSID && prevBSSID != "" {
 				slog.Info("Connection change detected",
