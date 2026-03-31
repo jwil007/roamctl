@@ -14,7 +14,7 @@ Automatically downloads and installs the Linux binary for AMD64, ARM64, or ARM32
 ```
 curl -fsSL https://raw.githubusercontent.com/jwil007/roamctl/master/install.sh -o /tmp/install.sh && bash /tmp/install.sh
 ```
-This script provides the option to install roamctl as a systemctl service. If running as a systemd service, start with:
+The one-line install provides the option to run roamctl as a systemctl service. If running as a service, start with:
 ```
 sudo systemctl start roamctl
 ```
@@ -82,7 +82,8 @@ A number of stability guards are in place to prevent excessive roaming, scanning
 ## Usage
 
 ### Daemon mode
-The install.sh script, which is run when you use the quick start curl command, provides the option to install roamctl as a systemd service. This allows roamctl to run in the background like any other system daemon.
+Use the one-line install from [Quick Start](#Quick-Start) for automated setup. For manual setup, move the `roamctl.service` file into the `/etc/systemd/service`, then run `sudo systemctl daemon-reload`.
+
 
 Start the service:
 ```
