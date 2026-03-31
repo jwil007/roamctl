@@ -7,6 +7,9 @@ The core of roamctl is a highly configurable roaming algorithm. It consists of s
 
 The roaming algorithm allows optimizing roaming performance, or it can be used to test unique scenarios. For one example, band preference can be defined: `6ghz = 100`, `5ghz = 60`, `2point4ghz = 20` will aggressively bias toward 6GHz.  See [Configuration](#Configuration) for full parameter reference.
 
+
+> [!NOTE]
+> When roamctl is running, it automatically adjusts configuration to disable wpa_supplicant's autonomous roaming. When the program exists or is otherwise stopped, wpa_supplicant's original configuration is restored.
 ## Quick Start
 
 ### One-line install
