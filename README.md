@@ -1,15 +1,11 @@
 # roamctl
 roamctl is a Linux utility that provides a fully configurable Wi-Fi roaming algorithm. It is written in Go, and exclusively utilizes the wpa_supplicant control interface for Wi-Fi operations. For more info on the wpa_supplicant control interface, read the official docs https://w1.fi/wpa_supplicant/devel/ctrl_iface_page.html.
 
-This utility may serve as a replacement wpa_supplicant's standard roaming module,`bgscan`. The goal is to coexist with wpa_supplicant, and not to replace wpa_supplicant or NetworkManager's core functionality. Therefore, roamctl can act as a more sophisticated and configurable roaming algorithm while leaving the rest of your Linux network configuration as-is.
+This utility may serve as a replacement wpa_supplicant's standard roaming module,`bgscan`. The goal is to coexist with your existing Wi-Fi networking stack, and not to replace wpa_supplicant or NetworkManager's core functionality. Therefore, roamctl can act as a more sophisticated and configurable roaming algorithm while leaving the rest of your Linux network configuration as-is.
 
-While running, roamctl disables wpa_supplicant's autonomous roaming and instead uses a configurable roaming algorithm. The algorithm is score based, using a method to score each BSSID in the scan data to make a roaming decision. When the program exits, the original wpa_supplicant configuration and roaming behavior is restored.
+The core of roamctl is a highly configurable roaming algorithm. It consists of signal and connection quality monitoring, a multi tiered roaming agressiveness hierarchy, and a score-based algorithm to determine the "best" AP to roam to.
 
-The configurable roaming algorithm allows full control of the roaming behavior, and can be used to test unique scenarios.  For one example, band preference is completely configurable: `6ghz = 100`, `5ghz = 60`, `2point4ghz = 20` will aggressively bias toward 6GHz.  See [Configuration](#Configuration) for full parameter reference.
-
-There are also templates designed to map to real world devices. Currently, templates are available to simulate macOS and iOS roaming, based on their documented algorithm.
-
-Output is shown in the terminal using structured logging with timestamps and log levels.
+The roaming algorithm allows optimizing roaming performance, or it can be used to test unique scenarios. For one example, band preference can be defined: `6ghz = 100`, `5ghz = 60`, `2point4ghz = 20` will aggressively bias toward 6GHz.  See [Configuration](#Configuration) for full parameter reference.
 
 ## Quick Start
 
@@ -77,6 +73,7 @@ BSSIDs in the scan results are scored using a weighted combination of RSSI, SNR,
 A number of stability guards are in place to prevent excessive roaming, scanning or ping-ponging. These guards include:
 - A score_delta parameter to ensure that the candidate AP is materially better than the current AP
 - A smart scanning algorithm is used to minimze time spent scanning, by scanning only channels known to have candidate APs. Full sweeps are only done when needed.
+- Detection of in-flight connection events to back off any roaming/scanning activies. This is particularly important in cases where a lower level connection change happens, such as a disconnection triggered outside of the roaming context.
 - [Hysteresis methods](https://en.wikipedia.org/wiki/Hysteresis#Control_systems) to prevent freqently entering the roam cycle when at a borderline signal strength
 
 > [!IMPORTANT]
