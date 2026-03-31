@@ -70,9 +70,6 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 			if rc.lastKnown != nil {
 				prevBSSID = rc.lastKnown.BSSID
 			}
-			if con.AvgRSSIBeacon != 0 {
-				con.RSSI = con.AvgRSSIBeacon
-			}
 			if con.BSSID != "" && con.RSSI < -1 {
 				rc.lastKnown = &con
 			}
@@ -81,14 +78,19 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 				continue
 			}
 			if rc.lastKnown.BSSID != prevBSSID && prevBSSID != "" {
-				rc.lastConnChange = time.Now()
+				rc.onConnectionChange()
 			}
+			if con.RSSI >= -1 {
+				slog.Debug("Invalid RSSI, skipping poll", "rssi", con.RSSI)
+				continue
+			}
+			rc.lastKnown.RSSI = rc.smoothRSSI(con.RSSI)
+			slog.Debug("Last polled connection status", "stats", rc.lastKnown)
 			if time.Since(rc.lastConnChange) <= cfg.ConnectionCooldown {
-				slog.Debug("Connection cooldown in effect",
+				slog.Info("Connection cooldown in effect",
 					"remaining", cfg.ConnectionCooldown-time.Since(rc.lastConnChange))
 				continue
 			}
-			slog.Debug("Last polled connection status", "stats", rc.lastKnown)
 			if time.Since(rc.lastRoamAttempt) >= 2*time.Second {
 				rc.checkConnectionHealth()
 			} else {
@@ -276,4 +278,30 @@ func (rc *roamContext) handleWpaSuppConfig(c *wpac.Client) (func(), error) {
 		}
 	}
 	return cleanup, nil
+}
+
+func (rc *roamContext) smoothRSSI(rssi int) int {
+	if len(rc.rssiRingBuffer) < rc.cfg.RSSISmoothWindow {
+		rc.rssiRingBuffer = append(rc.rssiRingBuffer, rssi)
+	} else {
+		rc.rssiRingBuffer[rc.rssiWriteIdx] = rssi
+	}
+	rc.rssiWriteIdx = (rc.rssiWriteIdx + 1) % rc.cfg.RSSISmoothWindow
+	total := 0
+	for _, r := range rc.rssiRingBuffer {
+		total += r
+	}
+	smoothed := total / len(rc.rssiRingBuffer)
+	slog.Debug("rssi smoothing stats:",
+		"buffer", rc.rssiRingBuffer,
+		"avg_rssi", total/len(rc.rssiRingBuffer),
+	)
+	return smoothed
+}
+
+func (rc *roamContext) onConnectionChange() {
+	rc.lastConnChange = time.Now()
+	rc.rssiRingBuffer = nil
+	rc.unhealthyConn = false
+	rc.unhealthyLogged = false
 }

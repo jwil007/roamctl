@@ -230,10 +230,9 @@ func (rc *roamContext) roamToCandidate(
 			"duration", result.Duration,
 			"message", result.Message)
 		rc.roamResultFlag = success
-		rc.lastConnChange = time.Now()
+		rc.onConnectionChange()
 		rc.lastRoamAttempt = time.Now()
 		rc.hysteresisActive = true
-		rc.unhealthyConn = false
 		rc.lastTriggerRSSI = rc.lastKnown.RSSI
 		slog.Debug("RSSI Hysteresis active. Signal change needed next roam attempt",
 			"current", rc.lastKnown.RSSI,

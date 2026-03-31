@@ -74,15 +74,17 @@ func (c *Client) getStatus() (Status, error) {
 		return Status{}, fmt.Errorf("c.cmd(\"STATUS\"): %w", err)
 	}
 	for _, line := range strings.Split(string(out), "\n") {
+		//fmt.Printf("DEBUG: status output: %v\n", line)
 		if strings.HasPrefix(line, "ssid=") {
 			status.SSID = line[5:]
-		} else {
-			return Status{}, fmt.Errorf("ssid field not found - check if wifi iface connected")
 		}
 		if strings.HasPrefix(line, "wpa_state=") {
 			status.WPAState = line[10:]
 		}
 	}
+	//if status.SSID == "" {
+	//	return Status{}, fmt.Errorf("ssid field not found - check if wifi iface connected")
+	//}
 	return status, nil
 }
 

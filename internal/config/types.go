@@ -35,6 +35,7 @@ type Stability struct {
 	RetryRate          int           `toml:"retry_rate"` // not used, may implement for tier select
 	DataRate           int           `toml:"data_rate"`  // not used, may implement for tier select
 	UnhealthyScoreMod  int           `toml:"unhealthy_score_mod"`
+	RSSISmoothWindow   int           `toml:"rssi_smooth_window"`
 }
 
 type Timing struct {
