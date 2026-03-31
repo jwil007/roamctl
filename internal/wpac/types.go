@@ -47,15 +47,23 @@ type STAInfo struct {
 	BSSID        string
 }
 
+type Status struct {
+	SSID     string
+	WPAState string
+}
+
 type ConnectionStatus struct {
+	Status
 	Signal
 	STAInfo
 }
 
 func (c ConnectionStatus) String() string {
 	return fmt.Sprintf(
-		"bssid:%s rssi:%d avgrssi:%d avgrssibeacon:%d noise:%d linkspeed:%d freq:%d cw:%s "+
+		"ssid: %s wpa_state: %s, bssid:%s rssi:%d avgrssi:%d avgrssibeacon:%d noise:%d linkspeed:%d freq:%d cw:%s "+
 			"sigavg:%v RxBitrate:%v TxBitrate:%v TxRetries:%v RetryRate: %v TxFails:%v beaconloss:%v connduration:%v",
+		c.SSID,
+		c.WPAState,
 		c.BSSID,
 		c.RSSI,
 		c.AvgRSSI,

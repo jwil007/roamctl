@@ -19,6 +19,10 @@ degraded_score_delta = 8
 critical_score_delta = 7
 
 [stability]
+# sets cooldown duration after connection changed
+# prevents roaming while cooldown is in effect
+connection_cooldown = "5s"
+
 # set maxmimum retry rate (percent) or minimum data rate (Mbps)
 # roam is entered when
 retry_rate = 50
@@ -34,6 +38,10 @@ rssi_hysteresis_down = 5
 # This value is used as an upward RSSI buffer when the roaming tier is evaluated
 # It prevents frequent tier oscilation when at an rssi boundry
 tier_hysteresis = 5
+
+# Set number of samples to avg rssi over
+# Alleviates transient RSSI changes triggering roam logic
+rssi_smooth_window = 5
 
 [timing]
 # Timings for signal polling (e.g. hosts current RSSI, SNR) and bg scan interval
@@ -113,6 +121,14 @@ degraded_score_delta = 12
 critical_score_delta = 6
 
 [stability]
+# sets cooldown duration after connection changed
+# prevents roaming while cooldown is in effect
+connection_cooldown = "5s"
+
+# Set number of samples to avg rssi over
+# Alleviates transient RSSI changes triggering roam logic
+rssi_smooth_window = 5
+
 # 12 dB stronger requirement from Apple effectively acts as hysteresis
 # These values approximate that behavior at the tier boundary
 rssi_hysteresis_up = 5
@@ -197,6 +213,10 @@ degraded_score_delta = 8
 critical_score_delta = 4
 
 [stability]
+# sets cooldown duration after connection changed
+# prevents roaming while cooldown is in effect
+connection_cooldown = "5s"
+
 # iOS roams more aggressively than macOS — tighter hysteresis reflects this
 rssi_hysteresis_up = 4
 rssi_hysteresis_down = 4
@@ -208,6 +228,10 @@ retry_rate = 75
 data_rate = 10 #Mbps
 # modifier to penalize score of unhealthy AP, needed to encourage roaming to different AP
 unhealthy_score_mod = 20
+
+# Set number of samples to avg rssi over
+# Alleviates transient RSSI changes triggering roam logic
+rssi_smooth_window = 5
 
 
 [timing]

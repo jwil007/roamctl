@@ -46,6 +46,10 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 	for {
 		select {
 		case <-cadenceTicker.C:
+			if time.Since(rc.lastConnChange) <= cfg.ConnectionCooldown {
+				slog.Debug("Background scan skipped, connection cooldown active")
+				continue
+			}
 			rc.scanState.mu.RLock()
 			inProgress := rc.scanState.scanInProgress
 			mode := rc.scanState.scanMode
@@ -62,8 +66,9 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 				slog.Info("Backgound scan skipped - scan already in progress")
 			}
 		case con := <-sigCh:
-			if con.AvgRSSIBeacon != 0 {
-				con.RSSI = con.AvgRSSIBeacon
+			var prevBSSID string
+			if rc.lastKnown != nil {
+				prevBSSID = rc.lastKnown.BSSID
 			}
 			if con.BSSID != "" && con.RSSI < -1 {
 				rc.lastKnown = &con
@@ -72,12 +77,26 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 				slog.Debug("last polled signal stats nil, check again next cycle")
 				continue
 			}
+			if rc.lastKnown.BSSID != prevBSSID && prevBSSID != "" {
+				rc.onConnectionChange()
+			}
+			if con.RSSI >= -1 {
+				slog.Debug("Invalid RSSI, skipping poll", "rssi", con.RSSI)
+				continue
+			}
+			rc.lastKnown.RSSI = rc.smoothRSSI(con.RSSI)
 			slog.Debug("Last polled connection status", "stats", rc.lastKnown)
+			if time.Since(rc.lastConnChange) <= cfg.ConnectionCooldown {
+				slog.Info("Connection cooldown in effect",
+					"remaining", cfg.ConnectionCooldown-time.Since(rc.lastConnChange))
+				continue
+			}
 			if time.Since(rc.lastRoamAttempt) >= 2*time.Second {
 				rc.checkConnectionHealth()
 			} else {
 				slog.Debug("checkConnectionHealth skipped, backoff timer",
 					"time remaining", 2*time.Second-time.Since(rc.lastRoamAttempt))
+				continue
 			}
 			rc.evalTier()
 			if rc.lastKnown.RSSI >= rc.cfg.FairRSSI+rc.cfg.TierHysteresis &&
@@ -259,4 +278,30 @@ func (rc *roamContext) handleWpaSuppConfig(c *wpac.Client) (func(), error) {
 		}
 	}
 	return cleanup, nil
+}
+
+func (rc *roamContext) smoothRSSI(rssi int) int {
+	if len(rc.rssiRingBuffer) < rc.cfg.RSSISmoothWindow {
+		rc.rssiRingBuffer = append(rc.rssiRingBuffer, rssi)
+	} else {
+		rc.rssiRingBuffer[rc.rssiWriteIdx] = rssi
+	}
+	rc.rssiWriteIdx = (rc.rssiWriteIdx + 1) % rc.cfg.RSSISmoothWindow
+	total := 0
+	for _, r := range rc.rssiRingBuffer {
+		total += r
+	}
+	smoothed := total / len(rc.rssiRingBuffer)
+	slog.Debug("rssi smoothing stats:",
+		"buffer", rc.rssiRingBuffer,
+		"avg_rssi", total/len(rc.rssiRingBuffer),
+	)
+	return smoothed
+}
+
+func (rc *roamContext) onConnectionChange() {
+	rc.lastConnChange = time.Now()
+	rc.rssiRingBuffer = nil
+	rc.unhealthyConn = false
+	rc.unhealthyLogged = false
 }
