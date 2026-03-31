@@ -69,7 +69,7 @@ func (c *Client) runRoam(bssid string) error {
 
 func (c *Client) getStatus() (Status, error) {
 	var status Status
-	out, err := c.cmd("STATUS")
+	out, err := c.cmdP("STATUS")
 	if err != nil {
 		return Status{}, fmt.Errorf("c.cmd(\"STATUS\"): %w", err)
 	}
