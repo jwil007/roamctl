@@ -167,10 +167,14 @@ degraded_score_delta = 8
 critical_score_delta = 7
 
 [stability]
+# sets cooldown duration after connection changed
+# prevents roaming while cooldown is in effect
+connection_cooldown = "5s"
+
 # set maxmimum retry rate (percent) or minimum data rate (Mbps)
 # roam is entered when
-retry_rate = 50
-data_rate = 20 #Mbps
+retry_rate = 75
+data_rate = 10 #Mbps
 # modifier to penalize score of unhealthy AP, needed to encourage roaming to different AP
 unhealthy_score_mod = 20
 
@@ -182,6 +186,10 @@ rssi_hysteresis_down = 5
 # This value is used as an upward RSSI buffer when the roaming tier is evaluated
 # It prevents frequent tier oscilation when at an rssi boundry
 tier_hysteresis = 5
+
+# Set number of samples to avg rssi over
+# Alleviates transient RSSI changes triggering roam logic
+rssi_smooth_window = 5
 
 [timing]
 # Timings for signal polling (e.g. hosts current RSSI, SNR) and bg scan interval

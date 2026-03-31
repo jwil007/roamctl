@@ -25,8 +25,8 @@ connection_cooldown = "5s"
 
 # set maxmimum retry rate (percent) or minimum data rate (Mbps)
 # roam is entered when
-retry_rate = 50
-data_rate = 20 #Mbps
+retry_rate = 75
+data_rate = 10 #Mbps
 # modifier to penalize score of unhealthy AP, needed to encourage roaming to different AP
 unhealthy_score_mod = 20
 
