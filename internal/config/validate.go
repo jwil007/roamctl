@@ -82,7 +82,11 @@ func (cfg *Config) Validate() error {
 			"stability.unhealthy_score_mod %v invalid. Must be in range 0 to 100",
 			cfg.Stability.UnhealthyScoreMod))
 	}
-
+	if cfg.Stability.RSSISmoothWindow < 1 || cfg.Stability.RSSISmoothWindow > 10 {
+		errs = append(errs, fmt.Sprintf(
+			"stability.rssi_mooth_window %v invalid. Must be in range 1-10",
+			cfg.Stability.RSSISmoothWindow))
+	}
 	// ScoreWeights
 	if !validScore(cfg.ScoreWeights.RSSI) {
 		errs = append(errs, fmt.Sprintf(

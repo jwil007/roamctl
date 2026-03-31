@@ -189,6 +189,7 @@ tier_hysteresis = 5
 
 # Set number of samples to avg rssi over
 # Alleviates transient RSSI changes triggering roam logic
+# Must be an integer from 1 to 10. 0 is not allowed.
 rssi_smooth_window = 5
 
 [timing]
@@ -226,7 +227,7 @@ max_snr = 50
 # Use the following to adjust various scoring. This is where you can 
 # tweak band pref, cw pref, etc.
 [band_scores]
-2point4ghz = 20
+2point4ghz = 0
 5ghz = 80
 6ghz = 100
 

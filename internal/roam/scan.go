@@ -49,12 +49,18 @@ func (rc *roamContext) smartScan(c *wpac.Client, ctx context.Context) error {
 
 func (rc *roamContext) runFastScan(c *wpac.Client, ctx context.Context) error {
 	//scan only specified channels
+	var ssid string
+	if rc.lastKnown == nil {
+		ssid = rc.ssid
+	} else {
+		ssid = rc.lastKnown.SSID
+	}
 	rc.scanState.mu.RLock()
 	freqs := rc.scanState.channels
 	rc.scanState.mu.RUnlock()
 	sp := wpac.ScanParams{
 		Freqs:      freqs,
-		SSID:       rc.ssid,
+		SSID:       ssid,
 		Timeout:    20 * time.Second,
 		RetryCount: 3,
 	}
@@ -67,9 +73,15 @@ func (rc *roamContext) runFastScan(c *wpac.Client, ctx context.Context) error {
 
 func (rc *roamContext) runFullScan(c *wpac.Client, ctx context.Context) error {
 	//Scan all channels by not specifying freqs
+	var ssid string
+	if rc.lastKnown == nil {
+		ssid = rc.ssid
+	} else {
+		ssid = rc.lastKnown.SSID
+	}
 	sp := wpac.ScanParams{
 		Freqs:      nil,
-		SSID:       rc.ssid,
+		SSID:       ssid,
 		Timeout:    20 * time.Second,
 		RetryCount: 3,
 	}
