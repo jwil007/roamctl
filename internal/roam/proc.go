@@ -68,9 +68,11 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 		case con := <-sigCh:
 			var prevBSSID string
 			var prevSSID string
+			var prevFreq int
 			if rc.lastKnown != nil {
 				prevBSSID = rc.lastKnown.BSSID
 				prevSSID = rc.lastKnown.SSID
+				prevFreq = rc.lastKnown.Freq
 			}
 			if con.BSSID != "" && con.RSSI < -1 {
 				rc.lastKnown = &con
@@ -94,6 +96,16 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 				slog.Info("wpa_state not COMPLETED, skipping poll",
 					"wpa_state", con.WPAState)
 				continue
+			}
+			if rc.lastKnown.Freq != prevFreq && prevFreq != 0 {
+				slog.Info("Frequency change detected",
+					"prev_freq", prevFreq, "new_freq", rc.lastKnown.Freq)
+				rc.scanState.mu.Lock()
+				if !slices.Contains(rc.scanState.channels, rc.lastKnown.Freq) {
+					rc.scanState.channels = append(rc.scanState.channels, rc.lastKnown.Freq)
+					slices.Sort(rc.scanState.channels)
+				}
+				rc.scanState.mu.Unlock()
 			}
 			if con.RSSI >= -1 {
 				slog.Debug("Invalid RSSI, skipping poll", "rssi", con.RSSI)
