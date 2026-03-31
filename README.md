@@ -99,7 +99,7 @@ journalctl -u roamctl -f
 ```
 Enable at boot:
 ```
-sudo systemd stop roamctl
+sudo systemd enable roamctl
 ```
 
 ### Foreground mode
