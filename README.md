@@ -210,14 +210,14 @@ band = 35
 channel_width = 10
 phy_type = 15
 
-# RSSI has a multiplicative below the knee, using an exponential curve
+# RSSI has a multiplicative effect below the knee, using an exponential curve
+# This is implemented to ensure APs that approach unusable RSSI are scored correctly
 rssi_knee = -68
 rssi_exponent = 1.8
 
 [score_clamps]
 # Used for RSSI and SNR scoring.
 # Values below min are scored 0, values above max are score 100
-# Values between clamps are scored linearly
 min_rssi = -82
 max_rssi = -25
 min_snr = 10
