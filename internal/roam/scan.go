@@ -230,7 +230,7 @@ func hashBSSIDs(aps []wpac.RichBSS) uint64 {
 }
 
 func logScoredAPs(rc *roamContext) {
-	slog.Info(blue.Render("current ap"), "bss", rc.currentAP)
+	slog.Info(blue.Render("current ap  "), "bss", rc.currentAP)
 	for _, a := range rc.scoredAPs {
 		if a.bssid == rc.lastKnown.BSSID {
 			continue

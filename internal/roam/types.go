@@ -33,12 +33,12 @@ type scoredBSS struct {
 
 func (s scoredBSS) String() string {
 	return fmt.Sprintf(
-		"bssid:%s score:%d rssi:%d(scr:%d) snr:%d(scr:%d) band:%s(scr:%d) cw:%s(scr:%d) util:%d(scr:%d) phy:%s(scr:%d) age:%s",
+		"bssid:%s score:%d rssi:%d(scr:%d) snr:%d(scr:%d) chan:%d %s(scr:%d) cw:%s(scr:%d) util:%d(scr:%d) phy:%s(scr:%d) age:%s",
 		s.bssid,
 		s.finalScore,
 		s.rssi, s.rssiScore,
 		s.snr, s.snrScore,
-		s.band, s.bandScore,
+		s.channelNum, s.band, s.bandScore,
 		s.cw, s.cwScore,
 		s.util, s.utilScore,
 		s.phy, s.phyScore,
