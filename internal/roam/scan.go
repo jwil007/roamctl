@@ -115,6 +115,7 @@ func (rc *roamContext) executeScan(c *wpac.Client, ctx context.Context, sp wpac.
 	for rc.scanState.scanInProgress {
 		slog.Info("Execute Scan: Scan in progress, waiting for completion")
 		rc.scanState.cond.Wait()
+		rc.scanState.mu.Unlock()
 		slog.Info("Execute Scan: in-progress scan completed")
 		return nil
 	}
