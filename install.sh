@@ -33,9 +33,10 @@ if command -v $BINARY_NAME &>/dev/null; then
 fi
 
 # Download and install binary
-DOWNLOAD_URL="https://github.com/$REPO/releases/download/$LATEST/roamctl-$GOARCH"
+DOWNLOAD_URL="https://github.com/$REPO/releases/download/$LATEST/roamctl_${GOARCH}.tar.gz"
 echo "Downloading roamctl-$GOARCH from $LATEST..."
-curl -fsSL "$DOWNLOAD_URL" -o /tmp/roamctl
+curl -fsSL "$DOWNLOAD_URL" -o /tmp/roamctl.tar.gz
+tar -xzf /tmp/roamctl.tar.gz -C /tmp roamctl
 chmod +x /tmp/roamctl
 echo "Installing to $INSTALL_DIR/$BINARY_NAME..."
 sudo mv /tmp/roamctl "$INSTALL_DIR/$BINARY_NAME"
