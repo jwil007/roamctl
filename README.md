@@ -9,7 +9,7 @@ The roaming algorithm allows optimizing roaming performance, or it can be used t
 
 
 > [!NOTE]
-> When roamctl is running, it automatically adjusts configuration to disable wpa_supplicant's autonomous roaming. When the program exists or is otherwise stopped, wpa_supplicant's original configuration is restored.
+> When roamctl is running, it automatically adjusts configuration to disable wpa_supplicant's autonomous roaming. When the program exits or is otherwise stopped, wpa_supplicant's original configuration is restored.
 ## Quick Start
 
 ### One-line install
