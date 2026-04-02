@@ -93,6 +93,9 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 				rc.onConnectionChange()
 			}
 			if con.WPAState != "COMPLETED" {
+				if con.WPAState == "DISCONNECTED" {
+					return fmt.Errorf("wpa_state is DISCONNECTED, exiting")
+				}
 				slog.Info("wpa_state not COMPLETED, skipping poll",
 					"wpa_state", con.WPAState)
 				continue
