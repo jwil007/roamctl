@@ -47,15 +47,29 @@ func (rc *roamContext) buildBSSForIPC() []ipc.BSS {
 			isCurrentAP = false
 		}
 		bssList = append(bssList, ipc.BSS{
-			RichBSS:     rich,
-			FinalScore:  scored.finalScore,
-			RssiScore:   scored.rssiScore,
-			SnrScore:    scored.snrScore,
-			BandScore:   scored.bandScore,
-			CwScore:     scored.cwScore,
-			UtilScore:   scored.utilScore,
-			PhyScore:    scored.phyScore,
-			IsCurrentAP: isCurrentAP,
+			BSSID:        rich.BSSID,
+			Freq:         rich.Freq,
+			ChannelNum:   rich.ChannelNum,
+			Band:         rich.Band.String(),
+			ChannelWidth: rich.ChannelWidth.String(),
+			PHYType:      rich.PHYType.String(),
+			BeaconInt:    rich.BeaconInt,
+			Noise:        rich.Noise,
+			RSSI:         rich.RSSI,
+			SNR:          rich.SNR,
+			Age:          rich.Age,
+			Flags:        rich.Flags,
+			EstThruput:   rich.EstThruput,
+			QBSSUtil:     rich.QBSSUtil,
+			QBSSStaCt:    rich.QBSSStaCt,
+			FinalScore:   scored.finalScore,
+			RssiScore:    scored.rssiScore,
+			SnrScore:     scored.snrScore,
+			BandScore:    scored.bandScore,
+			CwScore:      scored.cwScore,
+			UtilScore:    scored.utilScore,
+			PhyScore:     scored.phyScore,
+			IsCurrentAP:  isCurrentAP,
 		})
 	}
 	return bssList

@@ -18,15 +18,29 @@ type ProcessState struct {
 }
 
 type BSS struct {
-	RichBSS     wpac.RichBSS
-	FinalScore  int
-	RssiScore   int
-	SnrScore    int
-	BandScore   int
-	CwScore     int
-	UtilScore   int
-	PhyScore    int
-	IsCurrentAP bool
+	BSSID        string
+	Freq         int
+	ChannelNum   int
+	Band         string
+	ChannelWidth string
+	PHYType      string
+	BeaconInt    int
+	Noise        int
+	RSSI         int
+	SNR          int
+	Age          time.Duration
+	Flags        string
+	EstThruput   int
+	QBSSUtil     uint8
+	QBSSStaCt    uint16
+	FinalScore   int
+	RssiScore    int
+	SnrScore     int
+	BandScore    int
+	CwScore      int
+	UtilScore    int
+	PhyScore     int
+	IsCurrentAP  bool
 }
 type Flags struct {
 	HysteresisActive bool

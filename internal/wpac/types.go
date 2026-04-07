@@ -135,8 +135,8 @@ type WpasBSS struct {
 	Age        time.Duration
 	Flags      string
 	EstThruput int
-	ProbeIE    []byte `json:"-"`
-	BeaconIE   []byte `json:"-"`
+	ProbeIE    []byte
+	BeaconIE   []byte
 }
 
 type IEBSS struct {
