@@ -169,6 +169,7 @@ func (rc *roamContext) prepScanResults(c *wpac.Client) error {
 		slog.Warn("scanResults empty")
 		return nil
 	}
+	rc.richBSSList = aps
 	rc.scoredAPs = scoreAll(aps, rc.cfg)
 	for _, ap := range rc.scoredAPs {
 		if ap.bssid == rc.lastKnown.BSSID {

@@ -224,6 +224,7 @@ func (rc *roamContext) roamToCandidate(
 			"score", rc.candidateAP.finalScore,
 			"duration", result.Duration,
 			"message", result.Message)
+		rc.lastRoamStats = result
 		rc.roamResultFlag = success
 		rc.onConnectionChange()
 		rc.lastRoamAttempt = time.Now()
@@ -242,6 +243,7 @@ func (rc *roamContext) roamToCandidate(
 			"score", rc.candidateAP.finalScore,
 			"duration", result.Duration,
 			"message", result.Message)
+		rc.lastRoamStats = result
 		rc.roamResultFlag = failure
 		rc.lastRoamAttempt = time.Now()
 		rc.unhealthyConn = false

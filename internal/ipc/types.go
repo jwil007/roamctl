@@ -1,0 +1,44 @@
+package ipc
+
+import (
+	"time"
+
+	"github.com/jwil007/roamctl/internal/wpac"
+)
+
+type ProcessState struct {
+	SSID           string
+	BSSList        []BSS
+	ConnState      wpac.ConnectionStatus
+	RoamStats      wpac.RoamStats
+	RoamingTier    string
+	RoamResultFlag string
+	Flags
+	ScanState
+}
+
+type BSS struct {
+	RichBSS     wpac.RichBSS
+	FinalScore  int
+	RssiScore   int
+	SnrScore    int
+	BandScore   int
+	CwScore     int
+	UtilScore   int
+	PhyScore    int
+	IsCurrentAP bool
+}
+type Flags struct {
+	HysteresisActive bool
+	EntryScanned     bool //Prevents scan loop
+	EntryScannedCrit bool
+	FullScannedCrit  bool
+	UnhealthyConn    bool
+}
+
+type ScanState struct {
+	ScanInProgress bool
+	ScanMode       string
+	ScanDuration   time.Duration
+	BSSListStable  bool
+}

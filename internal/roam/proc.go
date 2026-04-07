@@ -11,10 +11,11 @@ import (
 	"time"
 
 	"github.com/jwil007/roamctl/internal/config"
+	"github.com/jwil007/roamctl/internal/ipc"
 	"github.com/jwil007/roamctl/internal/wpac"
 )
 
-func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
+func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan ipc.ProcessState) error {
 	slog.Info("Starting roamctl... exit with ctrl+c")
 	rc := &roamContext{}
 	rc.roamingTier = noRoam
@@ -156,6 +157,7 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config) error {
 					return fmt.Errorf("handleCriticalRoam: %w", err)
 				}
 			}
+			rc.shipProcessState(ipcChan)
 		case err = <-sigErrCh:
 			if err != nil {
 				if errors.Is(err, os.ErrDeadlineExceeded) {

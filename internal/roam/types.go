@@ -49,11 +49,13 @@ func (s scoredBSS) String() string {
 type roamContext struct {
 	cfg              *config.Config
 	ssid             string
+	richBSSList      []wpac.RichBSS
 	scoredAPs        []scoredBSS
 	candidateAP      scoredBSS
 	currentAP        scoredBSS
 	lastKnown        *wpac.ConnectionStatus
 	roamResultFlag   roamResultFlag
+	lastRoamStats    wpac.RoamStats
 	lastRoamAttempt  time.Time
 	hysteresisActive bool
 	lastTriggerRSSI  int

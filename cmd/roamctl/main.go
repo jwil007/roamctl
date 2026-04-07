@@ -15,6 +15,7 @@ import (
 
 	charmlog "github.com/charmbracelet/log"
 	"github.com/jwil007/roamctl/internal/config"
+	"github.com/jwil007/roamctl/internal/ipc"
 	"github.com/jwil007/roamctl/internal/roam"
 	"github.com/jwil007/roamctl/internal/wpac"
 )
@@ -76,7 +77,7 @@ func run() error {
 		logLevel = slog.LevelInfo
 	}
 	defer func() {
-		_ = os.Remove("/run/roamctl.pid")
+		_ = os.Remove("/run/roamctl/roamctl.pid")
 	}()
 
 	//check if process already running
@@ -131,8 +132,19 @@ func run() error {
 	}()
 	defer cancel()
 
+	//start IPC
+	listener, err := ipc.Listen()
+	if err != nil {
+		return fmt.Errorf("ipc.Listen: %w", err)
+	}
+	defer func() {
+		_ = listener.Close()
+	}()
+	procChan := make(chan ipc.ProcessState, 1)
+	go ipc.Serve(ctx, listener, procChan)
+
 	//start the roamctl process
-	err = roam.Proc(c, ctx, cfg)
+	err = roam.Proc(c, ctx, cfg, procChan)
 	if err != nil {
 		return fmt.Errorf("roam.ProcessLoop: %v", err)
 	}
@@ -140,7 +152,11 @@ func run() error {
 }
 
 func handlePIDFile() (bool, int, error) {
-	path := "/run/roamctl.pid"
+	err := os.MkdirAll("/run/roamctl", 0755)
+	if err != nil {
+		return false, 0, fmt.Errorf("os.MkdirAll: %w", err)
+	}
+	path := "/run/roamctl/roamctl.pid"
 	pid := os.Getpid()
 	if data, err := os.ReadFile(path); err == nil {
 		pidRead, err := strconv.Atoi(strings.TrimSpace(string(data)))
@@ -150,7 +166,7 @@ func handlePIDFile() (bool, int, error) {
 			}
 		}
 	}
-	err := os.WriteFile(path, []byte(strconv.Itoa(pid)), 0644)
+	err = os.WriteFile(path, []byte(strconv.Itoa(pid)), 0644)
 	if err != nil {
 		return false, 0, fmt.Errorf("os.WriteFile: %w", err)
 	}
