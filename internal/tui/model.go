@@ -20,17 +20,11 @@ func Tui() error {
 }
 
 func initialModel() model {
-	c, err := connect()
-	if err != nil {
-		slog.Error("Failed to connect to roamctl", "err", err)
-	}
-	sc := bufio.NewScanner(c.conn)
 	t := table.New(
 		table.WithColumns(apTableColumns),
 		table.WithStyles(apTableStyles()),
 	)
 	return model{
-		scanner:    sc,
 		ringBuffer: nil,
 		procState:  &ipc.ProcessState{},
 		apTable:    t,
@@ -39,8 +33,7 @@ func initialModel() model {
 }
 
 func (m model) Init() tea.Cmd {
-	cmd := readCmd(m.scanner)
-	return cmd
+	return reconnectCmd()
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

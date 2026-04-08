@@ -80,9 +80,11 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan 
 			}
 			if rc.lastKnown == nil {
 				slog.Debug("last polled signal stats nil, check again next cycle")
+				rc.shipProcessState(ipcChan)
 				continue
 			}
 			if rc.lastKnown.SSID != prevSSID && prevSSID != "" {
+				rc.shipProcessState(ipcChan)
 				return fmt.Errorf("SSID change detected, exiting."+
 					" prev_ssid: %v, new_ssid: %v", prevSSID, rc.lastKnown.SSID)
 			}
@@ -95,10 +97,12 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan 
 			}
 			if con.WPAState != "COMPLETED" {
 				if con.WPAState == "DISCONNECTED" {
+					rc.shipProcessState(ipcChan)
 					return fmt.Errorf("wpa_state is DISCONNECTED, exiting")
 				}
 				slog.Info("wpa_state not COMPLETED, skipping poll",
 					"wpa_state", con.WPAState)
+				rc.shipProcessState(ipcChan)
 				continue
 			}
 			if rc.lastKnown.Freq != prevFreq && prevFreq != 0 {
@@ -113,6 +117,7 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan 
 			}
 			if con.RSSI >= -1 {
 				slog.Debug("Invalid RSSI, skipping poll", "rssi", con.RSSI)
+				rc.shipProcessState(ipcChan)
 				continue
 			}
 			rc.lastKnown.RSSI = rc.smoothRSSI(con.RSSI)
@@ -120,6 +125,7 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan 
 			if time.Since(rc.lastConnChange) <= cfg.ConnectionCooldown {
 				slog.Debug("Connection cooldown in effect",
 					"remaining", cfg.ConnectionCooldown-time.Since(rc.lastConnChange))
+				rc.shipProcessState(ipcChan)
 				continue
 			}
 			if time.Since(rc.lastRoamAttempt) >= 2*time.Second {
@@ -127,6 +133,7 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan 
 			} else {
 				slog.Debug("checkConnectionHealth skipped, backoff timer",
 					"time remaining", 2*time.Second-time.Since(rc.lastRoamAttempt))
+				rc.shipProcessState(ipcChan)
 				continue
 			}
 			rc.evalTier()

@@ -36,6 +36,10 @@ func (m model) titleView() string {
 }
 
 func (m model) headerView() string {
+	if m.procState.SSID == "" {
+		return m.allignCenter().Render("Waiting for data from roamctl... \n" +
+			"Ensure roamctl is running. Run: sudo systemctl status roamctl")
+	}
 	header := m.allignCenter().
 		Render(lipgloss.NewStyle().Bold(true).
 			Render("Current Connection Status"))
@@ -60,7 +64,7 @@ func (m model) roamStatsView() string {
 		"duration: %v message: %v",
 		m.procState.RoamStats.TargetBSSID,
 		m.procState.RoamStats.FinalBSSID,
-		m.procState.RoamStats.Duration,
+		fmt.Sprintf("%.2fs", m.procState.RoamStats.Duration.Seconds()),
 		m.procState.RoamStats.Message,
 	)
 	return lipgloss.JoinVertical(lipgloss.Center, header, s)
@@ -139,14 +143,15 @@ func (m model) statePanelView() string {
 	firstRow := lipgloss.JoinHorizontal(
 		lipgloss.Center,
 		m.roamingTierContainer(),
+		m.roamResultContainer(),
 		m.scanModeContainer(),
-		m.roamResultContainer())
+		m.scanFlagsContainer())
 	secondRow := lipgloss.JoinHorizontal(
 		lipgloss.Center,
 		m.unhealthyContainer(),
+		m.bssStableContainer(),
 		m.hysteresisContainer(),
-		m.scanInProgContainer(),
-		m.bssStableContainer())
+		m.scanInProgContainer())
 	return lipgloss.JoinVertical(lipgloss.Center, firstRow, secondRow)
 }
 
@@ -190,9 +195,32 @@ func (m model) roamResultContainer() string {
 	case "failure":
 		return containerStyle(lipgloss.Color("#ff2200")).Render(txt)
 	case "no_candidates":
-		return containerStyle(lipgloss.Color("#ffee00")).Render(txt)
+		return containerStyle(lipgloss.Color("#808080")).Render(txt)
 	}
 	return ""
+}
+
+func (m model) scanFlagsContainer() string {
+	check := func(b bool) string {
+		if b {
+			return "✓"
+		}
+		return "✗"
+	}
+	txt := "Active Scans: " +
+		"Entry:" + check(m.procState.EntryScanned) + "\n" +
+		" CritEntry:" + check(m.procState.EntryScannedCrit) +
+		" CritFull:" + check(m.procState.FullScannedCrit)
+	switch {
+	case m.procState.FullScannedCrit:
+		return containerStyle(lipgloss.Color("#ff2200")).Render(txt)
+	case m.procState.EntryScannedCrit:
+		return containerStyle(lipgloss.Color("#ff8800")).Render(txt)
+	case m.procState.EntryScanned:
+		return containerStyle(lipgloss.Color("#ffee00")).Render(txt)
+	default:
+		return containerStyle(lipgloss.Color("#808080")).Render(txt)
+	}
 }
 
 func (m model) unhealthyContainer() string {
@@ -214,12 +242,12 @@ func (m model) hysteresisContainer() string {
 }
 
 func (m model) scanInProgContainer() string {
-	if m.procState.HysteresisActive {
+	if m.procState.ScanInProgress {
 		return containerStyle(lipgloss.Color("#00aaff")).Render(
-			"Scan in progress")
+			"Scan active")
 	}
 	return containerStyle(lipgloss.Color("#808080")).Render(
-		"Scanning idle")
+		"Scan idle")
 }
 
 func (m model) bssStableContainer() string {
