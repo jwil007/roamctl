@@ -7,12 +7,15 @@ The core of roamctl is a highly configurable roaming algorithm. It consists of s
 
 The roaming algorithm allows optimizing roaming performance, or it can be used to test unique scenarios. For one example, band preference can be defined: `6ghz = 100`, `5ghz = 60`, `2point4ghz = 20` will aggressively bias toward 6GHz.  See [Configuration](#Configuration) for full parameter reference.
 
-A TUI `roamctl-tui` is included, which shows the live state of roamctl in a clean and compact interface:
-
-
 
 > [!NOTE]
 > When roamctl is running, it automatically adjusts configuration to disable wpa_supplicant's autonomous roaming. When the program exits or is otherwise stopped, wpa_supplicant's original configuration is restored.
+
+### TUI
+ `roamctl-tui` is included, which shows the live state of roamctl in a clean and compact interface:
+
+<img width="944" height="660" alt="image" src="https://github.com/user-attachments/assets/440b8d41-4fd5-4f73-b932-a7c915e9e9fb" />
+
 ## Quick Start
 
 ### One-line install
@@ -23,6 +26,10 @@ curl -fsSL https://raw.githubusercontent.com/jwil007/roamctl/master/install.sh -
 The one-line install provides the option to run roamctl as a systemctl service. If running as a service, start with:
 ```
 sudo systemctl start roamctl
+```
+Launch TUI:
+```
+sudo roamctl-tui
 ```
 View logs with:
 ```
@@ -200,7 +207,7 @@ rssi_smooth_window = 5
 
 [timing]
 # Timings for signal polling (e.g. hosts current RSSI, SNR) and bg scan interval
-sig_poll_interval = "250ms"
+sig_poll_interval = "100ms"
 base_scan_interval = "30s"
 
 # Defines number of bssids used to build fast-scan channel list
