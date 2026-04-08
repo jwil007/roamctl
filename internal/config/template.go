@@ -46,7 +46,7 @@ rssi_smooth_window = 5
 
 [timing]
 # Timings for signal polling (e.g. hosts current RSSI, SNR) and bg scan interval
-sig_poll_interval = "250ms"
+sig_poll_interval = "100ms"
 base_scan_interval = "30s"
 
 # Defines number of bssids used to build fast-scan channel list
@@ -145,8 +145,8 @@ unhealthy_score_mod = 20
 
 
 [timing]
-sig_poll_interval = "250ms"
-base_scan_interval = "15s"
+sig_poll_interval = "100ms"
+base_scan_interval = "30s"
 max_bss_ct = 15
 
 [score_weights]
@@ -236,8 +236,8 @@ rssi_smooth_window = 5
 
 
 [timing]
-sig_poll_interval = "250ms"
-base_scan_interval = "15s"
+sig_poll_interval = "100ms"
+base_scan_interval = "30s"
 max_bss_ct = 15
 
 [score_weights]
