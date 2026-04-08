@@ -49,7 +49,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.apTable.SetWidth(m.width)
-		m.apTable.SetHeight(10)
+		m.apTable.SetHeight(m.height / 3)
 	case socketMsg:
 		err := json.Unmarshal([]byte(msg), m.procState)
 		if err != nil {
