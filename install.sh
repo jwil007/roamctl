@@ -42,6 +42,17 @@ echo "Installing to $INSTALL_DIR/$BINARY_NAME..."
 sudo mv /tmp/roamctl "$INSTALL_DIR/$BINARY_NAME"
 echo "roamctl installed successfully!"
 
+# Download and install roamctl-tui
+TUI_BINARY_NAME="roamctl-tui"
+TUI_DOWNLOAD_URL="https://github.com/$REPO/releases/download/$LATEST/roamctl-tui_${GOARCH}.tar.gz"
+echo "Downloading roamctl-tui-$GOARCH from $LATEST..."
+curl -fsSL "$TUI_DOWNLOAD_URL" -o /tmp/roamctl-tui.tar.gz
+tar -xzf /tmp/roamctl-tui.tar.gz -C /tmp roamctl-tui
+chmod +x /tmp/roamctl-tui
+echo "Installing to $INSTALL_DIR/$TUI_BINARY_NAME..."
+sudo mv /tmp/roamctl-tui "$INSTALL_DIR/$TUI_BINARY_NAME"
+echo "roamctl-tui installed successfully!"
+
 # Systemd service install
 UNIT_URL="https://raw.githubusercontent.com/$REPO/master/systemd/roamctl.service"
 SERVICE_INSTALLED=false
@@ -95,6 +106,7 @@ echo "================================================"
 echo ""
 echo " Config file: /etc/roamctl/config.toml"
 echo " Edit config: sudo roamctl -edit"
+echo " Launch TUI:       sudo roamctl-tui"
 echo ""
 if [ "$SERVICE_INSTALLED" = true ]; then
   echo " Run as daemon:    sudo systemctl start roamctl"

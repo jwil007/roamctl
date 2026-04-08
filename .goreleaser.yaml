@@ -8,7 +8,21 @@ before:
     - go generate ./...
 
 builds:
-  - main: ./cmd/roamctl
+  - id: roamctl
+    main: ./cmd/roamctl
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - arm64
+      - amd64
+      - arm
+    goarm: ["7"]
+
+  - id: roamctl-tui
+    binary: roamctl-tui
+    main: ./cmd/roamctl-tui
     env:
       - CGO_ENABLED=0
     goos:
@@ -20,10 +34,17 @@ builds:
     goarm: ["7"]
 
 archives:
-  - formats: [tar.gz]
-    # this name template makes the OS and Arch compatible with the results of `uname`.
+  - id: roamctl
+    ids: [roamctl]
+    formats: [tar.gz]
     name_template: >-
-      {{ .ProjectName }}_
+      roamctl_
+      {{- .Arch }}
+  - id: roamctl-tui
+    ids: [roamctl-tui]
+    formats: [tar.gz]
+    name_template: >-
+      roamctl-tui_
       {{- .Arch }}
 
 changelog:
