@@ -132,7 +132,7 @@ Use these arguments to make configuration changes or view debug logs. Run with `
 ### Uninstall
 This one line command removes all system files and systemctl service configuration.
 ```
-sudo systemctl stop roamctl; sudo systemctl disable roamctl; sudo rm /etc/systemctl/system/roamctl.service; sudo rm -rf /etc/roamctl; sudo rm /usr/local/bin/roamctl
+sudo systemctl stop roamctl; sudo systemctl disable roamctl; sudo rm /etc/systemctl/system/roamctl.service; sudo rm -rf /etc/roamctl; sudo rm -rf /run/roamctl; sudo rm /usr/local/bin/roamctl; sudo rm /usr/local/bin/roamctl-tui
 ```
 
 
