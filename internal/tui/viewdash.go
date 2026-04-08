@@ -80,11 +80,16 @@ func (m model) apTableView() string {
 func (m model) rssiBarView() string {
 	var s string
 	for _, r := range m.ringBuffer {
+		matched := false
 		for _, c := range m.rssiColors {
 			if r <= c.threshold {
 				s += lipgloss.NewStyle().Foreground(c.color).Render("█")
+				matched = true
 				break
 			}
+		}
+		if !matched {
+			s += lipgloss.NewStyle().Foreground(m.rssiColors[len(m.rssiColors)-1].color).Render("█")
 		}
 	}
 	return s
