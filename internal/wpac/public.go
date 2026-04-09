@@ -155,28 +155,6 @@ func (c *Client) ScanResults(ssid string) ([]RichBSS, error) {
 	slices.SortFunc(richBSSList, func(a, b RichBSS) int {
 		return b.RSSI - a.RSSI
 	})
-	//for _, r := range richBSSList {
-	//	fmt.Printf("SSID:%s BSSID:%s Freq:%d Band:%s Channel:%d BeaconInt:%d Noise:%d RSSI:%d SNR:%d Age:%d"+
-	//		" EstThruput:%d CW:%s QBSSUtil:%d QBSSStaCt:%d PHYType:%s Flags:%s Rates:%v\n",
-	//		r.SSID,
-	//		r.BSSID,
-	//		r.Freq,
-	//		r.Band,
-	//		r.ChannelNum,
-	//		r.BeaconInt,
-	//		r.Noise,
-	//		r.RSSI,
-	//		r.SNR,
-	//		r.Age,
-	//		r.EstThruput,
-	//		r.ChannelWidth,
-	//		r.QBSSUtil,
-	//		r.QBSSStaCt,
-	//		r.PHYType,
-	//		r.Flags,
-	//		r.SupportedRates,
-	//	)
-	//}
 	return richBSSList, nil
 }
 
@@ -202,4 +180,12 @@ func (c *Client) PollSignal(ctx context.Context, interval time.Duration) (<-chan
 		}
 	}()
 	return connStatus, errc
+}
+
+func GetConnectionStatus(c *Client) (ConnectionStatus, error) {
+	connStatus, err := c.constructConnStatus()
+	if err != nil {
+		return ConnectionStatus{}, fmt.Errorf("c.constructConnStatus: %w", err)
+	}
+	return connStatus, nil
 }

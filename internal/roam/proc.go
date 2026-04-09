@@ -22,6 +22,11 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan 
 	rc.lastRoamAttempt = time.Now()
 	rc.cfg = cfg
 	rc.scanState.cond = sync.NewCond(&rc.scanState.mu)
+	cs, err := wpac.GetConnectionStatus(c)
+	if err != nil {
+		return fmt.Errorf("wpac.GetConnectionStatus:%w", err)
+	}
+	rc.lastKnown = &cs
 	slog.Info("Setting wpa_supplicant configuration")
 	cleanup, err := rc.handleWpaSuppConfig(c)
 	if err != nil {
@@ -37,7 +42,12 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan 
 	if err != nil && !errors.Is(err, ErrScanRetryLimit) {
 		return fmt.Errorf("rc.runFullScan: %w", err)
 	}
+	err = rc.prepScanResults(c)
+	if err != nil {
+		return fmt.Errorf("prepScanResults: %w", err)
+	}
 	rc.lastEvalTime = time.Now() //set lastEvalTime - prevents the first roam attempt from using the initial scan
+	rc.shipProcessState(ipcChan)
 	//Start polling signal stats
 	slog.Info("Starting signal polling...")
 	sigCh, sigErrCh := c.PollSignal(ctx, cfg.Timing.SigPollInterval)

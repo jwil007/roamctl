@@ -57,14 +57,6 @@ func (m model) allignCenter() lipgloss.Style {
 	return lipgloss.NewStyle().Width(m.width).Align(lipgloss.Center)
 }
 
-//func allignLeft() lipgloss.Style {
-//	return lipgloss.NewStyle().Align(lipgloss.Left)
-//}
-//
-//func allignRight() lipgloss.Style {
-//	return lipgloss.NewStyle().Align(lipgloss.Right)
-//}
-
 func containerStyle(color color.Color) lipgloss.Style {
 	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
