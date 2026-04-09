@@ -8,6 +8,13 @@ import (
 func (rc *roamContext) shipProcessState(ch chan<- ipc.ProcessState) {
 	bssList := rc.buildBSSForIPC()
 	rc.scanState.mu.RLock()
+	scS := ipc.ScanState{
+		ScanInProgress: rc.scanState.scanInProgress,
+		ScanMode:       rc.scanState.scanMode.String(),
+		ScanDuration:   rc.scanState.scanDuration,
+		BSSListStable:  rc.scanState.bssListStable,
+	}
+	rc.scanState.mu.RUnlock()
 	ch <- ipc.ProcessState{
 		SSID:           rc.ssid,
 		BSSList:        bssList,
@@ -22,14 +29,8 @@ func (rc *roamContext) shipProcessState(ch chan<- ipc.ProcessState) {
 			FullScannedCrit:  rc.fullScannedCrit,
 			UnhealthyConn:    rc.unhealthyConn,
 		},
-		ScanState: ipc.ScanState{
-			ScanInProgress: rc.scanState.scanInProgress,
-			ScanMode:       rc.scanState.scanMode.String(),
-			ScanDuration:   rc.scanState.scanDuration,
-			BSSListStable:  rc.scanState.bssListStable,
-		},
+		ScanState: scS,
 	}
-	rc.scanState.mu.RUnlock()
 }
 
 func (rc *roamContext) buildBSSForIPC() []ipc.BSS {

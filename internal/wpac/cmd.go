@@ -24,7 +24,7 @@ func (c *Client) cmd(command string) ([]byte, error) {
 	defer func() {
 		_ = c.CC.SetDeadline(time.Time{})
 	}()
-	buf := make([]byte, 4096)
+	buf := make([]byte, 65536)
 	_, wErr := c.CC.Write([]byte(command))
 	if wErr != nil {
 		return nil, fmt.Errorf("n.Write: %v", wErr)
@@ -44,7 +44,7 @@ func (c *Client) cmdP(command string) ([]byte, error) {
 	defer func() {
 		_ = c.PC.SetDeadline(time.Time{})
 	}()
-	buf := make([]byte, 4096)
+	buf := make([]byte, 65536)
 	_, wErr := c.PC.Write([]byte(command))
 	if wErr != nil {
 		return nil, fmt.Errorf("n.Write: %v", wErr)
@@ -82,9 +82,6 @@ func (c *Client) getStatus() (Status, error) {
 			status.WPAState = line[10:]
 		}
 	}
-	//if status.SSID == "" {
-	//	return Status{}, fmt.Errorf("ssid field not found - check if wifi iface connected")
-	//}
 	return status, nil
 }
 
@@ -342,7 +339,7 @@ func (c *Client) listenEvents(ctx context.Context) (<-chan string, <-chan error)
 		if err != nil {
 			errc <- err
 		}
-		buf := make([]byte, 4096)
+		buf := make([]byte, 65536)
 		for {
 			errDeadline := c.EC.SetReadDeadline(time.Now().Add(1 * time.Second))
 			if errDeadline != nil {
