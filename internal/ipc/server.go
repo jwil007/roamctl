@@ -6,15 +6,21 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"os"
 	"time"
 )
 
-func Listen() (net.Listener, error) {
-	listener, err := net.Listen("unix", "/run/roamctl/roamctl.sock")
+func Listen() (net.Listener, func(), error) {
+	path := "/run/roamctl/roamctl.sock"
+	_ = os.Remove(path)
+	listener, err := net.Listen("unix", path)
 	if err != nil {
-		return nil, fmt.Errorf("net.Listen: %w", err)
+		return nil, nil, fmt.Errorf("net.Listen: %w", err)
 	}
-	return listener, nil
+	cleanup := func() {
+		_ = os.Remove(path)
+	}
+	return listener, cleanup, nil
 }
 
 func Serve(

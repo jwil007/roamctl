@@ -70,6 +70,7 @@ type roamContext struct {
 	lastConnChange   time.Time
 	rssiRingBuffer   []int
 	rssiWriteIdx     int
+	richByBSSID      map[string]wpac.RichBSS
 }
 
 type scanState struct {

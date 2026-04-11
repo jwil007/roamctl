@@ -18,6 +18,7 @@ import (
 func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan ipc.ProcessState) error {
 	slog.Info("Starting roamctl... exit with ctrl+c")
 	rc := &roamContext{}
+	rc.richByBSSID = make(map[string]wpac.RichBSS)
 	rc.roamingTier = noRoam
 	rc.lastRoamAttempt = time.Now()
 	rc.cfg = cfg
@@ -130,7 +131,11 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan 
 				rc.shipProcessState(ipcChan)
 				continue
 			}
-			rc.lastKnown.RSSI = rc.smoothRSSI(con.RSSI)
+			rssi := con.AvgRSSIBeacon
+			if con.AvgRSSIBeacon >= -1 {
+				rssi = con.RSSI
+			}
+			rc.lastKnown.RSSI = rc.smoothRSSI(rssi)
 			slog.Debug("Last polled connection status", "stats", rc.lastKnown)
 			if time.Since(rc.lastConnChange) <= cfg.ConnectionCooldown {
 				slog.Debug("Connection cooldown in effect",

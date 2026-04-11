@@ -338,6 +338,7 @@ func (c *Client) listenEvents(ctx context.Context) (<-chan string, <-chan error)
 		_, err := c.EC.Write([]byte("ATTACH"))
 		if err != nil {
 			errc <- err
+			return
 		}
 		buf := make([]byte, 65536)
 		for {
@@ -358,8 +359,7 @@ func (c *Client) listenEvents(ctx context.Context) (<-chan string, <-chan error)
 			select {
 			case <-ctx.Done():
 				return
-			default:
-				events <- string(buf[:n])
+			case events <- string(buf[:n]):
 			}
 		}
 	}()
@@ -367,7 +367,9 @@ func (c *Client) listenEvents(ctx context.Context) (<-chan string, <-chan error)
 }
 
 func (c *Client) waitForEvent(ctx context.Context, match []string, timeout time.Duration) (string, error) {
-	events, errc := c.listenEvents(ctx)
+	listenCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	events, errc := c.listenEvents(listenCtx)
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 	for {

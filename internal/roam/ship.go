@@ -2,7 +2,6 @@ package roam
 
 import (
 	"github.com/jwil007/roamctl/internal/ipc"
-	"github.com/jwil007/roamctl/internal/wpac"
 )
 
 func (rc *roamContext) shipProcessState(ch chan<- ipc.ProcessState) {
@@ -34,13 +33,13 @@ func (rc *roamContext) shipProcessState(ch chan<- ipc.ProcessState) {
 }
 
 func (rc *roamContext) buildBSSForIPC() []ipc.BSS {
-	richByBSSID := make(map[string]wpac.RichBSS)
+	clear(rc.richByBSSID)
 	for _, r := range rc.richBSSList {
-		richByBSSID[r.BSSID] = r
+		rc.richByBSSID[r.BSSID] = r
 	}
 	var bssList []ipc.BSS
 	for _, scored := range rc.scoredAPs {
-		rich := richByBSSID[scored.bssid]
+		rich := rc.richByBSSID[scored.bssid]
 		var isCurrentAP bool
 		if rc.lastKnown.BSSID == scored.bssid {
 			isCurrentAP = true

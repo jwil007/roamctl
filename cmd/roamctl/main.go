@@ -133,13 +133,14 @@ func run() error {
 	defer cancel()
 
 	//start IPC
-	listener, err := ipc.Listen()
+	listener, cleanup, err := ipc.Listen()
 	if err != nil {
 		return fmt.Errorf("ipc.Listen: %w", err)
 	}
 	defer func() {
 		_ = listener.Close()
 	}()
+	defer cleanup()
 	procChan := make(chan ipc.ProcessState, 1)
 	go ipc.Serve(ctx, listener, procChan)
 

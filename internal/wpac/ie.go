@@ -64,7 +64,7 @@ func parseTLVs(tlvs []tlv) (IEBSS, error) {
 			//case 35: //HE Capabilities
 			case 36: //HE Operation
 				phy = PHY80211ax
-				ehtcw = parseHEOperation(tlv.v[1:])
+				hecw = parseHEOperation(tlv.v[1:])
 			case 108: //EHT Capabilities
 				phy = PHY80211be
 				ehtcw = parseEHTCapabilities(tlv.v[1:])

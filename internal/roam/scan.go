@@ -16,7 +16,7 @@ import (
 func (rc *roamContext) runScanConcurrent(
 	c *wpac.Client,
 	ctx context.Context) <-chan error {
-	errc := make(chan error)
+	errc := make(chan error, 1)
 	go func() {
 		err := rc.smartScan(c, ctx)
 		if err != nil {
