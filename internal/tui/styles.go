@@ -42,31 +42,58 @@ func makeRSSIColors(min int, max int) []colorStop {
 	return cs
 }
 
-func apTableStyles() table.Styles {
+func apTableStyle() table.Styles {
 	s := table.DefaultStyles()
-	s.Header = s.Header.Bold(true).Foreground(lipgloss.Color("252"))
-	s.Selected = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
+	s.Cell.Align(lipgloss.Center)
+	s.Header.Align(lipgloss.Center).Bold(true)
+	s.Selected.Align(lipgloss.Center)
+	s.Selected = lipgloss.NewStyle()
 	return s
 }
 
-func currentAPStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color("#00ffe0"))
+func (m model) roamTableStyle() table.Styles {
+	s := table.DefaultStyles()
+	s.Cell.Align(lipgloss.Center)
+	s.Header = s.Header.Bold(true).Align(lipgloss.Center)
+	s.Selected = lipgloss.NewStyle()
+	return s
 }
 
-func (m model) allignCenter() lipgloss.Style {
-	return lipgloss.NewStyle().Width(m.width).Align(lipgloss.Center)
+func greenText() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("#00ff00")).Bold(true)
+}
+
+func redText() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("#ff0000")).Bold(true)
+}
+
+func currentAPStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("#00aaff"))
+}
+
+func (m model) alignCenter() lipgloss.Style {
+	return lipgloss.NewStyle().Width(tuiWidth).Align(lipgloss.Center)
+}
+
+func (m model) alignLeft() lipgloss.Style {
+	return lipgloss.NewStyle().Width(tuiWidth).Align(lipgloss.Left)
+}
+func (m model) alignRight() lipgloss.Style {
+	return lipgloss.NewStyle().Width(tuiWidth).Align(lipgloss.Right)
 }
 
 func containerStyle(color color.Color) lipgloss.Style {
 	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(color).Padding(0, 1).Foreground(lipgloss.Color("252"))
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(color).Padding(0, 1)
 }
 
 func (m model) borderStyle() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(),
-			false, false, true, false).Width(m.width)
+			false, false, true, false).Width(tuiWidth)
 }
 
-var baseStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
+var headerStyle = lipgloss.NewStyle().Bold(true)
+
+var titleStyle = lipgloss.NewStyle().Faint(true)

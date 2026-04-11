@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"charm.land/bubbles/v2/table"
 	tea "charm.land/bubbletea/v2"
@@ -20,14 +21,19 @@ func Tui() error {
 }
 
 func initialModel() model {
-	t := table.New(
+	at := table.New(
 		table.WithColumns(apTableColumns),
-		table.WithStyles(apTableStyles()),
+		table.WithStyles(apTableStyle()),
 	)
+	rt := table.New(
+		table.WithColumns(roamTableColumns),
+	)
+	rt.Focus()
 	return model{
 		ringBuffer: nil,
 		procState:  &ipc.ProcessState{},
-		apTable:    t,
+		apTable:    at,
+		roamTable:  rt,
 		rssiColors: makeRSSIColors(-78, -30),
 	}
 }
@@ -41,19 +47,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.roamTable.SetStyles(m.roamTableStyle())
+		m.roamTable.SetWidth(m.width)
+		m.roamTable.SetHeight(8)
 		m.apTable.SetWidth(m.width)
-		m.apTable.SetHeight(m.height / 3)
+		m.apTable.SetHeight(11)
+		return m, nil
 	case socketMsg:
 		err := json.Unmarshal([]byte(msg), m.procState)
 		if err != nil {
 			slog.Error("Error parsing JSON", "err", err)
 		}
-		m.apTable.SetRows(m.makeRows())
+
+		//handle rssi bar
 		rssi := m.procState.ConnState.RSSI
 		m.ringBuffer = append(m.ringBuffer, rssi)
-		if m.width > 0 && len(m.ringBuffer) > m.width {
+		if m.width > 0 && len(m.ringBuffer) > tuiWidth {
 			m.ringBuffer = m.ringBuffer[1:]
 		}
+
+		//handle roam table
+		if m.isNewRoam() {
+			m.lastRoam = m.logRoam()
+			m.roamLogs = append(m.roamLogs, m.lastRoam)
+		}
+		slices.SortFunc(m.roamLogs, func(a, b roamLog) int {
+			return int(b.time.Sub(a.time))
+		})
+		m.roamTable.SetRows(m.makeRoamTableRows())
+
+		//handle ap table
+		m.apTable.SetRows(m.makeAPRows())
+
 		return m, readCmd(m.scanner)
 	case reconnectMsg:
 		m.client.close()
@@ -64,6 +89,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, readCmd(m.scanner)
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "up", "down":
+			m.roamTable, _ = m.roamTable.Update(msg)
+			return m, nil
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		}

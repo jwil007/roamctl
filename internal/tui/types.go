@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"image/color"
 	"net"
+	"time"
 
 	"charm.land/bubbles/v2/table"
 	"github.com/jwil007/roamctl/internal/ipc"
@@ -22,7 +23,21 @@ type model struct {
 	width      int
 	height     int
 	apTable    table.Model
+	roamTable  table.Model
+	roamLogs   []roamLog
 	rssiColors []colorStop
+	lastRoam   roamLog
+	cursor     int
+	selected   map[int]table.Row
+}
+
+type roamLog struct {
+	time        time.Time
+	status      string
+	targetBSSID string
+	finalBSSID  string
+	duration    time.Duration
+	message     string
 }
 
 type colorStop struct {
@@ -36,7 +51,7 @@ type reconnectMsg bool
 type clientMsg *client
 
 var apTableColumns = []table.Column{
-	{Title: "BSSID", Width: 19},
+	{Title: "  BSSID", Width: 21},
 	{Title: "Ch", Width: 4},
 	{Title: "CW", Width: 5},
 	{Title: "Band", Width: 4},
@@ -47,3 +62,13 @@ var apTableColumns = []table.Column{
 	{Title: "Scr", Width: 4},
 	{Title: "ΔScr", Width: 4},
 }
+
+var roamTableColumns = []table.Column{
+	{Title: "    Time", Width: 14},
+	{Title: "Status", Width: 9},
+	{Title: "Target BSSID", Width: 19},
+	{Title: "Final BSSID", Width: 19},
+	{Title: "Duration", Width: 8},
+}
+
+const tuiWidth = 82
