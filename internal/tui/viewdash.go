@@ -39,7 +39,8 @@ func (m model) titleView() string {
 func (m model) connStatView() string {
 	if m.procState.SSID == "" {
 		return m.alignCenter().Render("Waiting for data from roamctl... \n" +
-			"Ensure roamctl is running. Run: sudo systemctl status roamctl")
+			"roamctl-tui may require root. Run with: sudo roamctl-tui\n" +
+			"Also, ensure roamctl is running. Run: sudo systemctl status roamctl")
 	}
 	header := m.alignLeft().Render(titleStyle.Render(" CONNECTION STATUS"))
 	band, channel := getBandandChanfromFreq(m.procState.ConnState.Freq)
