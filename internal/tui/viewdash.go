@@ -8,6 +8,7 @@ import (
 
 	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
+	"github.com/jwil007/roamctl/internal/ipc"
 )
 
 func (m model) viewDashboard() string {
@@ -87,18 +88,31 @@ func (m model) roamTableView() string {
 	header := m.alignLeft().Render(titleStyle.Render(" ROAM RESULTS"))
 	content := m.roamTable.View()
 	footer := "↑↓ to select"
+	info := ""
 	detail := ""
 	if len(m.roamLogs) == 0 {
 		detail = titleStyle.Render(" Waiting for roam events...")
 	}
 	if len(m.roamLogs) > 0 && m.roamTable.Cursor() >= 0 && m.roamTable.Cursor() < len(m.roamLogs) {
 		selected := m.roamLogs[m.roamTable.Cursor()]
-		detail = fmt.Sprintf("► %v", selected.message)
+		info = fmt.Sprintf(" Msg: %v",
+			selected.message)
+		if selected.message == "" {
+			info = ""
+		}
+		detail = fmt.Sprintf(" Score Δ: %v | From: Ch%v %v %vdBm | To: Ch%v %v %vdBm",
+			selected.scoreDelta,
+			selected.fromChan,
+			selected.fromBand,
+			selected.trigRSSI,
+			selected.toChan,
+			selected.toBand,
+			selected.finalRSSI)
 	}
 	bottom := lipgloss.NewStyle().Width(tuiWidth).Render(
 		detail + lipgloss.NewStyle().Width(tuiWidth-lipgloss.Width(detail)-lipgloss.Width(footer)).Render("") +
 			lipgloss.NewStyle().Faint(true).Render(footer))
-	return lipgloss.JoinVertical(lipgloss.Left, m.alignCenter().Render(header), content, bottom)
+	return lipgloss.JoinVertical(lipgloss.Left, m.alignCenter().Render(header), content, info, bottom)
 }
 
 func (m model) isNewRoam() bool {
@@ -115,14 +129,30 @@ func (m model) isNewRoam() bool {
 }
 
 func (m model) logRoam() roamLog {
-	var l roamLog
-	l.time = time.Now()
-	l.status = m.procState.RoamResultFlag
-	l.targetBSSID = m.procState.RoamStats.TargetBSSID
-	l.finalBSSID = m.procState.RoamStats.FinalBSSID
-	l.duration = m.procState.RoamStats.Duration
-	l.message = m.procState.RoamStats.Message
-	return l
+	bssidMap := make(map[string]ipc.BSS)
+	var fromBSS ipc.BSS
+	var toBSS ipc.BSS
+	for _, b := range m.procState.BSSList {
+		bssidMap[b.BSSID] = b
+	}
+	fromBSS = bssidMap[m.lastBSSID]
+	toBSS = bssidMap[m.procState.RoamStats.FinalBSSID]
+	return roamLog{
+		time:        time.Now(),
+		status:      m.procState.RoamResultFlag,
+		fromBSSID:   m.lastBSSID,
+		targetBSSID: m.procState.RoamStats.TargetBSSID,
+		finalBSSID:  m.procState.RoamStats.FinalBSSID,
+		fromChan:    fromBSS.ChannelNum,
+		toChan:      toBSS.ChannelNum,
+		fromBand:    fromBSS.Band,
+		toBand:      toBSS.Band,
+		trigRSSI:    m.procState.LastTriggerRSSI,
+		finalRSSI:   toBSS.RSSI,
+		scoreDelta:  toBSS.FinalScore - fromBSS.FinalScore,
+		duration:    m.procState.RoamStats.Duration,
+		message:     m.procState.RoamStats.Message,
+	}
 }
 
 func (m model) makeRoamTableRows() []table.Row {
@@ -140,17 +170,18 @@ func (m model) makeRoamTableRows() []table.Row {
 		case "failure":
 			row[1] = redText().Render("Failure")
 		}
-		row[2] = log.targetBSSID
-		row[3] = log.finalBSSID
+		row[2] = log.fromBSSID
+		row[3] = log.targetBSSID
 		row[4] = fmt.Sprintf("%.3fs", log.duration.Seconds())
 		rows = append(rows, row)
 	}
 	return rows
 }
 
-func (m model) makeAPRows() []table.Row {
+func (m model) makeAPRows() ([]table.Row, string) {
 	var rows []table.Row
 	var currSc int
+	var lastBSSID string
 	for _, b := range m.procState.BSSList {
 		if b.IsCurrentAP {
 			currSc = b.FinalScore
@@ -160,6 +191,7 @@ func (m model) makeAPRows() []table.Row {
 	for _, b := range m.procState.BSSList {
 		row := make([]string, 10)
 		if b.IsCurrentAP {
+			lastBSSID = b.BSSID
 			row[0] = currentAPStyle().Render("* " + b.BSSID)
 			row[1] = currentAPStyle().Render(strconv.Itoa(b.ChannelNum))
 			row[2] = currentAPStyle().Render(strings.TrimSuffix(b.ChannelWidth, "MHz"))
@@ -194,7 +226,7 @@ func (m model) makeAPRows() []table.Row {
 		}
 		rows = append(rows, row)
 	}
-	return rows
+	return rows, lastBSSID
 }
 
 func (m model) statePanelView() string {

@@ -60,7 +60,7 @@ type roamContext struct {
 	hysteresisActive bool
 	lastTriggerRSSI  int
 	lastEvalTime     time.Time
-	entryScanned     bool //Prevents scan loop
+	entryScanned     bool
 	entryScannedCrit bool
 	fullScannedCrit  bool
 	roamingTier      roamingTier

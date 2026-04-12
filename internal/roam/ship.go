@@ -1,10 +1,13 @@
 package roam
 
 import (
+	"log/slog"
+
 	"github.com/jwil007/roamctl/internal/ipc"
 )
 
 func (rc *roamContext) shipProcessState(ch chan<- ipc.ProcessState) {
+	slog.Debug("Hysteresis flag", "bool", rc.hysteresisActive)
 	bssList := rc.buildBSSForIPC()
 	rc.scanState.mu.RLock()
 	scS := ipc.ScanState{
@@ -15,12 +18,13 @@ func (rc *roamContext) shipProcessState(ch chan<- ipc.ProcessState) {
 	}
 	rc.scanState.mu.RUnlock()
 	ch <- ipc.ProcessState{
-		SSID:           rc.ssid,
-		BSSList:        bssList,
-		ConnState:      *rc.lastKnown,
-		RoamStats:      rc.lastRoamStats,
-		RoamingTier:    rc.roamingTier.String(),
-		RoamResultFlag: rc.roamResultFlag.String(),
+		SSID:            rc.ssid,
+		BSSList:         bssList,
+		ConnState:       *rc.lastKnown,
+		RoamStats:       rc.lastRoamStats,
+		RoamingTier:     rc.roamingTier.String(),
+		RoamResultFlag:  rc.roamResultFlag.String(),
+		LastTriggerRSSI: rc.lastTriggerRSSI,
 		Flags: ipc.Flags{
 			HysteresisActive: rc.hysteresisActive,
 			EntryScanned:     rc.entryScanned,

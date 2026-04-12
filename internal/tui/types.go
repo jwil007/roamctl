@@ -27,15 +27,22 @@ type model struct {
 	roamLogs   []roamLog
 	rssiColors []colorStop
 	lastRoam   roamLog
-	cursor     int
-	selected   map[int]table.Row
+	lastBSSID  string
 }
 
 type roamLog struct {
 	time        time.Time
 	status      string
+	fromBSSID   string
 	targetBSSID string
 	finalBSSID  string
+	fromChan    int
+	toChan      int
+	fromBand    string
+	toBand      string
+	trigRSSI    int
+	finalRSSI   int
+	scoreDelta  int
 	duration    time.Duration
 	message     string
 }
@@ -60,14 +67,14 @@ var apTableColumns = []table.Column{
 	{Title: "PHY", Width: 4},
 	{Title: "Util", Width: 5},
 	{Title: "Scr", Width: 4},
-	{Title: "ΔScr", Width: 4},
+	{Title: "ScrΔ", Width: 4},
 }
 
 var roamTableColumns = []table.Column{
 	{Title: "    Time", Width: 14},
 	{Title: "Status", Width: 9},
-	{Title: "Target BSSID", Width: 19},
-	{Title: "Final BSSID", Width: 19},
+	{Title: "From BSSID", Width: 19},
+	{Title: "To BSSID", Width: 19},
 	{Title: "Duration", Width: 8},
 }
 

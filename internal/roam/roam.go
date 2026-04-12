@@ -118,29 +118,21 @@ func (rc *roamContext) attemptRoam(c *wpac.Client, ctx context.Context) error {
 }
 
 func (rc *roamContext) checkRoam() bool {
+	rc.checkRSSIHysteresis()
 	if rc.hysteresisActive {
-		recovered := rc.lastKnown.RSSI >=
-			rc.lastTriggerRSSI+rc.cfg.RSSIHysteresisUp
-		degraded := rc.lastKnown.RSSI <=
-			rc.lastTriggerRSSI-rc.cfg.RSSIHysteresisDown
-		if recovered || degraded {
-			slog.Info("RSSI Hysteresis cleared. Roam attempt allowed",
-				"rssi", rc.lastKnown.RSSI)
-			rc.hysteresisActive = false
-		} else {
-			if rc.candidateAP.finalScore-rc.currentAP.finalScore >= rc.cfg.FairDelta*2 {
-				slog.Info("Score delta overrides hysteresis, roam attempt allowed",
-					"measured_delta", rc.candidateAP.finalScore-rc.currentAP.finalScore,
-					"override_threshold", rc.cfg.FairDelta*2)
-				rc.hysteresisActive = false
-			} else {
-				slog.Debug("RSSI Hysteresis active. Roam not allowed",
-					"rssi", rc.lastKnown.RSSI,
-					"upper_bound", rc.lastTriggerRSSI+rc.cfg.RSSIHysteresisUp,
-					"lower_bound", rc.lastTriggerRSSI-rc.cfg.RSSIHysteresisDown)
-				return false
-			}
-		}
+		return false
+	}
+	if rc.candidateAP.finalScore-rc.currentAP.finalScore >= rc.cfg.FairDelta*2 {
+		slog.Info("Score delta overrides hysteresis, roam attempt allowed",
+			"measured_delta", rc.candidateAP.finalScore-rc.currentAP.finalScore,
+			"override_threshold", rc.cfg.FairDelta*2)
+		rc.hysteresisActive = false
+	} else {
+		slog.Debug("RSSI Hysteresis active. Roam not allowed",
+			"rssi", rc.lastKnown.RSSI,
+			"upper_bound", rc.lastTriggerRSSI+rc.cfg.RSSIHysteresisUp,
+			"lower_bound", rc.lastTriggerRSSI-rc.cfg.RSSIHysteresisDown)
+		return false
 	}
 	if rc.currentAP.bssid == rc.candidateAP.bssid {
 		slog.Info("Current AP is best AP in scan data, skipping roam")
@@ -251,4 +243,19 @@ func (rc *roamContext) roamToCandidate(
 	default:
 		panic(fmt.Sprintf("unknown roam result status: %v", result.Success))
 	}
+}
+
+func (rc *roamContext) checkRSSIHysteresis() {
+	if rc.hysteresisActive {
+		recovered := rc.lastKnown.RSSI >=
+			rc.lastTriggerRSSI+rc.cfg.RSSIHysteresisUp
+		degraded := rc.lastKnown.RSSI <=
+			rc.lastTriggerRSSI-rc.cfg.RSSIHysteresisDown
+		if recovered || degraded {
+			slog.Info("RSSI Hysteresis cleared. Roam attempt allowed",
+				"rssi", rc.lastKnown.RSSI)
+			rc.hysteresisActive = false
+		}
+	}
+	return
 }

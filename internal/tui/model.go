@@ -77,8 +77,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.roamTable.SetRows(m.makeRoamTableRows())
 
 		//handle ap table
-		m.apTable.SetRows(m.makeAPRows())
-
+		rows, lastBSSID := m.makeAPRows()
+		m.apTable.SetRows(rows)
+		m.lastBSSID = lastBSSID
 		return m, readCmd(m.scanner)
 	case reconnectMsg:
 		m.client.close()

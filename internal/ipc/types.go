@@ -7,12 +7,13 @@ import (
 )
 
 type ProcessState struct {
-	SSID           string
-	BSSList        []BSS
-	ConnState      wpac.ConnectionStatus
-	RoamStats      wpac.RoamStats
-	RoamingTier    string
-	RoamResultFlag string
+	SSID            string
+	BSSList         []BSS
+	ConnState       wpac.ConnectionStatus
+	RoamStats       wpac.RoamStats
+	RoamingTier     string
+	RoamResultFlag  string
+	LastTriggerRSSI int
 	Flags
 	ScanState
 }
@@ -44,7 +45,7 @@ type BSS struct {
 }
 type Flags struct {
 	HysteresisActive bool
-	EntryScanned     bool //Prevents scan loop
+	EntryScanned     bool
 	EntryScannedCrit bool
 	FullScannedCrit  bool
 	UnhealthyConn    bool

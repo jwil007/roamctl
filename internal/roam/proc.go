@@ -151,6 +151,11 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan 
 				rc.shipProcessState(ipcChan)
 				continue
 			}
+			rc.checkRSSIHysteresis()
+			if rc.hysteresisActive {
+				rc.shipProcessState(ipcChan)
+				continue
+			}
 			rc.evalTier()
 			if rc.lastKnown.RSSI >= rc.cfg.FairRSSI+rc.cfg.TierHysteresis &&
 				(rc.entryScanned || rc.entryScannedCrit) &&
