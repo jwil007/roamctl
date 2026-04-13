@@ -14,7 +14,7 @@ The roaming algorithm allows optimizing roaming performance, or it can be used t
 ### TUI
  `roamctl-tui` is included, which shows the live state of roamctl in a clean and compact interface:
  
-![Screenshot](docs/screenshots/tui2.png)
+![Screenshot](docs/screenshots/tui.png)
 
 
 ## Quick Start
@@ -169,26 +169,28 @@ interface = "wlan0"
 [roaming_tiers]
 # These values set the floor of each RSSI tier, which dictate roaming logic
 # i.e. if fair_rssi is -67, -68 is in the "degraded" tier.
-excellent_rssi = -58
-fair_rssi = -67
+excellent_rssi = -50
+fair_rssi = -65
 degraded_rssi = -73
 # values lower than degraded are considered critical
 
 # Set score deltas required to roam per tier
 # Higher numbers mean candidate AP must be significantly better
-fair_score_delta = 9
-degraded_score_delta = 8
-critical_score_delta = 7
+fair_score_delta = 7
+degraded_score_delta = 6
+critical_score_delta = 4
 
 [stability]
 # sets cooldown duration after connection changed
 # prevents roaming while cooldown is in effect
 connection_cooldown = "5s"
 
-# set maxmimum retry rate (percent) or minimum data rate (Mbps)
-# roam is entered when
+# set maxmimum retry rate (percent) or minimum data rate (Mbps) or min MCS index
+# Connection considered unstable when values outside of these bounds
+# Unstable connection causes a roam attempt to fire
 retry_rate = 75
 data_rate = 10 #Mbps
+mcs_index = 2
 # modifier to penalize score of unhealthy AP, needed to encourage roaming to different AP
 unhealthy_score_mod = 20
 
@@ -225,14 +227,14 @@ band = 35
 channel_width = 10
 phy_type = 15
 
-# RSSI has a multiplicative effect below the knee, using an exponential curve
-# This is implemented to ensure APs that approach unusable RSSI are scored correctly
+# RSSI has a multiplicative below the knee, using an exponential curve
 rssi_knee = -68
 rssi_exponent = 1.8
 
 [score_clamps]
 # Used for RSSI and SNR scoring.
 # Values below min are scored 0, values above max are score 100
+# Values between clamps are scored linearly
 min_rssi = -82
 max_rssi = -25
 min_snr = 10

@@ -7,16 +7,16 @@ interface = "wlan0"
 [roaming_tiers]
 # These values set the floor of each RSSI tier, which dictate roaming logic
 # i.e. if fair_rssi is -67, -68 is in the "degraded" tier.
-excellent_rssi = -58
-fair_rssi = -67
+excellent_rssi = -50
+fair_rssi = -65
 degraded_rssi = -73
 # values lower than degraded are considered critical
 
 # Set score deltas required to roam per tier
 # Higher numbers mean candidate AP must be significantly better
-fair_score_delta = 9
-degraded_score_delta = 8
-critical_score_delta = 7
+fair_score_delta = 7
+degraded_score_delta = 6
+critical_score_delta = 4
 
 [stability]
 # sets cooldown duration after connection changed
@@ -28,7 +28,7 @@ connection_cooldown = "5s"
 # Unstable connection causes a roam attempt to fire
 retry_rate = 75
 data_rate = 10 #Mbps
-mcs_index = 1
+mcs_index = 2
 # modifier to penalize score of unhealthy AP, needed to encourage roaming to different AP
 unhealthy_score_mod = 20
 
