@@ -1,8 +1,8 @@
 package netlink
 
 import (
+	"encoding/binary"
 	"fmt"
-	"net"
 	"os"
 	"sync"
 	"time"
@@ -25,18 +25,72 @@ func New() (*Client, error) {
 	}, nil
 }
 
+func GetStationInfo(iface string) (STAInfo, error) {
+	var ifi *Interface
+	var idx int
+	c, err := New()
+	if err != nil {
+		return STAInfo{}, fmt.Errorf("wifi.New: %w", err)
+	}
+	defer func() {
+		_ = c.c.Close()
+	}()
+	ifis, err := c.c.Interfaces()
+	if err != nil {
+		return STAInfo{}, fmt.Errorf("c.Interfaces: %w", err)
+	}
+	for _, n := range ifis {
+		if n.Name == iface {
+			ifi = n
+		}
+	}
+	var cw string
+	if ifi != nil {
+		idx = ifi.Index
+		cw = ifi.ChannelWidth.String()
+	}
+	sl, err := c.c.StationInfo(ifi)
+	if err != nil {
+		return STAInfo{}, fmt.Errorf("c.StationInfo: %w", err)
+	}
+	for _, si := range sl {
+		if si.InterfaceIndex == idx {
+			return STAInfo{
+				RxBitrate:    si.ReceiveBitrate,
+				RxMCS:        si.ReceiveMCS,
+				RxPHY:        si.ReceivePHY,
+				TxBitrate:    si.TransmitBitrate,
+				TxMCS:        si.TransmitMCS,
+				TxPHY:        si.TransmitPHY,
+				TxRetries:    si.TransmitRetries,
+				RetryRate:    retryRate(si),
+				TxFails:      si.TransmitFailed,
+				BeaconLoss:   si.BeaconLoss,
+				SignalAvg:    si.SignalAverage,
+				ConnDuration: si.Connected,
+				BSSID:        si.HardwareAddr.String(),
+				ChannelWidth: cw,
+			}, nil
+		}
+	}
+	return STAInfo{}, nil
+}
+
 func (c *client) Close() error { return c.c.Close() }
 
 func newClient() (*client, error) {
-	c, err := genetlink.Dial(nil) //nolint
+	c, err := genetlink.Dial(nil)
 	if err != nil {
 		return nil, err
 	}
 
-	// Make a best effort to apply the strict options set to provide better
-	// errors and validation. We don't apply Strict in the constructor because
-	// this library is widely used on a range of kernels and we can't guarantee
-	// it will always work on older kernels.
+	closeOnErr := true
+	defer func() {
+		if closeOnErr {
+			_ = c.Close()
+		}
+	}()
+
 	for _, o := range []netlink.ConnOption{
 		netlink.ExtendedAcknowledge,
 		netlink.GetStrictCheck,
@@ -48,15 +102,14 @@ func newClient() (*client, error) {
 		_ = c.Close()
 		return nil, err
 	}
+
+	closeOnErr = false
 	return cl, nil
 }
 
 func initClient(c *genetlink.Conn) (*client, error) {
 	family, err := c.GetFamily(unix.NL80211_GENL_NAME)
 	if err != nil {
-		// Ensure the genl socket is closed on error to avoid leaking file
-		// descriptors.
-		_ = c.Close()
 		return nil, err
 	}
 
@@ -89,7 +142,7 @@ func (c *client) get(
 }
 
 func (c *client) Interfaces() ([]*Interface, error) {
-	// Ask nl80211 to dump a list of all WiFi interfaces
+	// Ask nl80211 to dump a list of all Wi-Fi interfaces
 	msgs, err := c.get(
 		unix.NL80211_CMD_GET_INTERFACE,
 		netlink.Dump,
@@ -135,23 +188,23 @@ func (ifi *Interface) parseAttributes(attrs []netlink.Attribute) error {
 	for _, a := range attrs {
 		switch a.Type {
 		case unix.NL80211_ATTR_IFINDEX:
-			ifi.Index = int(nlenc.Uint32(a.Data))
+			ifi.Index = int(binary.NativeEndian.Uint32(a.Data))
 		case unix.NL80211_ATTR_IFNAME:
 			ifi.Name = nlenc.String(a.Data)
 		case unix.NL80211_ATTR_MAC:
-			ifi.HardwareAddr = net.HardwareAddr(a.Data)
+			ifi.HardwareAddr = a.Data
 		case unix.NL80211_ATTR_WIPHY:
-			ifi.PHY = int(nlenc.Uint32(a.Data))
+			ifi.PHY = int(binary.NativeEndian.Uint32(a.Data))
 		case unix.NL80211_ATTR_IFTYPE:
 			// NOTE: InterfaceType copies the ordering of nl80211's interface type
 			// constants.  This may not be the case on other operating systems.
-			ifi.Type = InterfaceType(nlenc.Uint32(a.Data))
+			ifi.Type = InterfaceType(binary.NativeEndian.Uint32(a.Data))
 		case unix.NL80211_ATTR_WDEV:
-			ifi.Device = int(nlenc.Uint64(a.Data))
+			ifi.Device = int(binary.NativeEndian.Uint64(a.Data))
 		case unix.NL80211_ATTR_WIPHY_FREQ:
-			ifi.Frequency = int(nlenc.Uint32(a.Data))
+			ifi.Frequency = int(binary.NativeEndian.Uint32(a.Data))
 		case unix.NL80211_ATTR_CHANNEL_WIDTH:
-			ifi.ChannelWidth = ChannelWidth(nlenc.Uint32(a.Data))
+			ifi.ChannelWidth = ChannelWidth(binary.NativeEndian.Uint32(a.Data))
 		}
 	}
 
@@ -217,9 +270,9 @@ func ParseStationInfo(b []byte) (*StationInfo, error) {
 	for _, a := range attrs {
 		switch a.Type {
 		case unix.NL80211_ATTR_IFINDEX:
-			info.InterfaceIndex = int(nlenc.Uint32(a.Data))
+			info.InterfaceIndex = int(binary.NativeEndian.Uint32(a.Data))
 		case unix.NL80211_ATTR_MAC:
-			info.HardwareAddr = net.HardwareAddr(a.Data)
+			info.HardwareAddr = a.Data
 		case unix.NL80211_ATTR_STA_INFO:
 			nattrs, err := netlink.UnmarshalAttributes(a.Data)
 			if err != nil {
@@ -245,14 +298,14 @@ func (info *StationInfo) parseAttributes(attrs []netlink.Attribute) error {
 		case unix.NL80211_STA_INFO_CONNECTED_TIME:
 			// Though nl80211 does not specify, this value appears to be in seconds:
 			// * @NL80211_STA_INFO_CONNECTED_TIME: time since the station is last connected
-			info.Connected = time.Duration(nlenc.Uint32(a.Data)) * time.Second
+			info.Connected = time.Duration(binary.NativeEndian.Uint32(a.Data)) * time.Second
 		case unix.NL80211_STA_INFO_INACTIVE_TIME:
 			// * @NL80211_STA_INFO_INACTIVE_TIME: time since last activity (u32, msecs)
-			info.Inactive = time.Duration(nlenc.Uint32(a.Data)) * time.Millisecond
+			info.Inactive = time.Duration(binary.NativeEndian.Uint32(a.Data)) * time.Millisecond
 		case unix.NL80211_STA_INFO_RX_BYTES64:
-			info.ReceivedBytes = int(nlenc.Uint64(a.Data))
+			info.ReceivedBytes = int(binary.NativeEndian.Uint64(a.Data))
 		case unix.NL80211_STA_INFO_TX_BYTES64:
-			info.TransmittedBytes = int(nlenc.Uint64(a.Data))
+			info.TransmittedBytes = int(binary.NativeEndian.Uint64(a.Data))
 		case unix.NL80211_STA_INFO_SIGNAL:
 			//  * @NL80211_STA_INFO_SIGNAL: signal strength of last received PPDU (u8, dBm)
 			// Should just be cast to int8, see code here: https://git.kernel.org/pub/scm/linux/kernel/git/jberg/iw.git/tree/station.c#n378
@@ -260,15 +313,15 @@ func (info *StationInfo) parseAttributes(attrs []netlink.Attribute) error {
 		case unix.NL80211_STA_INFO_SIGNAL_AVG:
 			info.SignalAverage = int(int8(a.Data[0]))
 		case unix.NL80211_STA_INFO_RX_PACKETS:
-			info.ReceivedPackets = int(nlenc.Uint32(a.Data))
+			info.ReceivedPackets = int(binary.NativeEndian.Uint32(a.Data))
 		case unix.NL80211_STA_INFO_TX_PACKETS:
-			info.TransmittedPackets = int(nlenc.Uint32(a.Data))
+			info.TransmittedPackets = int(binary.NativeEndian.Uint32(a.Data))
 		case unix.NL80211_STA_INFO_TX_RETRIES:
-			info.TransmitRetries = int(nlenc.Uint32(a.Data))
+			info.TransmitRetries = int(binary.NativeEndian.Uint32(a.Data))
 		case unix.NL80211_STA_INFO_TX_FAILED:
-			info.TransmitFailed = int(nlenc.Uint32(a.Data))
+			info.TransmitFailed = int(binary.NativeEndian.Uint32(a.Data))
 		case unix.NL80211_STA_INFO_BEACON_LOSS:
-			info.BeaconLoss = int(nlenc.Uint32(a.Data))
+			info.BeaconLoss = int(binary.NativeEndian.Uint32(a.Data))
 		case unix.NL80211_STA_INFO_RX_BITRATE, unix.NL80211_STA_INFO_TX_BITRATE:
 			rate, err := parseRateInfo(a.Data)
 			if err != nil {
@@ -294,10 +347,10 @@ func (info *StationInfo) parseAttributes(attrs []netlink.Attribute) error {
 		// If the 64-bit counters appear later in the slice, they will overwrite
 		// these values.
 		if info.ReceivedBytes == 0 && a.Type == unix.NL80211_STA_INFO_RX_BYTES {
-			info.ReceivedBytes = int(nlenc.Uint32(a.Data))
+			info.ReceivedBytes = int(binary.NativeEndian.Uint32(a.Data))
 		}
 		if info.TransmittedBytes == 0 && a.Type == unix.NL80211_STA_INFO_TX_BYTES {
-			info.TransmittedBytes = int(nlenc.Uint32(a.Data))
+			info.TransmittedBytes = int(binary.NativeEndian.Uint32(a.Data))
 		}
 	}
 
@@ -314,7 +367,7 @@ func parseRateInfo(b []byte) (*rateInfo, error) {
 	for _, a := range attrs {
 		switch a.Type {
 		case unix.NL80211_RATE_INFO_BITRATE32:
-			info.Bitrate = int(nlenc.Uint32(a.Data))
+			info.Bitrate = int(binary.NativeEndian.Uint32(a.Data))
 		// Begin MCS additions
 		case unix.NL80211_RATE_INFO_MCS:
 			info.MCS = int(a.Data[0])
@@ -334,7 +387,7 @@ func parseRateInfo(b []byte) (*rateInfo, error) {
 		// If the 32-bit counters appear later in the slice, they will overwrite
 		// these values.
 		if info.Bitrate == 0 && a.Type == unix.NL80211_RATE_INFO_BITRATE {
-			info.Bitrate = int(nlenc.Uint16(a.Data))
+			info.Bitrate = int(binary.NativeEndian.Uint16(a.Data))
 		}
 	}
 
@@ -343,57 +396,6 @@ func parseRateInfo(b []byte) (*rateInfo, error) {
 	info.Bitrate *= 100 * 1000
 
 	return &info, nil
-}
-
-func GetStationInfo(iface string) (STAInfo, error) {
-	var ifi *Interface
-	var idx int
-	c, err := New()
-	if err != nil {
-		return STAInfo{}, fmt.Errorf("wifi.New: %w", err)
-	}
-	defer func() {
-		_ = c.c.Close()
-	}()
-	ifis, err := c.c.Interfaces()
-	if err != nil {
-		return STAInfo{}, fmt.Errorf("c.Interfaces: %w", err)
-	}
-	for _, n := range ifis {
-		if n.Name == iface {
-			ifi = n
-		}
-	}
-	var cw string
-	if ifi != nil {
-		idx = ifi.Index
-		cw = ifi.ChannelWidth.String()
-	}
-	sl, err := c.c.StationInfo(ifi)
-	if err != nil {
-		return STAInfo{}, fmt.Errorf("c.StationInfo: %w", err)
-	}
-	for _, si := range sl {
-		if si.InterfaceIndex == idx {
-			return STAInfo{
-				RxBitrate:    si.ReceiveBitrate,
-				RxMCS:        si.ReceiveMCS,
-				RxPHY:        si.ReceivePHY,
-				TxBitrate:    si.TransmitBitrate,
-				TxMCS:        si.TransmitMCS,
-				TxPHY:        si.TransmitPHY,
-				TxRetries:    si.TransmitRetries,
-				RetryRate:    retryRate(si),
-				TxFails:      si.TransmitFailed,
-				BeaconLoss:   si.BeaconLoss,
-				SignalAvg:    si.SignalAverage,
-				ConnDuration: si.Connected,
-				BSSID:        si.HardwareAddr.String(),
-				ChannelWidth: cw,
-			}, nil
-		}
-	}
-	return STAInfo{}, nil
 }
 
 func retryRate(s *StationInfo) int {
