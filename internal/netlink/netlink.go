@@ -45,31 +45,40 @@ func GetStationInfo(iface string) (STAInfo, error) {
 		}
 	}
 	var cw string
+	var freq int
 	if ifi != nil {
 		idx = ifi.Index
 		cw = ifi.ChannelWidth.String()
+		freq = ifi.Frequency
 	}
 	sl, err := c.c.StationInfo(ifi)
 	if err != nil {
 		return STAInfo{}, fmt.Errorf("c.StationInfo: %w", err)
 	}
+
 	for _, si := range sl {
+		//fmt.Printf("staInfo RSSI: %v, staInfo AvgRSSI: "+
+		//	"%v staInfoBeaconRSSI: %v", si.Signal, si.SignalAverage,
+		//	si.BeaconSignalAverage) //DEBUG
 		if si.InterfaceIndex == idx {
 			return STAInfo{
-				RxBitrate:    si.ReceiveBitrate,
-				RxMCS:        si.ReceiveMCS,
-				RxPHY:        si.ReceivePHY,
-				TxBitrate:    si.TransmitBitrate,
-				TxMCS:        si.TransmitMCS,
-				TxPHY:        si.TransmitPHY,
-				TxRetries:    si.TransmitRetries,
-				RetryRate:    retryRate(si),
-				TxFails:      si.TransmitFailed,
-				BeaconLoss:   si.BeaconLoss,
-				SignalAvg:    si.SignalAverage,
-				ConnDuration: si.Connected,
-				BSSID:        si.HardwareAddr.String(),
-				ChannelWidth: cw,
+				RxBitrate:     si.ReceiveBitrate,
+				RxMCS:         si.ReceiveMCS,
+				RxPHY:         si.ReceivePHY,
+				TxBitrate:     si.TransmitBitrate,
+				TxMCS:         si.TransmitMCS,
+				TxPHY:         si.TransmitPHY,
+				TxRetries:     si.TransmitRetries,
+				RetryRate:     retryRate(si),
+				TxFails:       si.TransmitFailed,
+				BeaconLoss:    si.BeaconLoss,
+				RSSI:          si.Signal,
+				AvgRSSI:       si.SignalAverage,
+				AvgRSSIBeacon: si.BeaconSignalAverage,
+				ConnDuration:  si.Connected,
+				BSSID:         si.HardwareAddr.String(),
+				Freq:          freq,
+				ChannelWidth:  cw,
 			}, nil
 		}
 	}
@@ -312,6 +321,8 @@ func (info *StationInfo) parseAttributes(attrs []netlink.Attribute) error {
 			info.Signal = int(int8(a.Data[0]))
 		case unix.NL80211_STA_INFO_SIGNAL_AVG:
 			info.SignalAverage = int(int8(a.Data[0]))
+		case unix.NL80211_STA_INFO_BEACON_SIGNAL_AVG:
+			info.BeaconSignalAverage = int(int8(a.Data[0]))
 		case unix.NL80211_STA_INFO_RX_PACKETS:
 			info.ReceivedPackets = int(binary.NativeEndian.Uint32(a.Data))
 		case unix.NL80211_STA_INFO_TX_PACKETS:

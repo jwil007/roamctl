@@ -9,20 +9,23 @@ import (
 )
 
 type STAInfo struct {
-	RxBitrate    int
-	RxMCS        int
-	RxPHY        string
-	TxBitrate    int
-	TxMCS        int
-	TxPHY        string
-	TxRetries    int
-	RetryRate    int
-	TxFails      int
-	BeaconLoss   int
-	SignalAvg    int
-	ConnDuration time.Duration
-	BSSID        string
-	ChannelWidth string
+	RxBitrate     int
+	RxMCS         int
+	RxPHY         string
+	TxBitrate     int
+	TxMCS         int
+	TxPHY         string
+	TxRetries     int
+	RetryRate     int
+	TxFails       int
+	BeaconLoss    int
+	RSSI          int
+	AvgRSSI       int
+	AvgRSSIBeacon int
+	ConnDuration  time.Duration
+	BSSID         string
+	Freq          int
+	ChannelWidth  string
 }
 
 //Everything below I borrowed from mdlayher/wifi
@@ -74,11 +77,12 @@ type StationInfo struct {
 	BeaconLoss int
 
 	// adding this stuff in
-	TransmitMCS int
-	ReceiveMCS  int
-	TransmitPHY string
-	ReceivePHY  string
-	PHY         string
+	TransmitMCS         int
+	ReceiveMCS          int
+	TransmitPHY         string
+	ReceivePHY          string
+	PHY                 string
+	BeaconSignalAverage int
 }
 
 type Interface struct {

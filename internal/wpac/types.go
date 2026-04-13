@@ -27,15 +27,15 @@ type WPAConfig struct {
 	DisableBTM string
 }
 
-type Signal struct {
-	RSSI      int
-	LinkSpeed int
-	Noise     int
-	Freq      int
-	//ChannelWidth  string
-	AvgRSSI       int
-	AvgRSSIBeacon int
-}
+//type Signal struct {
+//	RSSI      int
+//	LinkSpeed int
+//	Noise     int
+//	Freq      int
+//	//ChannelWidth  string
+//	AvgRSSI       int
+//	AvgRSSIBeacon int
+//}
 
 type Status struct {
 	SSID     string
@@ -44,15 +44,15 @@ type Status struct {
 
 type ConnectionStatus struct {
 	Status
-	Signal
+	//Signal
 	netlink.STAInfo
 }
 
 func (c ConnectionStatus) String() string {
 	return fmt.Sprintf(
 		"ssid: %s wpa_state: %s, bssid:%s rssi:%d avgrssi:%d "+
-			"avgrssibeacon:%d noise:%d linkspeed:%d freq:%d cw:%s "+
-			"sigavg:%v RxBitrate:%v RxMCS:%v RxPHY:%v TxBitrate:%v "+
+			"avgrssibeacon:%d freq:%d cw:%s "+
+			"RxBitrate:%v RxMCS:%v RxPHY:%v TxBitrate:%v "+
 			"TxMSC:%v TxPHY:%v TxRetries:%v RetryRate: %v "+
 			"TxFails:%v beaconloss:%v connduration:%v",
 		c.SSID,
@@ -61,11 +61,8 @@ func (c ConnectionStatus) String() string {
 		c.RSSI,
 		c.AvgRSSI,
 		c.AvgRSSIBeacon,
-		c.Noise,
-		c.LinkSpeed,
 		c.Freq,
 		c.ChannelWidth,
-		c.SignalAvg,
 		c.RxBitrate,
 		c.RxMCS,
 		c.RxPHY,
