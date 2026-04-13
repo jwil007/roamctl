@@ -1,18 +1,18 @@
 ```mermaid
 flowchart TD
-    A([Connected to AP]) --> B[Poll signal quality at interval - default 250ms]
+    A([Connected to AP]) --> B[Poll signal quality on set interval]
     B --> C{Signal quality?}
 
-    C -->|Excellent| D[No scan · No roam]
+    C -->|Excellent\nRoam disabled| D[No scan · No roam]
     D 
 
-    C -->|Fair| E[Periodic background scan using known channels]
+    C -->|Fair\nOpportunistic roaming| E[Roam based on background scan\nHigh score delta required]
     E --> H
 
-    C -->|Degraded| F[Targeted scan on known channels\nfull sweep if environment changed]
+    C -->|Degraded\nActive roaming| F[Active scan on entry\nMid score delta required]
     F --> H
 
-    C -->|Critical| G[Immediate full sweep\nacross all channels]
+    C -->|Critical\nAggressive roaming| G[Active scan on entry\nFull scan if no candidate AP\nLow score delta required]
     G --> H
 
     H[Score all visible APs\nRSSI · SNR · band · width · load · gen] --> I{Better AP above\nscore threshold?}
