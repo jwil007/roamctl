@@ -77,6 +77,11 @@ func (cfg *Config) Validate() error {
 			"stability.data_rate %v invalid. Must be >= 0",
 			cfg.Stability.DataRate))
 	}
+	if cfg.Stability.MCSIndex < 0 || cfg.Stability.MCSIndex > 13 {
+		errs = append(errs, fmt.Sprintf(
+			"stability.mcs_index %v invalid. Must be in range 0 to 13",
+			cfg.Stability.MCSIndex))
+	}
 	if !validScore(cfg.Stability.UnhealthyScoreMod) {
 		errs = append(errs, fmt.Sprintf(
 			"stability.unhealthy_score_mod %v invalid. Must be in range 0 to 100",

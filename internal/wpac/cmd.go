@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jwil007/roamctl/internal/netlink"
 )
 
 func (c *Client) cmd(command string) ([]byte, error) {
@@ -301,9 +303,9 @@ func (c *Client) getSignal() (Signal, error) {
 				return Signal{}, fmt.Errorf("strconv.Atoi: %w", err)
 			}
 			s.Freq = freq
-		case strings.HasPrefix(line, "WIDTH="):
-			width := line[6:]
-			s.ChannelWidth = width
+		//case strings.HasPrefix(line, "WIDTH="):
+		//	width := line[6:]
+		//	s.ChannelWidth = width
 		case strings.HasPrefix(line, "AVG_RSSI="):
 			avgRSSI, err := strconv.Atoi(line[9:])
 			if err != nil {
@@ -329,7 +331,7 @@ func (c *Client) constructConnStatus() (ConnectionStatus, error) {
 	if err != nil {
 		return ConnectionStatus{}, fmt.Errorf("c.getSignal(): %w", err)
 	}
-	staInfo, err := getStationInfo(c.Iface)
+	staInfo, err := netlink.GetStationInfo(c.Iface)
 	return ConnectionStatus{
 		Status:  status,
 		Signal:  signal,

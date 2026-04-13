@@ -5,6 +5,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/jwil007/roamctl/internal/netlink"
 )
 
 type Client struct {
@@ -26,25 +28,13 @@ type WPAConfig struct {
 }
 
 type Signal struct {
-	RSSI          int
-	LinkSpeed     int
-	Noise         int
-	Freq          int
-	ChannelWidth  string
+	RSSI      int
+	LinkSpeed int
+	Noise     int
+	Freq      int
+	//ChannelWidth  string
 	AvgRSSI       int
 	AvgRSSIBeacon int
-}
-
-type STAInfo struct {
-	RxBitrate    int
-	TxBitrate    int
-	TxRetries    int
-	RetryRate    int
-	TxFails      int
-	BeaconLoss   int
-	SignalAvg    int
-	ConnDuration time.Duration
-	BSSID        string
 }
 
 type Status struct {
@@ -55,14 +45,15 @@ type Status struct {
 type ConnectionStatus struct {
 	Status
 	Signal
-	STAInfo
+	netlink.STAInfo
 }
 
 func (c ConnectionStatus) String() string {
 	return fmt.Sprintf(
 		"ssid: %s wpa_state: %s, bssid:%s rssi:%d avgrssi:%d "+
 			"avgrssibeacon:%d noise:%d linkspeed:%d freq:%d cw:%s "+
-			"sigavg:%v RxBitrate:%v TxBitrate:%v TxRetries:%v RetryRate: %v "+
+			"sigavg:%v RxBitrate:%v RxMCS:%v RxPHY:%v TxBitrate:%v "+
+			"TxMSC:%v TxPHY:%v TxRetries:%v RetryRate: %v "+
 			"TxFails:%v beaconloss:%v connduration:%v",
 		c.SSID,
 		c.WPAState,
@@ -76,7 +67,11 @@ func (c ConnectionStatus) String() string {
 		c.ChannelWidth,
 		c.SignalAvg,
 		c.RxBitrate,
+		c.RxMCS,
+		c.RxPHY,
 		c.TxBitrate,
+		c.TxMCS,
+		c.TxPHY,
 		c.TxRetries,
 		c.RetryRate,
 		c.TxFails,
@@ -466,3 +461,5 @@ func (b Band) String() string {
 	}
 	return ""
 }
+
+const NL80211CmdGetStation = 17

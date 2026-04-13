@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"charm.land/log/v2"
 	"github.com/BurntSushi/toml"
-	"github.com/charmbracelet/log"
 )
 
 func HandleConfig(template *string, iface *string, edit *bool) (*Config, error) {

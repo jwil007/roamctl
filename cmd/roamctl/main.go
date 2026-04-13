@@ -13,7 +13,7 @@ import (
 	"strings"
 	"syscall"
 
-	charmlog "github.com/charmbracelet/log"
+	charmlog "charm.land/log/v2"
 	"github.com/jwil007/roamctl/internal/config"
 	"github.com/jwil007/roamctl/internal/ipc"
 	"github.com/jwil007/roamctl/internal/roam"

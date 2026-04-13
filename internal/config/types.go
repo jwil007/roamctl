@@ -34,6 +34,7 @@ type Stability struct {
 	TierHysteresis     int           `toml:"tier_hysteresis"`
 	RetryRate          int           `toml:"retry_rate"`
 	DataRate           int           `toml:"data_rate"`
+	MCSIndex           int           `toml:"mcs_index"`
 	UnhealthyScoreMod  int           `toml:"unhealthy_score_mod"`
 	RSSISmoothWindow   int           `toml:"rssi_smooth_window"`
 }

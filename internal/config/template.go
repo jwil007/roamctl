@@ -23,10 +23,12 @@ critical_score_delta = 7
 # prevents roaming while cooldown is in effect
 connection_cooldown = "5s"
 
-# set maxmimum retry rate (percent) or minimum data rate (Mbps)
-# roam is entered when
+# set maxmimum retry rate (percent) or minimum data rate (Mbps) or min MCS index
+# Connection considered unstable when values outside of these bounds
+# Unstable connection causes a roam attempt to fire
 retry_rate = 75
 data_rate = 10 #Mbps
+mcs_index = 1
 # modifier to penalize score of unhealthy AP, needed to encourage roaming to different AP
 unhealthy_score_mod = 20
 

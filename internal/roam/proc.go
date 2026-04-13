@@ -318,10 +318,13 @@ func (rc *roamContext) checkConnectionHealth() {
 	}
 	if rc.lastKnown.RetryRate >= rc.cfg.RetryRate ||
 		max(rc.lastKnown.TxBitrate, rc.lastKnown.RxBitrate) <=
-			rc.cfg.DataRate*1000000 {
+			rc.cfg.DataRate*1000000 ||
+		max(rc.lastKnown.TxMCS, rc.lastKnown.RxMCS) <= rc.cfg.MCSIndex {
 		slog.Debug("Current connection unhealthy",
 			"retry_rate", rc.lastKnown.RetryRate,
 			"retry_limit", rc.cfg.RetryRate,
+			"mcs_index", max(rc.lastKnown.TxMCS, rc.lastKnown.RxMCS),
+			"mcs_limit", rc.cfg.MCSIndex,
 			"data_bitrate", max(rc.lastKnown.TxBitrate, rc.lastKnown.RxBitrate),
 			"dr_limit", rc.cfg.DataRate*1000000)
 		rc.unhealthyConn = true

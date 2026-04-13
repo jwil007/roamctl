@@ -46,20 +46,38 @@ func (m model) connStatView() string {
 				"Also, ensure roamctl is running. " +
 				"Run: sudo systemctl status roamctl")
 	}
+	txPHY := m.procState.ConnState.TxPHY
+	rxPHY := m.procState.ConnState.RxPHY
+	if m.procState.ConnState.TxPHY == "" {
+		txPHY = "Lgcy"
+	}
+	if m.procState.ConnState.RxPHY == "" {
+		rxPHY = "Lgcy"
+	}
 	header := m.alignLeft().
 		Render(titleStyle.Render(" CONNECTION STATUS"))
 	band, channel := getBandandChanfromFreq(m.procState.ConnState.Freq)
-	s := fmt.Sprintf("ssid: %v   bssid: %v   channel: %v | %v\n"+
-		"rssi: %v   tx: %vMbps rx: %vMbps   duration: %v",
-		m.procState.SSID,
-		m.procState.ConnState.BSSID,
-		channel,
-		band,
-		m.procState.ConnState.RSSI,
-		m.procState.ConnState.STAInfo.TxBitrate/1000000,
-		m.procState.ConnState.STAInfo.RxBitrate/1000000,
-		m.procState.ConnState.STAInfo.ConnDuration,
-	)
+	l := titleStyle.Render
+
+	line1 := l("ssid: ") + fmt.Sprintf("%-15v", m.procState.SSID) +
+		l("bssid: ") + fmt.Sprintf("%-19v", m.procState.ConnState.BSSID) +
+		l("Duration: ") + fmt.Sprintf("%-10v", m.procState.ConnState.STAInfo.ConnDuration)
+
+	line2 := l("rssi: ") + fmt.Sprintf("%-5v", m.procState.ConnState.RSSI) +
+		l("channel: ") + fmt.Sprintf("%-5v", channel) +
+		l("width: ") + fmt.Sprintf("%-7v", m.procState.ConnState.ChannelWidth) +
+		l("band: ") + fmt.Sprintf("%-6v", band)
+
+	line3 := l("tx: ") + fmt.Sprintf(
+		"%-4v", m.procState.ConnState.STAInfo.TxBitrate/1000000) + l("Mbps  ") +
+		l("PHY: ") + fmt.Sprintf("%-4v", txPHY) +
+		l(" MCS: ") + fmt.Sprintf("%-2v", m.procState.ConnState.TxMCS) +
+		l(" | rx: ") + fmt.Sprintf(
+		"%-4v", m.procState.ConnState.STAInfo.RxBitrate/1000000) + l("Mbps  ") +
+		l("PHY: ") + fmt.Sprintf("%-4v", rxPHY) +
+		l(" MCS: ") + fmt.Sprintf("%-2v", m.procState.ConnState.RxMCS)
+
+	s := lipgloss.JoinVertical(lipgloss.Left, line1, line2, line3)
 	return lipgloss.JoinVertical(lipgloss.Center, header, s)
 }
 
