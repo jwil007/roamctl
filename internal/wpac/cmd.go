@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"slices"
 	"strconv"
@@ -331,7 +332,29 @@ func (c *Client) constructConnStatus() (ConnectionStatus, error) {
 	if err != nil {
 		return ConnectionStatus{}, fmt.Errorf("c.getSignal(): %w", err)
 	}
-	staInfo, err := netlink.GetStationInfo(c.Iface)
+	type staResult struct {
+		info netlink.STAInfo
+		err  error
+	}
+	ch := make(chan staResult, 1)
+	go func() {
+		info, err := netlink.GetStationInfo(c.Iface)
+		ch <- staResult{info, err}
+	}()
+
+	var staInfo netlink.STAInfo
+	select {
+	case res := <-ch:
+		if res.err != nil {
+			// non-fatal, continue with zero STAInfo
+			slog.Debug("GetStationInfo failed", "err", res.err)
+		} else {
+			staInfo = res.info
+		}
+	case <-time.After(5 * time.Second):
+		slog.Warn("GetStationInfo timed out")
+	}
+
 	return ConnectionStatus{
 		Status:  status,
 		Signal:  signal,

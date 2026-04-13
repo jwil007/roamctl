@@ -39,6 +39,9 @@ func Proc(
 	defer cleanup() //sets wpa_supplicant back to original state
 	slog.Info("Current SSID",
 		"ssid", rc.ssid)
+	if rc.ssid == "" {
+		return fmt.Errorf("SSID not connected, exiting")
+	}
 	slog.Info("Selected interface",
 		"iface", c.Iface)
 	slog.Info("Running full channel scan...")
