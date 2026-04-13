@@ -14,7 +14,7 @@ The roaming algorithm allows optimizing roaming performance, or it can be used t
 ### TUI
  `roamctl-tui` is included, which shows the live state of roamctl in a clean and compact interface:
  
-![Screenshot](docs/screenshots/tui.png)
+![Screenshot](docs/screenshots/tui2.png)
 
 
 ## Quick Start
