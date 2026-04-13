@@ -35,11 +35,16 @@ func main() {
 
 func run() error {
 	//handle args
-	versionFlag := flag.Bool("version", false, "print version and exit")
-	edit := flag.Bool("edit", false, "edit config file")
-	template := flag.String("template", "", "select config template (base, macos, ios)")
-	levelStr := flag.String("level", "info", "log level (debug, info)")
-	iface := flag.String("iface", "wlan0", "interface to use")
+	versionFlag := flag.Bool("version", false,
+		"print version and exit")
+	edit := flag.Bool("edit", false,
+		"edit config file")
+	template := flag.String("template", "",
+		"select config template (base, macos, ios)")
+	levelStr := flag.String("level", "info",
+		"log level (debug, info)")
+	iface := flag.String("iface", "wlan0",
+		"interface to use")
 	flag.Parse()
 	if *versionFlag {
 		fmt.Println(version)
@@ -53,19 +58,26 @@ func run() error {
 	})
 
 	if flag.NArg() > 0 {
-		_, _ = fmt.Fprintf(os.Stderr, "error: unexpected argument(s): %v\n", flag.Args())
+		_, _ = fmt.Fprintf(os.Stderr,
+			"error: unexpected argument(s): %v\n", flag.Args())
 		flag.Usage()
 		os.Exit(1)
 	}
 	validLevels := map[string]bool{"debug": true, "info": true}
 	if !validLevels[*levelStr] {
-		_, _ = fmt.Fprintf(os.Stderr, "error: invalid log level %q, must be debug or info\n", *levelStr)
+		_, _ = fmt.Fprintf(
+			os.Stderr,
+			"error: invalid log level %q, "+
+				"must be debug or info\n", *levelStr)
 		flag.Usage()
 		os.Exit(1)
 	}
-	validTemplates := map[string]bool{"": true, "base": true, "macos": true, "ios": true}
+	validTemplates := map[string]bool{"": true, "base": true,
+		"macos": true, "ios": true}
 	if !validTemplates[*template] {
-		_, _ = fmt.Fprintf(os.Stderr, "error: invalid template %q, must be default, macos, or ios\n", *template)
+		_, _ = fmt.Fprintf(os.Stderr,
+			"error: invalid template %q, "+
+				"must be default, macos, or ios\n", *template)
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -107,7 +119,8 @@ func run() error {
 		return fmt.Errorf("cfg.Validate: %w", err)
 	}
 	if *edit == true || *template != "" || ifaceSet {
-		fmt.Println("Changes saved to file at /etc/roamctl/config.toml.\nIf running roamctl as a daemon, " +
+		fmt.Println("Changes saved to file at /etc/roamctl/config.toml.\n" +
+			"If running roamctl as a daemon, " +
 			"apply changes with sudo systemctl restart roamctl")
 		os.Exit(0)
 	}
@@ -116,18 +129,22 @@ func run() error {
 	c, err := wpac.Connect(cfg.Interface)
 	if err != nil {
 		if strings.Contains(err.Error(), "no such file or directory") {
-			return fmt.Errorf("wpac.Connect: %w\nInterface name %s may be wrong. "+
-				"Rerun with -edit flag to edit interface name.", err, cfg.Interface)
+			return fmt.Errorf("wpac.Connect: %w\n"+
+				"Interface name %s may be wrong. "+
+				"Rerun with -edit flag to edit interface name.",
+				err, cfg.Interface)
 		}
 		return fmt.Errorf("wpac.Connect %w", err)
 	}
 
 	//init context for all concurrent functions
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, cancel := signal.NotifyContext(context.Background(),
+		os.Interrupt, syscall.SIGTERM)
 	defer func() {
 		err = c.Close()
 		if err != nil {
-			slog.Error("failed to close unix connection", "value", err)
+			slog.Error("failed to close unix connection",
+				"value", err)
 		}
 	}()
 	defer cancel()

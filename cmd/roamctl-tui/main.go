@@ -19,7 +19,8 @@ func main() {
 }
 
 func run() error {
-	versionFlag := flag.Bool("version", false, "print version and exit")
+	versionFlag := flag.Bool("version", false,
+		"print version and exit")
 	flag.Parse()
 	if *versionFlag {
 		fmt.Println(version)

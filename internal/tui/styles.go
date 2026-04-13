@@ -60,11 +60,13 @@ func (m model) roamTableStyle() table.Styles {
 }
 
 func greenText() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color("#00ff00")).Bold(true)
+	return lipgloss.NewStyle().Foreground(
+		lipgloss.Color("#00ff00")).Bold(true)
 }
 
 func redText() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color("#ff0000")).Bold(true)
+	return lipgloss.NewStyle().Foreground(
+		lipgloss.Color("#ff0000")).Bold(true)
 }
 
 func currentAPStyle() lipgloss.Style {

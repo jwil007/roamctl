@@ -11,7 +11,8 @@ func parseIETLV(ie []byte) ([]tlv, error) {
 		l := ie[i]
 		i += 1
 		if i+int(l) > len(ie) {
-			return nil, fmt.Errorf("length parsed in tlv exceeds total ie length")
+			return nil, fmt.Errorf(
+				"length parsed in tlv exceeds total ie length")
 		}
 		v := ie[i : i+int(l)]
 		i += len(v)

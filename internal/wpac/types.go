@@ -60,8 +60,10 @@ type ConnectionStatus struct {
 
 func (c ConnectionStatus) String() string {
 	return fmt.Sprintf(
-		"ssid: %s wpa_state: %s, bssid:%s rssi:%d avgrssi:%d avgrssibeacon:%d noise:%d linkspeed:%d freq:%d cw:%s "+
-			"sigavg:%v RxBitrate:%v TxBitrate:%v TxRetries:%v RetryRate: %v TxFails:%v beaconloss:%v connduration:%v",
+		"ssid: %s wpa_state: %s, bssid:%s rssi:%d avgrssi:%d "+
+			"avgrssibeacon:%d noise:%d linkspeed:%d freq:%d cw:%s "+
+			"sigavg:%v RxBitrate:%v TxBitrate:%v TxRetries:%v RetryRate: %v "+
+			"TxFails:%v beaconloss:%v connduration:%v",
 		c.SSID,
 		c.WPAState,
 		c.BSSID,
@@ -91,7 +93,8 @@ type RoamStats struct {
 }
 
 func (r RoamStats) String() string {
-	return fmt.Sprintf("Success:%t TargetBSSID:%s FinalBSSID:%s Duration:%v Message:%s",
+	return fmt.Sprintf("Success:%t TargetBSSID:%s "+
+		"FinalBSSID:%s Duration:%v Message:%s",
 		r.Success,
 		r.TargetBSSID,
 		r.FinalBSSID,

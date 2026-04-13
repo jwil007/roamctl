@@ -28,7 +28,8 @@ func score(bss wpac.RichBSS, cfg *config.Config) scoredBSS {
 		cws := cfg.ChannelWidth * scoreCW(bss.ChannelWidth, cfg) / 100
 		us := cfg.QBSSUtil * scoreUtil(bss.QBSSUtil) / 100
 		ps := cfg.PHYType * scorePhy(bss.PHYType, cfg) / 100
-		totalWeight := cfg.ScoreWeights.RSSI + cfg.SNR + cfg.Band + cfg.ChannelWidth + cfg.QBSSUtil + cfg.PHYType
+		totalWeight := cfg.ScoreWeights.RSSI +
+			cfg.SNR + cfg.Band + cfg.ChannelWidth + cfg.QBSSUtil + cfg.PHYType
 		scoreSum := rs + ss + bs + cws + us + ps
 		if totalWeight == 0 {
 			return scoredBSS{}
@@ -62,7 +63,8 @@ func score(bss wpac.RichBSS, cfg *config.Config) scoredBSS {
 	cws := cfg.ChannelWidth * scoreCW(bss.ChannelWidth, cfg) / 100
 	us := cfg.QBSSUtil * scoreUtil(bss.QBSSUtil) / 100
 	ps := cfg.PHYType * scorePhy(bss.PHYType, cfg) / 100
-	totalWeight := cfg.ScoreWeights.RSSI + cfg.SNR + cfg.Band + cfg.ChannelWidth + cfg.QBSSUtil + cfg.PHYType
+	totalWeight := cfg.ScoreWeights.RSSI +
+		cfg.SNR + cfg.Band + cfg.ChannelWidth + cfg.QBSSUtil + cfg.PHYType
 	scoreSum := kneeRS + ss + bs + cws + us + ps
 	if totalWeight == 0 {
 		return scoredBSS{}

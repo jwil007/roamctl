@@ -62,7 +62,8 @@ func (c *Client) runRoam(bssid string) error {
 		return fmt.Errorf("c.cmd(ROAM %v): %w", bssid, err)
 	}
 	if strings.TrimSpace(string(out)) != "OK" {
-		return fmt.Errorf("c.cmd(ROAM %v): output not \"OK\": %v", bssid, string(out))
+		return fmt.Errorf(
+			"c.cmd(ROAM %v): output not \"OK\": %v", bssid, string(out))
 	}
 	return nil
 }
@@ -101,7 +102,8 @@ func (c *Client) getNetworkID() (string, error) {
 func (c *Client) getBGScan(networkID string) (string, error) {
 	out, err := c.cmd("GET_NETWORK " + networkID + " bgscan")
 	if err != nil {
-		return "", fmt.Errorf("c.Cmd(\"GET_NETWORK\""+networkID+"\" bgscan\"): %w", err)
+		return "", fmt.Errorf(
+			"c.Cmd(\"GET_NETWORK\""+networkID+"\" bgscan\"): %w", err)
 	}
 	return string(out), nil
 }
@@ -129,10 +131,12 @@ func (c *Client) getBTM() (string, error) {
 func (c *Client) setBTM(config WPAConfig) error {
 	out, err := c.cmd("SET " + "disable_btm " + config.DisableBTM)
 	if err != nil {
-		return fmt.Errorf("c.Cmd(\"SET disable_btm %v\"): %w", config.DisableBTM, err)
+		return fmt.Errorf(
+			"c.Cmd(\"SET disable_btm %v\"): %w", config.DisableBTM, err)
 	}
 	if strings.TrimSpace(string(out)) != "OK" {
-		return fmt.Errorf("c.Cmd(\"SET disable_btm %v\"): %v", config.DisableBTM, string(out))
+		return fmt.Errorf(
+			"c.Cmd(\"SET disable_btm %v\"): %v", config.DisableBTM, string(out))
 	}
 	return nil
 }
@@ -153,10 +157,12 @@ func (c *Client) runScan(s ScanParams) error {
 	}
 	out, err := c.cmd("SCAN TYPE=ONLY" + freqStr + ssidStr)
 	if err != nil {
-		return fmt.Errorf("c.Cmd(SCAN TYPE=ONLY %v %v): %w", freqStr, ssidStr, err)
+		return fmt.Errorf(
+			"c.Cmd(SCAN TYPE=ONLY %v %v): %w", freqStr, ssidStr, err)
 	}
 	if strings.TrimSpace(string(out)) != "OK" {
-		return fmt.Errorf("c.Cmd(SCAN TYPE=ONLY %v %v): %s", freqStr, ssidStr, string(out))
+		return fmt.Errorf(
+			"c.Cmd(SCAN TYPE=ONLY %v %v): %s", freqStr, ssidStr, string(out))
 	}
 	return nil
 }
@@ -331,7 +337,8 @@ func (c *Client) constructConnStatus() (ConnectionStatus, error) {
 	}, nil
 }
 
-func (c *Client) listenEvents(ctx context.Context) (<-chan string, <-chan error) {
+func (c *Client) listenEvents(
+	ctx context.Context) (<-chan string, <-chan error) {
 	events := make(chan string)
 	errc := make(chan error, 1)
 	go func() {
@@ -366,7 +373,10 @@ func (c *Client) listenEvents(ctx context.Context) (<-chan string, <-chan error)
 	return events, errc
 }
 
-func (c *Client) waitForEvent(ctx context.Context, match []string, timeout time.Duration) (string, error) {
+func (c *Client) waitForEvent(
+	ctx context.Context,
+	match []string,
+	timeout time.Duration) (string, error) {
 	listenCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	events, errc := c.listenEvents(listenCtx)

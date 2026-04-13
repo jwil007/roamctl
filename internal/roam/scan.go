@@ -110,7 +110,10 @@ func (rc *roamContext) runFullScan(c *wpac.Client, ctx context.Context) error {
 	return nil
 }
 
-func (rc *roamContext) executeScan(c *wpac.Client, ctx context.Context, sp wpac.ScanParams) error {
+func (rc *roamContext) executeScan(
+	c *wpac.Client,
+	ctx context.Context,
+	sp wpac.ScanParams) error {
 	rc.scanState.mu.Lock()
 	for rc.scanState.scanInProgress {
 		slog.Info("Execute Scan: Scan in progress, waiting for completion")
@@ -155,7 +158,8 @@ func (rc *roamContext) executeScan(c *wpac.Client, ctx context.Context, sp wpac.
 	rc.scanState.lastScanTime = completeTime
 	rc.scanState.cond.Broadcast()
 	rc.scanState.mu.Unlock()
-	slog.Info("Scan completed", "scan_mode", mode, "duration", duration)
+	slog.Info(
+		"Scan completed", "scan_mode", mode, "duration", duration)
 	return nil
 }
 
@@ -180,7 +184,8 @@ func (rc *roamContext) prepScanResults(c *wpac.Client) error {
 		slog.Info("Current AP connection unhealthy, penalizing its score",
 			"original_score", rc.currentAP.finalScore,
 			"modified_score", rc.currentAP.finalScore-rc.cfg.UnhealthyScoreMod)
-		rc.currentAP.finalScore = rc.currentAP.finalScore - rc.cfg.UnhealthyScoreMod
+		rc.currentAP.finalScore =
+			rc.currentAP.finalScore - rc.cfg.UnhealthyScoreMod
 		for i := range rc.scoredAPs {
 			if rc.scoredAPs[i].bssid == rc.lastKnown.BSSID {
 				rc.scoredAPs[i].finalScore -= rc.cfg.UnhealthyScoreMod

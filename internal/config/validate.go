@@ -236,7 +236,8 @@ func (cfg *Config) Validate() error {
 	}
 
 	if len(errs) > 0 {
-		return fmt.Errorf("config validation failed:\n%v", strings.Join(errs, "\n"))
+		return fmt.Errorf(
+			"config validation failed:\n%v", strings.Join(errs, "\n"))
 	}
 	return nil
 }

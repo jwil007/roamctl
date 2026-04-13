@@ -15,7 +15,10 @@ import (
 	"github.com/jwil007/roamctl/internal/wpac"
 )
 
-func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan ipc.ProcessState) error {
+func Proc(
+	c *wpac.Client, ctx context.Context,
+	cfg *config.Config,
+	ipcChan chan ipc.ProcessState) error {
 	slog.Info("Starting roamctl... exit with ctrl+c")
 	rc := &roamContext{}
 	rc.richByBSSID = make(map[string]wpac.RichBSS)
@@ -47,7 +50,7 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan 
 	if err != nil {
 		return fmt.Errorf("prepScanResults: %w", err)
 	}
-	rc.lastEvalTime = time.Now() //set lastEvalTime - prevents the first roam attempt from using the initial scan
+	rc.lastEvalTime = time.Now()
 	rc.shipProcessState(ipcChan)
 	//Start polling signal stats
 	slog.Info("Starting signal polling...")
@@ -59,7 +62,8 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan 
 		select {
 		case <-cadenceTicker.C:
 			if time.Since(rc.lastConnChange) <= cfg.ConnectionCooldown {
-				slog.Debug("Background scan skipped, connection cooldown active")
+				slog.Debug(
+					"Background scan skipped, connection cooldown active")
 				continue
 			}
 			rc.scanState.mu.RLock()
@@ -68,14 +72,16 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan 
 			rc.scanState.mu.RUnlock()
 			if !inProgress {
 				if mode != noScan {
-					slog.Info("Running background scan", "scan_mode", mode)
+					slog.Info("Running background scan",
+						"scan_mode", mode)
 					scErrCh = rc.runScanConcurrent(c, ctx)
 				} else {
 					slog.Debug("Skipping background scan",
 						"scan_mode", mode)
 				}
 			} else {
-				slog.Info("Backgound scan skipped - scan already in progress")
+				slog.Info("Backgound scan skipped" +
+					" - scan already in progress")
 			}
 		case con := <-sigCh:
 			var prevBSSID string
@@ -90,7 +96,8 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan 
 				rc.lastKnown = &con
 			}
 			if rc.lastKnown == nil {
-				slog.Debug("last polled signal stats nil, check again next cycle")
+				slog.Debug("last polled signal stats nil," +
+					" check again next cycle")
 				rc.shipProcessState(ipcChan)
 				continue
 			}
@@ -109,7 +116,8 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan 
 			if con.WPAState != "COMPLETED" {
 				if con.WPAState == "DISCONNECTED" {
 					rc.shipProcessState(ipcChan)
-					return fmt.Errorf("wpa_state is DISCONNECTED, exiting")
+					return fmt.Errorf(
+						"wpa_state is DISCONNECTED, exiting")
 				}
 				slog.Info("wpa_state not COMPLETED, skipping poll",
 					"wpa_state", con.WPAState)
@@ -121,13 +129,15 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan 
 					"prev_freq", prevFreq, "new_freq", rc.lastKnown.Freq)
 				rc.scanState.mu.Lock()
 				if !slices.Contains(rc.scanState.channels, rc.lastKnown.Freq) {
-					rc.scanState.channels = append(rc.scanState.channels, rc.lastKnown.Freq)
+					rc.scanState.channels = append(
+						rc.scanState.channels, rc.lastKnown.Freq)
 					slices.Sort(rc.scanState.channels)
 				}
 				rc.scanState.mu.Unlock()
 			}
 			if con.RSSI >= -1 {
-				slog.Debug("Invalid RSSI, skipping poll", "rssi", con.RSSI)
+				slog.Debug(
+					"Invalid RSSI, skipping poll", "rssi", con.RSSI)
 				rc.shipProcessState(ipcChan)
 				continue
 			}
@@ -136,10 +146,13 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan 
 				rssi = con.RSSI
 			}
 			rc.lastKnown.RSSI = rc.smoothRSSI(rssi)
-			slog.Debug("Last polled connection status", "stats", rc.lastKnown)
+			slog.Debug(
+				"Last polled connection status",
+				"stats", rc.lastKnown)
 			if time.Since(rc.lastConnChange) <= cfg.ConnectionCooldown {
 				slog.Debug("Connection cooldown in effect",
-					"remaining", cfg.ConnectionCooldown-time.Since(rc.lastConnChange))
+					"remaining",
+					cfg.ConnectionCooldown-time.Since(rc.lastConnChange))
 				rc.shipProcessState(ipcChan)
 				continue
 			}
@@ -147,7 +160,8 @@ func Proc(c *wpac.Client, ctx context.Context, cfg *config.Config, ipcChan chan 
 				rc.checkConnectionHealth()
 			} else {
 				slog.Debug("checkConnectionHealth skipped, backoff timer",
-					"time remaining", 2*time.Second-time.Since(rc.lastRoamAttempt))
+					"time remaining",
+					2*time.Second-time.Since(rc.lastRoamAttempt))
 				rc.shipProcessState(ipcChan)
 				continue
 			}
@@ -209,7 +223,8 @@ func (rc *roamContext) evalTier() {
 			slog.Info("Tier degraded to critical, unhealthy connection",
 				"retry_rate", rc.lastKnown.RetryRate,
 				"retry_limit", rc.cfg.RetryRate,
-				"data_bitrate", max(rc.lastKnown.TxBitrate, rc.lastKnown.RxBitrate),
+				"data_bitrate", max(
+					rc.lastKnown.TxBitrate, rc.lastKnown.RxBitrate),
 				"dr_limit", rc.cfg.DataRate*1000000)
 			rc.unhealthyLogged = true
 		}
@@ -292,15 +307,18 @@ func (rc *roamContext) checkConnectionHealth() {
 		rc.unhealthyConn = false
 		return
 	}
-	if slices.Contains(legacyRates, max(rc.lastKnown.TxBitrate, rc.lastKnown.RxBitrate)) {
-		slog.Debug("Device using legacy rates, skipping connection health check",
+	if slices.Contains(legacyRates, max(
+		rc.lastKnown.TxBitrate, rc.lastKnown.RxBitrate)) {
+		slog.Debug(
+			"Device using legacy rates, skipping connection health check",
 			"tx_bitrate", rc.lastKnown.TxBitrate,
 			"rx_bitrate", rc.lastKnown.RxBitrate)
 		rc.unhealthyConn = false
 		return
 	}
 	if rc.lastKnown.RetryRate >= rc.cfg.RetryRate ||
-		max(rc.lastKnown.TxBitrate, rc.lastKnown.RxBitrate) <= rc.cfg.DataRate*1000000 {
+		max(rc.lastKnown.TxBitrate, rc.lastKnown.RxBitrate) <=
+			rc.cfg.DataRate*1000000 {
 		slog.Debug("Current connection unhealthy",
 			"retry_rate", rc.lastKnown.RetryRate,
 			"retry_limit", rc.cfg.RetryRate,
@@ -333,7 +351,9 @@ func (rc *roamContext) handleWpaSuppConfig(c *wpac.Client) (func(), error) {
 	cleanup := func() {
 		err = c.SetConfig(storedConf)
 		if err != nil {
-			slog.Error("error restoring wpa_supplicant config", "value", err)
+			slog.Error(
+				"error restoring wpa_supplicant config",
+				"value", err)
 		}
 	}
 	return cleanup, nil

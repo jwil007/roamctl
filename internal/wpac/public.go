@@ -33,21 +33,24 @@ func (c *Client) Roam(ctx context.Context, bssid string) (RoamStats, error) {
 	case strings.Contains(ev, "CTRL-EVENT-AUTH-REJECT"):
 		sc, errSt := extractStatusCode(ev)
 		if errSt != nil {
-			return RoamStats{}, fmt.Errorf("extractStatusCode(%v): %w", ev, errSt)
+			return RoamStats{}, fmt.Errorf(
+				"extractStatusCode(%v): %w", ev, errSt)
 		}
 		r.Success = false
 		r.Message = "Auth rejected - " + sc
 	case strings.Contains(ev, "CTRL-EVENT-ASSOC-REJECT"):
 		sc, errSt := extractStatusCode(ev)
 		if errSt != nil {
-			return RoamStats{}, fmt.Errorf("extractStatusCode(%v): %w", ev, errSt)
+			return RoamStats{}, fmt.Errorf(
+				"extractStatusCode(%v): %w", ev, errSt)
 		}
 		r.Success = false
 		r.Message = "Assoc rejected - " + sc
 	case strings.Contains(ev, "CTRL-EVENT-DISCONNECTED"):
 		rc, errEx := extractReasonCode(ev)
 		if errEx != nil {
-			return RoamStats{}, fmt.Errorf("extractReasonCode(%v): %w", ev, errEx)
+			return RoamStats{}, fmt.Errorf(
+				"extractReasonCode(%v): %w", ev, errEx)
 		}
 		r.Success = false
 		r.Message = "Disconnected - " + rc
@@ -158,7 +161,9 @@ func (c *Client) ScanResults(ssid string) ([]RichBSS, error) {
 	return richBSSList, nil
 }
 
-func (c *Client) PollSignal(ctx context.Context, interval time.Duration) (<-chan ConnectionStatus, <-chan error) {
+func (c *Client) PollSignal(
+	ctx context.Context,
+	interval time.Duration) (<-chan ConnectionStatus, <-chan error) {
 	connStatus := make(chan ConnectionStatus)
 	errc := make(chan error, 1)
 	go func() {
@@ -171,7 +176,8 @@ func (c *Client) PollSignal(ctx context.Context, interval time.Duration) (<-chan
 				return
 			case <-ticker.C:
 				s, err := c.constructConnStatus()
-				if err != nil && !strings.Contains(err.Error(), "bssid field not found") {
+				if err != nil && !strings.Contains(
+					err.Error(), "bssid field not found") {
 					errc <- err
 					return
 				}
@@ -185,7 +191,8 @@ func (c *Client) PollSignal(ctx context.Context, interval time.Duration) (<-chan
 func GetConnectionStatus(c *Client) (ConnectionStatus, error) {
 	connStatus, err := c.constructConnStatus()
 	if err != nil {
-		return ConnectionStatus{}, fmt.Errorf("c.constructConnStatus: %w", err)
+		return ConnectionStatus{}, fmt.Errorf(
+			"c.constructConnStatus: %w", err)
 	}
 	return connStatus, nil
 }

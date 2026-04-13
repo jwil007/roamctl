@@ -33,17 +33,21 @@ func (m model) titleView() string {
 	centerWidth := tuiWidth - leftWidth - rightWidth
 
 	return titleStyle.Render(left) +
-		lipgloss.NewStyle().Width(centerWidth).Align(lipgloss.Center).Faint(true).Render(center) +
+		lipgloss.NewStyle().Width(centerWidth).
+			Align(lipgloss.Center).Faint(true).Render(center) +
 		titleStyle.Render(right)
 }
 
 func (m model) connStatView() string {
 	if m.procState.SSID == "" {
-		return m.alignCenter().Render("Waiting for data from roamctl... \n" +
-			"roamctl-tui may require root. Run with: sudo roamctl-tui\n" +
-			"Also, ensure roamctl is running. Run: sudo systemctl status roamctl")
+		return m.alignCenter().
+			Render("Waiting for data from roamctl... \n" +
+				"roamctl-tui may require root. Run with: sudo roamctl-tui\n" +
+				"Also, ensure roamctl is running. " +
+				"Run: sudo systemctl status roamctl")
 	}
-	header := m.alignLeft().Render(titleStyle.Render(" CONNECTION STATUS"))
+	header := m.alignLeft().
+		Render(titleStyle.Render(" CONNECTION STATUS"))
 	band, channel := getBandandChanfromFreq(m.procState.ConnState.Freq)
 	s := fmt.Sprintf("ssid: %v   bssid: %v   channel: %v | %v\n"+
 		"rssi: %v   tx: %vMbps rx: %vMbps   duration: %v",
@@ -63,7 +67,8 @@ func (m model) apTableView() string {
 	header := m.alignLeft().Render(titleStyle.Render(" SCAN DATA"))
 	footer := m.alignRight().Render(titleStyle.Render("* current AP"))
 	content := m.apTable.View()
-	return lipgloss.JoinVertical(lipgloss.Left, m.alignCenter().Render(header), content, footer)
+	return lipgloss.JoinVertical(lipgloss.Left, m.alignCenter().
+		Render(header), content, footer)
 }
 
 func (m model) rssiBarView() string {
@@ -78,7 +83,9 @@ func (m model) rssiBarView() string {
 			}
 		}
 		if !matched {
-			s += lipgloss.NewStyle().Foreground(m.rssiColors[len(m.rssiColors)-1].color).Render("█")
+			s += lipgloss.NewStyle().
+				Foreground(m.rssiColors[len(m.rssiColors)-1].color).
+				Render("█")
 		}
 	}
 	return s
@@ -93,14 +100,16 @@ func (m model) roamTableView() string {
 	if len(m.roamLogs) == 0 {
 		detail = titleStyle.Render(" Waiting for roam events...")
 	}
-	if len(m.roamLogs) > 0 && m.roamTable.Cursor() >= 0 && m.roamTable.Cursor() < len(m.roamLogs) {
+	if len(m.roamLogs) > 0 && m.roamTable.
+		Cursor() >= 0 && m.roamTable.Cursor() < len(m.roamLogs) {
 		selected := m.roamLogs[m.roamTable.Cursor()]
 		info = fmt.Sprintf(" Msg: %v",
 			selected.message)
 		if selected.message == "" {
 			info = ""
 		}
-		detail = fmt.Sprintf(" Score Δ: %v | From: Ch%v %v %vdBm | To: Ch%v %v %vdBm",
+		detail = fmt.Sprintf(" Score Δ: %v | From: Ch%v %v %vdBm | "+
+			"To: Ch%v %v %vdBm",
 			selected.scoreDelta,
 			selected.fromChan,
 			selected.fromBand,
@@ -110,9 +119,11 @@ func (m model) roamTableView() string {
 			selected.finalRSSI)
 	}
 	bottom := lipgloss.NewStyle().Width(tuiWidth).Render(
-		detail + lipgloss.NewStyle().Width(tuiWidth-lipgloss.Width(detail)-lipgloss.Width(footer)).Render("") +
+		detail + lipgloss.NewStyle().Width(tuiWidth-lipgloss.Width(detail)-
+			lipgloss.Width(footer)).Render("") +
 			lipgloss.NewStyle().Faint(true).Render(footer))
-	return lipgloss.JoinVertical(lipgloss.Left, m.alignCenter().Render(header), content, info, bottom)
+	return lipgloss.JoinVertical(lipgloss.Left, m.alignCenter().
+		Render(header), content, info, bottom)
 }
 
 func (m model) isNewRoam() bool {
@@ -158,6 +169,9 @@ func (m model) logRoam() roamLog {
 func (m model) makeRoamTableRows() []table.Row {
 	var rows []table.Row
 	for i, log := range m.roamLogs {
+		if log.fromBSSID == "" {
+			continue
+		}
 		row := make(table.Row, 5)
 		if i == m.roamTable.Cursor() {
 			row[0] = "[*] " + log.time.Format("15:04:05")
@@ -194,8 +208,10 @@ func (m model) makeAPRows() ([]table.Row, string) {
 			lastBSSID = b.BSSID
 			row[0] = currentAPStyle().Render("* " + b.BSSID)
 			row[1] = currentAPStyle().Render(strconv.Itoa(b.ChannelNum))
-			row[2] = currentAPStyle().Render(strings.TrimSuffix(b.ChannelWidth, "MHz"))
-			row[3] = currentAPStyle().Render(strings.TrimSuffix(b.Band, "Hz"))
+			row[2] = currentAPStyle().
+				Render(strings.TrimSuffix(b.ChannelWidth, "MHz"))
+			row[3] = currentAPStyle().
+				Render(strings.TrimSuffix(b.Band, "Hz"))
 			row[4] = currentAPStyle().Render(strconv.Itoa(b.RSSI))
 			row[5] = currentAPStyle().Render(strconv.Itoa(b.SNR))
 			if b.PHYType == "Legacy a/b/g" {
@@ -204,7 +220,8 @@ func (m model) makeAPRows() ([]table.Row, string) {
 				b.PHYType = strings.TrimPrefix(b.PHYType, "802.11")
 			}
 			row[6] = currentAPStyle().Render(b.PHYType)
-			row[7] = currentAPStyle().Render(strconv.Itoa(int(b.QBSSUtil)*100/255) + "%")
+			row[7] = currentAPStyle().
+				Render(strconv.Itoa(int(b.QBSSUtil)*100/255) + "%")
 			row[8] = currentAPStyle().Render(strconv.Itoa(b.FinalScore))
 			row[9] = currentAPStyle().Render("—")
 		} else {
@@ -242,26 +259,32 @@ func (m model) statePanelView() string {
 		m.bssStableContainer(),
 		m.hysteresisContainer(),
 		m.scanInProgContainer())
-	return m.alignCenter().Render(lipgloss.JoinVertical(lipgloss.Center, firstRow, secondRow))
+	return m.alignCenter().
+		Render(lipgloss.JoinVertical(lipgloss.Center, firstRow, secondRow))
 }
 
 func (m model) roamingTierContainer() string {
 	switch m.procState.RoamingTier {
 	case "unknown":
 		return containerStyle(lipgloss.Color("#808080")).Render(
-			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render("Roaming Tier"), "Unknown"))
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Roaming Tier"), "Unknown"))
 	case "roam_disabled":
 		return containerStyle(lipgloss.Color("#808080")).Render(
-			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render("Roaming Tier"), "Disabled"))
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Roaming Tier"), "Disabled"))
 	case "opportunistic":
 		return containerStyle(lipgloss.Color("#00ff00")).Render(
-			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render("Roaming Tier"), "Opportunistic"))
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Roaming Tier"), "Opportunistic"))
 	case "active_roaming":
 		return containerStyle(lipgloss.Color("#ffee00")).Render(
-			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render("Roaming Tier"), "Active"))
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Roaming Tier"), "Active"))
 	case "critical":
 		return containerStyle(lipgloss.Color("#ff2200")).Render(
-			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render("Roaming Tier"), "Critical"))
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Roaming Tier"), "Critical"))
 	}
 	return ""
 }
@@ -270,13 +293,16 @@ func (m model) scanModeContainer() string {
 	switch m.procState.ScanMode {
 	case "scan_disabled":
 		return containerStyle(lipgloss.Color("#808080")).Render(
-			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render("Scan Mode"), "Disabled"))
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Scan Mode"), "Disabled"))
 	case "fast_scan":
 		return containerStyle(lipgloss.Color("#00aaff")).Render(
-			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render("Scan Mode"), "Fast"))
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Scan Mode"), "Fast"))
 	case "full_scan":
 		return containerStyle(lipgloss.Color("#aa00ff")).Render(
-			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render("Scan Mode"), "Full"))
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Scan Mode"), "Full"))
 	}
 	return ""
 }
@@ -285,16 +311,20 @@ func (m model) roamResultContainer() string {
 	switch m.procState.RoamResultFlag {
 	case "unknown":
 		return containerStyle(lipgloss.Color("#808080")).Render(
-			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render("Last Roam Attempt"), "Unknown"))
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Last Roam Attempt"), "Unknown"))
 	case "success":
 		return containerStyle(lipgloss.Color("#00ff00")).Render(
-			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render("Last Roam Attempt"), "Success"))
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Last Roam Attempt"), "Success"))
 	case "failure":
 		return containerStyle(lipgloss.Color("#ff2200")).Render(
-			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render("Last Roam Attempt"), "Failure"))
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Last Roam Attempt"), "Failure"))
 	case "no_candidates":
 		return containerStyle(lipgloss.Color("#808080")).Render(
-			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render("Last Roam Attempt"), "No candidates"))
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Last Roam Attempt"), "No candidates"))
 	}
 	return ""
 }
@@ -313,16 +343,20 @@ func (m model) scanFlagsContainer() string {
 	switch {
 	case m.procState.FullScannedCrit:
 		return containerStyle(lipgloss.Color("#ff2200")).Render(
-			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render("Active Scans"), markers))
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Active Scans"), markers))
 	case m.procState.EntryScannedCrit:
 		return containerStyle(lipgloss.Color("#ff8800")).Render(
-			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render("Active Scans"), markers))
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Active Scans"), markers))
 	case m.procState.EntryScanned:
 		return containerStyle(lipgloss.Color("#ffee00")).Render(
-			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render("Active Scans"), markers))
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Active Scans"), markers))
 	default:
 		return containerStyle(lipgloss.Color("#808080")).Render(
-			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render("Active Scans"), markers))
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Active Scans"), markers))
 	}
 }
 
