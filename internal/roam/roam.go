@@ -18,6 +18,7 @@ func (rc *roamContext) handleOppRoam(
 	if err != nil {
 		return fmt.Errorf("evalAndAttemptRoam: %w", err)
 	}
+	//request full scan for next cycle if bssid list changed
 	rc.fullScanIfBSSIDsChanged()
 	return nil
 }
@@ -25,6 +26,7 @@ func (rc *roamContext) handleOppRoam(
 func (rc *roamContext) handleActiveRoam(
 	c *wpac.Client,
 	ctx context.Context) error {
+	//scan on entry if flag unset
 	if !rc.entryScanned {
 		slog.Info("Active roaming entered, running fast scan")
 		err := rc.runFastScan(c, ctx)
@@ -37,6 +39,7 @@ func (rc *roamContext) handleActiveRoam(
 	if err != nil {
 		return fmt.Errorf("evalAndAttemptRoam: %w", err)
 	}
+	//request full scan for next cycle if bssid list changed
 	rc.fullScanIfBSSIDsChanged()
 	return nil
 }
@@ -44,6 +47,7 @@ func (rc *roamContext) handleActiveRoam(
 func (rc *roamContext) handleCriticalRoam(
 	c *wpac.Client,
 	ctx context.Context) error {
+	//scan on entry if flag unset
 	if !rc.entryScannedCrit {
 		slog.Info("Critical roaming entered, running fast scan")
 		err := rc.runFastScan(c, ctx)
@@ -60,6 +64,7 @@ func (rc *roamContext) handleCriticalRoam(
 	stable := rc.scanState.bssListStable
 	rc.scanState.mu.RUnlock()
 	if rc.roamResultFlag == noCandidates {
+		//do inline full scan if prior attempt didnt find a better AP
 		if !rc.fullScannedCrit {
 			slog.Info(
 				"No candidates found, running break-glass full scan...")
@@ -126,6 +131,7 @@ func (rc *roamContext) attemptRoam(c *wpac.Client, ctx context.Context) error {
 }
 
 func (rc *roamContext) checkRoam() bool {
+	//various checks to gate roam attempt
 	rc.checkRSSIHysteresis()
 	if rc.hysteresisActive {
 		return false

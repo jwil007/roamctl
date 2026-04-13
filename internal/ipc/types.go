@@ -2,20 +2,50 @@ package ipc
 
 import (
 	"time"
-
-	"github.com/jwil007/roamctl/internal/wpac"
 )
 
 type ProcessState struct {
-	SSID            string
-	BSSList         []BSS
-	ConnState       wpac.ConnectionStatus
-	RoamStats       wpac.RoamStats
+	SSID    string
+	BSSList []BSS
+	ConnState
+	RoamStats
 	RoamingTier     string
 	RoamResultFlag  string
 	LastTriggerRSSI int
 	Flags
 	ScanState
+}
+
+type ConnState struct {
+	//wpac.status
+	SSID     string
+	WPAState string
+	//netlink
+	RxBitrate     int
+	RxMCS         int
+	RxPHY         string
+	TxBitrate     int
+	TxMCS         int
+	TxPHY         string
+	TxRetries     int
+	RetryRate     int
+	TxFails       int
+	BeaconLoss    int
+	RSSI          int
+	AvgRSSI       int
+	AvgRSSIBeacon int
+	ConnDuration  time.Duration
+	BSSID         string
+	Freq          int
+	ChannelWidth  string
+}
+
+type RoamStats struct {
+	Success     bool
+	TargetBSSID string
+	FinalBSSID  string
+	Duration    time.Duration
+	Message     string
 }
 
 type BSS struct {

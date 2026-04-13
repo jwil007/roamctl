@@ -1,14 +1,17 @@
 package roam
 
 import (
-	"log/slog"
+	"fmt"
 
 	"github.com/jwil007/roamctl/internal/ipc"
 )
 
 func (rc *roamContext) shipProcessState(ch chan<- ipc.ProcessState) {
-	slog.Debug("Hysteresis flag", "bool", rc.hysteresisActive)
 	bssList := rc.buildBSSForIPC()
+	connState := rc.buildConnStateForIPC()
+	roamStats := rc.buildRoamStatsForIPC()
+	fmt.Printf("%+v", connState) //debug
+	fmt.Printf("%+v", roamStats) //debug
 	rc.scanState.mu.RLock()
 	scS := ipc.ScanState{
 		ScanInProgress: rc.scanState.scanInProgress,
@@ -20,8 +23,8 @@ func (rc *roamContext) shipProcessState(ch chan<- ipc.ProcessState) {
 	ch <- ipc.ProcessState{
 		SSID:            rc.ssid,
 		BSSList:         bssList,
-		ConnState:       *rc.lastKnown,
-		RoamStats:       rc.lastRoamStats,
+		ConnState:       connState,
+		RoamStats:       roamStats,
 		RoamingTier:     rc.roamingTier.String(),
 		RoamResultFlag:  rc.roamResultFlag.String(),
 		LastTriggerRSSI: rc.lastTriggerRSSI,
@@ -33,6 +36,40 @@ func (rc *roamContext) shipProcessState(ch chan<- ipc.ProcessState) {
 			UnhealthyConn:    rc.unhealthyConn,
 		},
 		ScanState: scS,
+	}
+}
+
+func (rc *roamContext) buildConnStateForIPC() ipc.ConnState {
+	return ipc.ConnState{
+		SSID:          rc.lastKnown.SSID,
+		WPAState:      rc.lastKnown.WPAState,
+		RxBitrate:     rc.lastKnown.RxBitrate,
+		RxMCS:         rc.lastKnown.RxMCS,
+		RxPHY:         rc.lastKnown.RxPHY,
+		TxBitrate:     rc.lastKnown.TxBitrate,
+		TxMCS:         rc.lastKnown.TxMCS,
+		TxPHY:         rc.lastKnown.TxPHY,
+		TxRetries:     rc.lastKnown.TxRetries,
+		RetryRate:     rc.lastKnown.RetryRate,
+		TxFails:       rc.lastKnown.TxFails,
+		BeaconLoss:    rc.lastKnown.BeaconLoss,
+		RSSI:          rc.lastKnown.RSSI,
+		AvgRSSI:       rc.lastKnown.AvgRSSI,
+		AvgRSSIBeacon: rc.lastKnown.AvgRSSIBeacon,
+		ConnDuration:  rc.lastKnown.ConnDuration,
+		BSSID:         rc.lastKnown.BSSID,
+		Freq:          rc.lastKnown.Freq,
+		ChannelWidth:  rc.lastKnown.ChannelWidth,
+	}
+}
+
+func (rc *roamContext) buildRoamStatsForIPC() ipc.RoamStats {
+	return ipc.RoamStats{
+		Success:     rc.lastRoamStats.Success,
+		TargetBSSID: rc.lastRoamStats.TargetBSSID,
+		FinalBSSID:  rc.lastRoamStats.FinalBSSID,
+		Duration:    rc.lastRoamStats.Duration,
+		Message:     rc.lastRoamStats.Message,
 	}
 }
 

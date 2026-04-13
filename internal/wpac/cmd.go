@@ -7,14 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"log/slog"
 	"os"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/jwil007/roamctl/internal/netlink"
 )
 
 func (c *Client) cmd(command string) ([]byte, error) {
@@ -69,24 +66,6 @@ func (c *Client) runRoam(bssid string) error {
 			"c.cmd(ROAM %v): output not \"OK\": %v", bssid, string(out))
 	}
 	return nil
-}
-
-func (c *Client) getStatus() (Status, error) {
-	var status Status
-	out, err := c.cmdP("STATUS")
-	if err != nil {
-		return Status{}, fmt.Errorf("c.cmd(\"STATUS\"): %w", err)
-	}
-	for _, line := range strings.Split(string(out), "\n") {
-		//fmt.Printf("DEBUG: status output: %v\n", line)
-		if strings.HasPrefix(line, "ssid=") {
-			status.SSID = line[5:]
-		}
-		if strings.HasPrefix(line, "wpa_state=") {
-			status.WPAState = line[10:]
-		}
-	}
-	return status, nil
 }
 
 func (c *Client) getNetworkID() (string, error) {
@@ -193,17 +172,12 @@ func (c *Client) getScanResults(ssid string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("c.Cmd(\"SCAN_RESULTS\"): %w", err)
 	}
-	//fmt.Printf("DEBUG - raw out of SCAN_RESULTS %v", string(out)) //debug
 	for _, line := range strings.Split(string(out), "\n")[1:] {
-		//fmt.Printf("DEBUG - line split of SCAN_RESULTS out: %v", line)
 		parts := strings.SplitN(line, "\t", 5)
-		//fmt.Printf("DEBUG - fields of SCAN_RESULTS line: %v", parts)
 		if len(parts) == 5 && parts[4] == ssid {
-			//fmt.Printf("DEBUG - BSSID from SCAN_RESULTS: %v", parts[0])
 			bssids = append(bssids, parts[0])
 		}
 	}
-	//fmt.Printf("DEBUG - BSSID list from SCAN_RESULTS: %v", bssids)
 	return bssids, nil
 }
 
@@ -270,96 +244,6 @@ func (c *Client) parseWpasBSS(bssid string) (WpasBSS, error) {
 		}
 	}
 	return b, nil
-}
-
-//func (c *Client) getSignal() (Signal, error) {
-//	out, err := c.cmdP("SIGNAL_POLL")
-//	if err != nil {
-//		return Signal{}, fmt.Errorf("c.Cmd(\"SIGNAL_POLL\") %w", err)
-//	}
-//	var s Signal
-//	for _, line := range strings.Split(string(out), "\n") {
-//		switch {
-//		case strings.HasPrefix(line, "RSSI="):
-//			rssi, err := strconv.Atoi(line[5:])
-//			if err != nil {
-//				return Signal{}, fmt.Errorf("strconv.Atoi: %w", err)
-//			}
-//			s.RSSI = rssi
-//		case strings.HasPrefix(line, "LINKSPEED="):
-//			linkspeed, err := strconv.Atoi(line[10:])
-//			if err != nil {
-//				return Signal{}, fmt.Errorf("strconv.Atoi: %w", err)
-//			}
-//			s.LinkSpeed = linkspeed
-//		case strings.HasPrefix(line, "NOISE="):
-//			noise, err := strconv.Atoi(line[6:])
-//			if err != nil {
-//				return Signal{}, fmt.Errorf("strconv.Atoi: %w", err)
-//			}
-//			s.Noise = noise
-//		case strings.HasPrefix(line, "FREQUENCY="):
-//			freq, err := strconv.Atoi(line[10:])
-//			if err != nil {
-//				return Signal{}, fmt.Errorf("strconv.Atoi: %w", err)
-//			}
-//			s.Freq = freq
-//		//case strings.HasPrefix(line, "WIDTH="):
-//		//	width := line[6:]
-//		//	s.ChannelWidth = width
-//		case strings.HasPrefix(line, "AVG_RSSI="):
-//			avgRSSI, err := strconv.Atoi(line[9:])
-//			if err != nil {
-//				return Signal{}, fmt.Errorf("strconv.Atoi: %w", err)
-//			}
-//			s.AvgRSSI = avgRSSI
-//		case strings.HasPrefix(line, "AVG_BEACON_RSSI="):
-//			avgRSSIbeacon, err := strconv.Atoi(line[16:])
-//			if err != nil {
-//				return Signal{}, fmt.Errorf("strconv.Atoi: %w", err)
-//			}
-//			s.AvgRSSIBeacon = avgRSSIbeacon
-//		}
-//	}
-//	return s, nil
-//}
-
-func (c *Client) constructConnStatus() (ConnectionStatus, error) {
-	status, err := c.getStatus()
-	if err != nil {
-		return ConnectionStatus{}, fmt.Errorf("c.getStatus: %w", err)
-	}
-	//signal, err := c.getSignal()
-	//if err != nil {
-	//	return ConnectionStatus{}, fmt.Errorf("c.getSignal(): %w", err)
-	//}
-	type staResult struct {
-		info netlink.STAInfo
-		err  error
-	}
-	ch := make(chan staResult, 1)
-	go func() {
-		info, err := netlink.GetStationInfo(c.Iface)
-		ch <- staResult{info, err}
-	}()
-
-	var staInfo netlink.STAInfo
-	select {
-	case res := <-ch:
-		if res.err != nil {
-			// non-fatal, continue with zero STAInfo
-			slog.Debug("GetStationInfo failed", "err", res.err)
-		} else {
-			staInfo = res.info
-		}
-	case <-time.After(5 * time.Second):
-		slog.Warn("GetStationInfo timed out")
-	}
-
-	return ConnectionStatus{
-		Status:  status,
-		STAInfo: staInfo,
-	}, nil
 }
 
 func (c *Client) listenEvents(

@@ -8,6 +8,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/jwil007/roamctl/internal/config"
+	"github.com/jwil007/roamctl/internal/netlink"
 	"github.com/jwil007/roamctl/internal/wpac"
 )
 
@@ -47,6 +48,40 @@ func (s scoredBSS) String() string {
 	)
 }
 
+type ConnectionStatus struct {
+	wpac.Status
+	//Signal
+	netlink.STAInfo
+}
+
+func (c ConnectionStatus) String() string {
+	return fmt.Sprintf(
+		"ssid: %s wpa_state: %s, bssid:%s rssi:%d avgrssi:%d "+
+			"avgrssibeacon:%d freq:%d cw:%s "+
+			"RxBitrate:%v RxMCS:%v RxPHY:%v TxBitrate:%v "+
+			"TxMSC:%v TxPHY:%v TxRetries:%v RetryRate: %v "+
+			"TxFails:%v beaconloss:%v connduration:%v",
+		c.SSID,
+		c.WPAState,
+		c.BSSID,
+		c.RSSI,
+		c.AvgRSSI,
+		c.AvgRSSIBeacon,
+		c.Freq,
+		c.ChannelWidth,
+		c.RxBitrate,
+		c.RxMCS,
+		c.RxPHY,
+		c.TxBitrate,
+		c.TxMCS,
+		c.TxPHY,
+		c.TxRetries,
+		c.RetryRate,
+		c.TxFails,
+		c.BeaconLoss,
+		c.ConnDuration)
+}
+
 type roamContext struct {
 	cfg              *config.Config
 	ssid             string
@@ -54,7 +89,7 @@ type roamContext struct {
 	scoredAPs        []scoredBSS
 	candidateAP      scoredBSS
 	currentAP        scoredBSS
-	lastKnown        *wpac.ConnectionStatus
+	lastKnown        *ConnectionStatus
 	roamResultFlag   roamResultFlag
 	lastRoamStats    wpac.RoamStats
 	lastRoamAttempt  time.Time

@@ -72,7 +72,7 @@ func (c *Client) Roam(ctx context.Context, bssid string) (RoamStats, error) {
 }
 
 func (c *Client) GetConfig() (WPAConfig, error) {
-	status, err := c.getStatus()
+	status, err := c.GetStatus()
 	if err != nil {
 		return WPAConfig{}, fmt.Errorf("c.getStatus: %w", err)
 	}
@@ -161,38 +161,20 @@ func (c *Client) ScanResults(ssid string) ([]RichBSS, error) {
 	return richBSSList, nil
 }
 
-func (c *Client) PollSignal(
-	ctx context.Context,
-	interval time.Duration) (<-chan ConnectionStatus, <-chan error) {
-	connStatus := make(chan ConnectionStatus)
-	errc := make(chan error, 1)
-	go func() {
-		ticker := time.NewTicker(interval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				errc <- ctx.Err()
-				return
-			case <-ticker.C:
-				s, err := c.constructConnStatus()
-				if err != nil && !strings.Contains(
-					err.Error(), "bssid field not found") {
-					errc <- err
-					return
-				}
-				connStatus <- s
-			}
-		}
-	}()
-	return connStatus, errc
-}
-
-func GetConnectionStatus(c *Client) (ConnectionStatus, error) {
-	connStatus, err := c.constructConnStatus()
+func (c *Client) GetStatus() (Status, error) {
+	var status Status
+	out, err := c.cmdP("STATUS")
 	if err != nil {
-		return ConnectionStatus{}, fmt.Errorf(
-			"c.constructConnStatus: %w", err)
+		return Status{}, fmt.Errorf("c.cmd(\"STATUS\"): %w", err)
 	}
-	return connStatus, nil
+	for _, line := range strings.Split(string(out), "\n") {
+		//fmt.Printf("DEBUG: status output: %v\n", line)
+		if strings.HasPrefix(line, "ssid=") {
+			status.SSID = line[5:]
+		}
+		if strings.HasPrefix(line, "wpa_state=") {
+			status.WPAState = line[10:]
+		}
+	}
+	return status, nil
 }

@@ -61,7 +61,7 @@ func (m model) connStatView() string {
 
 	line1 := l("ssid: ") + fmt.Sprintf("%-15v", m.procState.SSID) +
 		l("bssid: ") + fmt.Sprintf("%-19v", m.procState.ConnState.BSSID) +
-		l("Duration: ") + fmt.Sprintf("%-10v", m.procState.ConnState.STAInfo.ConnDuration)
+		l("Duration: ") + fmt.Sprintf("%-10v", m.procState.ConnState.ConnDuration)
 
 	line2 := l("rssi: ") + fmt.Sprintf("%-5v", m.procState.ConnState.RSSI) +
 		l("channel: ") + fmt.Sprintf("%-5v", channel) +
@@ -69,11 +69,11 @@ func (m model) connStatView() string {
 		l("band: ") + fmt.Sprintf("%-6v", band)
 
 	line3 := l("tx: ") + fmt.Sprintf(
-		"%-4v", m.procState.ConnState.STAInfo.TxBitrate/1000000) + l("Mbps  ") +
+		"%-4v", m.procState.ConnState.TxBitrate/1000000) + l("Mbps  ") +
 		l("PHY: ") + fmt.Sprintf("%-4v", txPHY) +
 		l(" MCS: ") + fmt.Sprintf("%-2v", m.procState.ConnState.TxMCS) +
 		l(" | rx: ") + fmt.Sprintf(
-		"%-4v", m.procState.ConnState.STAInfo.RxBitrate/1000000) + l("Mbps  ") +
+		"%-4v", m.procState.ConnState.RxBitrate/1000000) + l("Mbps  ") +
 		l("PHY: ") + fmt.Sprintf("%-4v", rxPHY) +
 		l(" MCS: ") + fmt.Sprintf("%-2v", m.procState.ConnState.RxMCS)
 

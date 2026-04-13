@@ -19,6 +19,8 @@ func Proc(
 	c *wpac.Client, ctx context.Context,
 	cfg *config.Config,
 	ipcChan chan ipc.ProcessState) error {
+
+	//init roamContext - struct that holds all state for roamctl
 	slog.Info("Starting roamctl... exit with ctrl+c")
 	rc := &roamContext{}
 	rc.richByBSSID = make(map[string]wpac.RichBSS)
@@ -26,17 +28,22 @@ func Proc(
 	rc.lastRoamAttempt = time.Now()
 	rc.cfg = cfg
 	rc.scanState.cond = sync.NewCond(&rc.scanState.mu)
-	cs, err := wpac.GetConnectionStatus(c)
+	cs, err := constructConnStatus(c)
 	if err != nil {
 		return fmt.Errorf("wpac.GetConnectionStatus:%w", err)
 	}
 	rc.lastKnown = &cs
+
+	//handle wpa_supplicant configuration. Disables bgscan and btm
 	slog.Info("Setting wpa_supplicant configuration")
 	cleanup, err := rc.handleWpaSuppConfig(c)
 	if err != nil {
 		return fmt.Errorf("handleWpaSuppConfig: %w", err)
 	}
 	defer cleanup() //sets wpa_supplicant back to original state
+
+	//initialize SSID name and iface, needed for all scanning/roaming operations.
+	//Exit if SSID name is blank (not connected)
 	slog.Info("Current SSID",
 		"ssid", rc.ssid)
 	if rc.ssid == "" {
@@ -44,6 +51,8 @@ func Proc(
 	}
 	slog.Info("Selected interface",
 		"iface", c.Iface)
+
+	//roamctl runs a full channel scan at startup
 	slog.Info("Running full channel scan...")
 	err = rc.runFullScan(c, ctx)
 	if err != nil && !errors.Is(err, ErrScanRetryLimit) {
@@ -54,15 +63,17 @@ func Proc(
 		return fmt.Errorf("prepScanResults: %w", err)
 	}
 	rc.lastEvalTime = time.Now()
-	rc.shipProcessState(ipcChan)
+	rc.shipProcessState(ipcChan) //updates IPC channel
+
 	//Start polling signal stats
 	slog.Info("Starting signal polling...")
-	sigCh, sigErrCh := c.PollSignal(ctx, cfg.Timing.SigPollInterval)
+	sigCh, sigErrCh := pollSignal(c, ctx, cfg.Timing.SigPollInterval)
 	var scErrCh <-chan error
 	cadenceTicker := time.NewTicker(cfg.BGScanInterval)
 	defer cadenceTicker.Stop()
 	for {
 		select {
+		//background scan on timer (cadenceTicker)
 		case <-cadenceTicker.C:
 			if time.Since(rc.lastConnChange) <= cfg.ConnectionCooldown {
 				slog.Debug(
@@ -86,6 +97,9 @@ func Proc(
 				slog.Info("Backgound scan skipped" +
 					" - scan already in progress")
 			}
+
+		//handle updated signal reading. This dispatches roam logic
+		//many guards are in place so roam is only dispatched when needed
 		case con := <-sigCh:
 			var prevBSSID string
 			var prevSSID string
@@ -168,12 +182,15 @@ func Proc(
 				rc.shipProcessState(ipcChan)
 				continue
 			}
+			//rssi hysteresis to prevent ping-pong roams at borderline
 			rc.checkRSSIHysteresis()
 			if rc.hysteresisActive {
 				rc.shipProcessState(ipcChan)
 				continue
 			}
+			//set roaming tier
 			rc.evalTier()
+			//tier based hysteresis to prevent thrash at borderline readings
 			if rc.lastKnown.RSSI >= rc.cfg.FairRSSI+rc.cfg.TierHysteresis &&
 				(rc.entryScanned || rc.entryScannedCrit) &&
 				!rc.unhealthyConn {
@@ -183,6 +200,7 @@ func Proc(
 				rc.entryScannedCrit = false
 				rc.fullScannedCrit = false
 			}
+			//dispatch roam code path based on roaming tier
 			if rc.roamingTier == opportunistic {
 				err = rc.handleOppRoam(c, ctx)
 				if err != nil {
@@ -201,7 +219,9 @@ func Proc(
 					return fmt.Errorf("handleCriticalRoam: %w", err)
 				}
 			}
-			rc.shipProcessState(ipcChan)
+			rc.shipProcessState(ipcChan) //update IPC on every poll
+
+		//error handling from scan and sig poll channels
 		case err = <-sigErrCh:
 			if err != nil {
 				if errors.Is(err, os.ErrDeadlineExceeded) {
@@ -217,123 +237,6 @@ func Proc(
 			}
 		}
 	}
-}
-
-func (rc *roamContext) evalTier() {
-	prevTier := rc.roamingTier
-	if rc.unhealthyConn {
-		if !rc.unhealthyLogged {
-			slog.Info("Tier degraded to critical, unhealthy connection",
-				"retry_rate", rc.lastKnown.RetryRate,
-				"retry_limit", rc.cfg.RetryRate,
-				"data_bitrate", max(
-					rc.lastKnown.TxBitrate, rc.lastKnown.RxBitrate),
-				"dr_limit", rc.cfg.DataRate*1000000)
-			rc.unhealthyLogged = true
-		}
-		rc.roamingTier = critical
-		rc.scanState.mu.Lock()
-		if rc.scanState.scanMode != fullScan {
-			rc.scanState.scanMode = fastScan
-		}
-		rc.scanState.mu.Unlock()
-		return
-	}
-	switch {
-	case rc.lastKnown.RSSI >= rc.cfg.ExcellentRSSI+rc.tierUpBuffer(noRoam):
-		rc.roamingTier = noRoam
-		rc.scanState.mu.Lock()
-		if rc.scanState.scanMode != fullScan {
-			rc.scanState.scanMode = noScan
-		}
-		rc.scanState.mu.Unlock()
-		slog.Debug("roaming tier noRoam",
-			"rssi", rc.lastKnown.RSSI)
-	case rc.lastKnown.RSSI >= rc.cfg.FairRSSI+rc.tierUpBuffer(opportunistic):
-		rc.roamingTier = opportunistic
-		rc.scanState.mu.Lock()
-		if rc.scanState.scanMode != fullScan {
-			rc.scanState.scanMode = fastScan
-		}
-		rc.scanState.mu.Unlock()
-		slog.Debug("roaming tier opportunistic",
-			"rssi", rc.lastKnown.RSSI)
-	case rc.lastKnown.RSSI >= rc.cfg.DegradedRSSI+rc.tierUpBuffer(active):
-		rc.roamingTier = active
-		rc.scanState.mu.Lock()
-		if rc.scanState.scanMode != fullScan {
-			rc.scanState.scanMode = fastScan
-		}
-		rc.scanState.mu.Unlock()
-		slog.Debug("roaming tier active",
-			"rssi", rc.lastKnown.RSSI)
-	default: //Anything lower than degraded RSSI is critical
-		rc.roamingTier = critical
-		rc.scanState.mu.Lock()
-		if rc.scanState.scanMode != fullScan {
-			rc.scanState.scanMode = fastScan
-		}
-		rc.scanState.mu.Unlock()
-		slog.Debug("roaming tier critical",
-			"rssi", rc.lastKnown.RSSI)
-	}
-	if rc.roamingTier != prevTier {
-		if rc.roamingTier < prevTier {
-			slog.Info("Tier improved — hysteresis threshold cleared",
-				"from", prevTier,
-				"to", rc.roamingTier,
-				"rssi", rc.lastKnown.RSSI)
-		} else {
-			slog.Info("Tier degraded",
-				"from", prevTier,
-				"to", rc.roamingTier,
-				"rssi", rc.lastKnown.RSSI)
-		}
-	}
-}
-
-func (rc *roamContext) tierUpBuffer(evalTier roamingTier) int {
-	if rc.roamingTier > evalTier {
-		slog.Debug("Tier hysteresis in effect")
-		return rc.cfg.TierHysteresis
-	}
-	return 0
-}
-
-func (rc *roamContext) checkConnectionHealth() {
-	legacyRates := []int{1000000, 2000000, 5500000, 6000000, 9000000, 11000000,
-		12000000, 18000000, 24000000, 36000000, 48000000, 54000000}
-	if rc.lastKnown.TxBitrate < 1000000 || rc.lastKnown.RxBitrate < 1000000 {
-		slog.Debug("Invalid bitrate, skipping connection health check",
-			"tx_bitrate", rc.lastKnown.TxBitrate,
-			"rx_bitrate", rc.lastKnown.RxBitrate)
-		rc.unhealthyConn = false
-		return
-	}
-	if slices.Contains(legacyRates, max(
-		rc.lastKnown.TxBitrate, rc.lastKnown.RxBitrate)) {
-		slog.Debug(
-			"Device using legacy rates, skipping connection health check",
-			"tx_bitrate", rc.lastKnown.TxBitrate,
-			"rx_bitrate", rc.lastKnown.RxBitrate)
-		rc.unhealthyConn = false
-		return
-	}
-	if rc.lastKnown.RetryRate >= rc.cfg.RetryRate ||
-		max(rc.lastKnown.TxBitrate, rc.lastKnown.RxBitrate) <=
-			rc.cfg.DataRate*1000000 ||
-		max(rc.lastKnown.TxMCS, rc.lastKnown.RxMCS) <= rc.cfg.MCSIndex {
-		slog.Debug("Current connection unhealthy",
-			"retry_rate", rc.lastKnown.RetryRate,
-			"retry_limit", rc.cfg.RetryRate,
-			"mcs_index", max(rc.lastKnown.TxMCS, rc.lastKnown.RxMCS),
-			"mcs_limit", rc.cfg.MCSIndex,
-			"data_bitrate", max(rc.lastKnown.TxBitrate, rc.lastKnown.RxBitrate),
-			"dr_limit", rc.cfg.DataRate*1000000)
-		rc.unhealthyConn = true
-		return
-	}
-	rc.unhealthyConn = false
 }
 
 func (rc *roamContext) handleWpaSuppConfig(c *wpac.Client) (func(), error) {
@@ -363,25 +266,6 @@ func (rc *roamContext) handleWpaSuppConfig(c *wpac.Client) (func(), error) {
 		}
 	}
 	return cleanup, nil
-}
-
-func (rc *roamContext) smoothRSSI(rssi int) int {
-	if len(rc.rssiRingBuffer) < rc.cfg.RSSISmoothWindow {
-		rc.rssiRingBuffer = append(rc.rssiRingBuffer, rssi)
-	} else {
-		rc.rssiRingBuffer[rc.rssiWriteIdx] = rssi
-	}
-	rc.rssiWriteIdx = (rc.rssiWriteIdx + 1) % rc.cfg.RSSISmoothWindow
-	total := 0
-	for _, r := range rc.rssiRingBuffer {
-		total += r
-	}
-	smoothed := total / len(rc.rssiRingBuffer)
-	slog.Debug("rssi smoothing stats:",
-		"buffer", rc.rssiRingBuffer,
-		"avg_rssi", total/len(rc.rssiRingBuffer),
-	)
-	return smoothed
 }
 
 func (rc *roamContext) onConnectionChange() {
