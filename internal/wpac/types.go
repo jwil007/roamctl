@@ -461,5 +461,3 @@ func (b Band) String() string {
 	}
 	return ""
 }
-
-const NL80211CmdGetStation = 17
