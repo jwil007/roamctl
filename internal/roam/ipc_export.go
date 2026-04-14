@@ -1,8 +1,6 @@
 package roam
 
 import (
-	"fmt"
-
 	"github.com/jwil007/roamctl/internal/ipc"
 )
 
@@ -10,8 +8,6 @@ func (rc *roamContext) shipProcessState(ch chan<- ipc.ProcessState) {
 	bssList := rc.buildBSSForIPC()
 	connState := rc.buildConnStateForIPC()
 	roamStats := rc.buildRoamStatsForIPC()
-	fmt.Printf("%+v", connState) //debug
-	fmt.Printf("%+v", roamStats) //debug
 	rc.scanState.mu.RLock()
 	scS := ipc.ScanState{
 		ScanInProgress: rc.scanState.scanInProgress,
