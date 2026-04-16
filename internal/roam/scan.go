@@ -165,6 +165,10 @@ func (rc *roamContext) executeScan(
 
 func (rc *roamContext) prepScanResults(c *wpac.Client) error {
 	rc.currentAP = scoredBSS{}
+	err := rc.readBSSPenaltyFile()
+	if err != nil {
+		slog.Error("Error reading BSS Penalty file", "err", err)
+	}
 	aps, err := c.ScanResults(rc.ssid)
 	if err != nil {
 		return fmt.Errorf("c.ScanResults: %w", err)
@@ -175,11 +179,38 @@ func (rc *roamContext) prepScanResults(c *wpac.Client) error {
 	}
 	rc.richBSSList = aps
 	rc.scoredAPs = scoreAll(aps, rc.cfg)
-	for _, ap := range rc.scoredAPs {
+	for i, ap := range rc.scoredAPs {
 		if ap.bssid == rc.lastKnown.BSSID {
 			rc.currentAP = ap
 		}
+		// check if AP is in penalty list
+		for j, bp := range rc.bssPenalties {
+			if bp.BSSID == ap.bssid &&
+				bp.SSID == rc.ssid &&
+				bp.Band == ap.band {
+				//check if last fail is old enough to reset
+				if time.Since(bp.LastFail) > 60*time.Minute {
+					slog.Info("BSS penalty timer expired,"+
+						" resetting fail count",
+						"bssid", bp.BSSID)
+					rc.bssPenalties = slices.Delete(rc.bssPenalties, j, j+1)
+					err = rc.writeBSSPenaltyFile()
+					if err != nil {
+						slog.Error("Error updating BSS Penalty file",
+							"err", err)
+					}
+					continue
+				}
+				slog.Info("AP with failed roams found, modifying score",
+					"bssid", bp.BSSID,
+					"failcount", bp.FailCount)
+				rc.scoredAPs[i].failCount = bp.FailCount
+				rc.scoredAPs[i].finalScore = ap.finalScore -
+					bp.FailCount*rc.cfg.UnhealthyScoreMod
+			}
+		}
 	}
+
 	if rc.unhealthyConn {
 		slog.Info("Current AP connection unhealthy, penalizing its score",
 			"original_score", rc.currentAP.finalScore,

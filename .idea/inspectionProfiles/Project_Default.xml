@@ -6,6 +6,11 @@
         <language minSize="57" name="Go" />
       </Languages>
     </inspection_tool>
+    <inspection_tool class="GoDfaErrorMayBeNotNil" enabled="true" level="WARNING" enabled_by_default="true">
+      <methods>
+        <method importPath="github.com/jwil007/roamctl/internal/wpac" receiver="*Client" name="Roam" />
+      </methods>
+    </inspection_tool>
     <inspection_tool class="SpellCheckingInspection" enabled="false" level="TYPO" enabled_by_default="false">
       <option name="processCode" value="true" />
       <option name="processLiterals" value="true" />

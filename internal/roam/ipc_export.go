@@ -4,7 +4,7 @@ import (
 	"github.com/jwil007/roamctl/internal/ipc"
 )
 
-func (rc *roamContext) shipProcessState(ch chan<- ipc.ProcessState) {
+func (rc *roamContext) shipProcessState() {
 	bssList := rc.buildBSSForIPC()
 	connState := rc.buildConnStateForIPC()
 	roamStats := rc.buildRoamStatsForIPC()
@@ -16,7 +16,7 @@ func (rc *roamContext) shipProcessState(ch chan<- ipc.ProcessState) {
 		BSSListStable:  rc.scanState.bssListStable,
 	}
 	rc.scanState.mu.RUnlock()
-	ch <- ipc.ProcessState{
+	rc.ipcChan <- ipc.ProcessState{
 		SSID:            rc.ssid,
 		BSSList:         bssList,
 		ConnState:       connState,

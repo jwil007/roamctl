@@ -64,7 +64,7 @@ func (rc *roamContext) handleCriticalRoam(
 	stable := rc.scanState.bssListStable
 	rc.scanState.mu.RUnlock()
 	if rc.roamResultFlag == noCandidates {
-		//do inline full scan if prior attempt didnt find a better AP
+		//do inline full scan if prior attempt didn't find a better AP
 		if !rc.fullScannedCrit {
 			slog.Info(
 				"No candidates found, running break-glass full scan...")
@@ -142,7 +142,7 @@ func (rc *roamContext) checkRoam() bool {
 			rc.candidateAP.finalScore-rc.currentAP.finalScore,
 			"override_threshold", rc.cfg.FairDelta*2)
 		rc.hysteresisActive = false
-	} else {
+	} else if rc.hysteresisActive {
 		slog.Debug("RSSI Hysteresis active. Roam not allowed",
 			"rssi", rc.lastKnown.RSSI,
 			"upper_bound", rc.lastTriggerRSSI+rc.cfg.RSSIHysteresisUp,
@@ -221,8 +221,8 @@ func (rc *roamContext) roamToCandidate(
 	if err != nil {
 		if strings.Contains(err.Error(), "timed out waiting for event") {
 			slog.Error("Roam attempt timed out")
-			rc.lastRoamStats.Message = "Roam attempt timed out"
-			rc.roamResultFlag = failure
+			result.Message = "Roam attempt timed out"
+			rc.onRoamFailure(result)
 			return nil
 		}
 		rc.roamResultFlag = unknown
@@ -231,37 +231,10 @@ func (rc *roamContext) roamToCandidate(
 	}
 	switch result.Success {
 	case true:
-		slog.Info(green.Render("ROAM SUCCESS"),
-			"bssid", rc.candidateAP.bssid,
-			"rssi", rc.candidateAP.rssi,
-			"band", rc.candidateAP.band,
-			"score", rc.candidateAP.finalScore,
-			"duration", result.Duration,
-			"message", result.Message)
-		rc.lastRoamStats = result
-		rc.roamResultFlag = success
-		rc.onConnectionChange()
-		rc.lastRoamAttempt = time.Now()
-		rc.hysteresisActive = true
-		rc.lastTriggerRSSI = rc.lastKnown.RSSI
-		slog.Debug(
-			"RSSI Hysteresis active. Signal change needed next roam attempt",
-			"current", rc.lastKnown.RSSI,
-			"upper", rc.lastTriggerRSSI+rc.cfg.RSSIHysteresisUp,
-			"lower", rc.lastTriggerRSSI-rc.cfg.RSSIHysteresisDown)
+		rc.onRoamSuccess(result)
 		return nil
 	case false:
-		slog.Warn(red.Render("ROAM FAILURE"),
-			"bssid", rc.candidateAP.bssid,
-			"rssi", rc.candidateAP.rssi,
-			"band", rc.candidateAP.band,
-			"score", rc.candidateAP.finalScore,
-			"duration", result.Duration,
-			"message", result.Message)
-		rc.lastRoamStats = result
-		rc.roamResultFlag = failure
-		rc.lastRoamAttempt = time.Now()
-		rc.unhealthyConn = false
+		rc.onRoamFailure(result)
 		return nil
 	default:
 		panic(fmt.Sprintf(
@@ -282,4 +255,53 @@ func (rc *roamContext) checkRSSIHysteresis() {
 		}
 	}
 	return
+}
+
+func (rc *roamContext) onRoamSuccess(result wpac.RoamStats) {
+	slog.Info(green.Render("ROAM SUCCESS"),
+		"bssid", rc.candidateAP.bssid,
+		"rssi", rc.candidateAP.rssi,
+		"band", rc.candidateAP.band,
+		"score", rc.candidateAP.finalScore,
+		"duration", result.Duration,
+		"message", result.Message)
+	rc.lastRoamStats = result
+	rc.roamResultFlag = success
+	rc.onConnectionChange()
+	rc.lastRoamAttempt = time.Now()
+	rc.hysteresisActive = true
+	rc.lastTriggerRSSI = rc.lastKnown.RSSI
+	slog.Debug(
+		"RSSI Hysteresis active. Signal change needed next roam attempt",
+		"current", rc.lastKnown.RSSI,
+		"upper", rc.lastTriggerRSSI+rc.cfg.RSSIHysteresisUp,
+		"lower", rc.lastTriggerRSSI-rc.cfg.RSSIHysteresisDown)
+	err := rc.recordBSSPenalty(false)
+	if err != nil {
+		slog.Error("Error updating BSS Penalty file",
+			"err", err)
+	}
+	rc.shipProcessState()
+}
+
+func (rc *roamContext) onRoamFailure(result wpac.RoamStats) {
+	slog.Warn(red.Render("ROAM FAILURE"),
+		"bssid", rc.candidateAP.bssid,
+		"rssi", rc.candidateAP.rssi,
+		"band", rc.candidateAP.band,
+		"score", rc.candidateAP.finalScore,
+		"duration", result.Duration,
+		"message", result.Message)
+	rc.lastRoamStats = result
+	rc.roamResultFlag = failure
+	rc.lastRoamAttempt = time.Now()
+	rc.unhealthyConn = false
+	slog.Info("Logging failed roam attempt",
+		"bssid", rc.candidateAP.bssid)
+	err := rc.recordBSSPenalty(true)
+	if err != nil {
+		slog.Error("Error updating BSS Penalty file",
+			"err", err)
+	}
+	rc.shipProcessState()
 }

@@ -8,6 +8,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/jwil007/roamctl/internal/config"
+	"github.com/jwil007/roamctl/internal/ipc"
 	"github.com/jwil007/roamctl/internal/netlink"
 	"github.com/jwil007/roamctl/internal/wpac"
 )
@@ -30,6 +31,7 @@ type scoredBSS struct {
 	phyScore   int
 	phy        wpac.PHYType
 	age        time.Duration
+	failCount  int
 }
 
 func (s scoredBSS) String() string {
@@ -50,7 +52,6 @@ func (s scoredBSS) String() string {
 
 type ConnectionStatus struct {
 	wpac.Status
-	//Signal
 	netlink.STAInfo
 }
 
@@ -82,6 +83,14 @@ func (c ConnectionStatus) String() string {
 		c.ConnDuration)
 }
 
+type bssPenalty struct {
+	BSSID     string    `json:"bssid"`
+	SSID      string    `json:"ssid"`
+	Band      wpac.Band `json:"band"`
+	FailCount int       `json:"fail_count"`
+	LastFail  time.Time `json:"last_fail"`
+}
+
 type roamContext struct {
 	cfg              *config.Config
 	ssid             string
@@ -107,6 +116,8 @@ type roamContext struct {
 	rssiRingBuffer   []int
 	rssiWriteIdx     int
 	richByBSSID      map[string]wpac.RichBSS
+	bssPenalties     []bssPenalty
+	ipcChan          chan ipc.ProcessState
 }
 
 type scanState struct {
