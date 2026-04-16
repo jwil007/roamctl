@@ -121,7 +121,11 @@ func Proc(
 			}
 			if rc.lastKnown.SSID != prevSSID && prevSSID != "" {
 				rc.shipProcessState()
-				return fmt.Errorf("SSID change detected, exiting."+
+				_, err = rc.handleWpaSuppConfig(c)
+				if err != nil {
+					return fmt.Errorf("handleWpaSuppConfig: %w", err)
+				}
+				slog.Info("SSID change detected"+
 					" prev_ssid: %v, new_ssid: %v", prevSSID, rc.lastKnown.SSID)
 			}
 			if rc.lastKnown.BSSID != prevBSSID && prevBSSID != "" {
@@ -132,11 +136,11 @@ func Proc(
 				rc.onConnectionChange()
 			}
 			if con.WPAState != "COMPLETED" {
-				if con.WPAState == "DISCONNECTED" {
-					rc.shipProcessState()
-					return fmt.Errorf(
-						"wpa_state is DISCONNECTED, exiting")
-				}
+				//if con.WPAState == "DISCONNECTED" {
+				//	rc.shipProcessState()
+				//	return fmt.Errorf(
+				//		"wpa_state is DISCONNECTED, exiting")
+				//}
 				slog.Info("wpa_state not COMPLETED, skipping poll",
 					"wpa_state", con.WPAState)
 				rc.shipProcessState()
@@ -253,9 +257,13 @@ func (rc *roamContext) handleWpaSuppConfig(c *wpac.Client) (func(), error) {
 		BGScan:     "",
 		DisableBTM: "1",
 	}
-	err = c.SetConfig(noRoamConfig)
-	if err != nil {
-		return nil, fmt.Errorf("c.SetConfig: %w", err)
+	//Only change config if needed
+	if storedConf.BGScan != noRoamConfig.BGScan ||
+		storedConf.DisableBTM != noRoamConfig.DisableBTM {
+		err = c.SetConfig(noRoamConfig)
+		if err != nil {
+			return nil, fmt.Errorf("c.SetConfig: %w", err)
+		}
 	}
 	rc.ssid = storedConf.SSID
 	cleanup := func() {

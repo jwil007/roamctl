@@ -60,7 +60,7 @@ func (m model) connStatView() string {
 	l := titleStyle.Render
 
 	line1 := l("ssid: ") + fmt.Sprintf("%-15v", m.procState.SSID) +
-		l("bssid: ") + fmt.Sprintf("%-19v", m.procState.ConnState.BSSID) +
+		l(" bssid: ") + fmt.Sprintf("%-19v", m.procState.ConnState.BSSID) +
 		l("Duration: ") + fmt.Sprintf("%-10v", m.procState.ConnState.ConnDuration)
 
 	line2 := l("rssi: ") + fmt.Sprintf("%-5v", m.procState.ConnState.RSSI) +
