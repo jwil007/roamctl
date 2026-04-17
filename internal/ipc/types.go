@@ -46,6 +46,7 @@ type RoamStats struct {
 	FinalBSSID  string
 	Duration    time.Duration
 	Message     string
+	//	CompletedAt time.Time
 }
 
 type BSS struct {

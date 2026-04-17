@@ -16,7 +16,7 @@ func (rc *roamContext) shipProcessState() {
 		BSSListStable:  rc.scanState.bssListStable,
 	}
 	rc.scanState.mu.RUnlock()
-	rc.ipcChan <- ipc.ProcessState{
+	state := ipc.ProcessState{
 		SSID:            rc.ssid,
 		BSSList:         bssList,
 		ConnState:       connState,
@@ -32,6 +32,20 @@ func (rc *roamContext) shipProcessState() {
 			UnhealthyConn:    rc.unhealthyConn,
 		},
 		ScanState: scS,
+	}
+	select {
+	case rc.ipcChan <- state:
+		// sent successfully
+	default:
+		// channel full - drain stale state and send current
+		select {
+		case <-rc.ipcChan:
+		default:
+		}
+		select {
+		case rc.ipcChan <- state:
+		default:
+		}
 	}
 }
 
@@ -66,6 +80,7 @@ func (rc *roamContext) buildRoamStatsForIPC() ipc.RoamStats {
 		FinalBSSID:  rc.lastRoamStats.FinalBSSID,
 		Duration:    rc.lastRoamStats.Duration,
 		Message:     rc.lastRoamStats.Message,
+		//CompletedAt: rc.lastRoamStats.CompletedAt,
 	}
 }
 

@@ -36,6 +36,7 @@ type RoamStats struct {
 	FinalBSSID  string
 	Duration    time.Duration
 	Message     string
+	CompletedAt time.Time
 }
 
 func (r RoamStats) String() string {

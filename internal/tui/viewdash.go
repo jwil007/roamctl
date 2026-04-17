@@ -202,7 +202,11 @@ func (m model) makeRoamTableRows() []table.Row {
 		case "failure":
 			row[1] = redText().Render("Failure")
 		}
-		row[2] = log.fromBSSID
+		if log.fromBSSID == "" {
+			row[2] = "—"
+		} else {
+			row[2] = log.fromBSSID
+		}
 		row[3] = log.targetBSSID
 		row[4] = fmt.Sprintf("%.3fs", log.duration.Seconds())
 		rows = append(rows, row)

@@ -68,6 +68,7 @@ func (c *Client) Roam(ctx context.Context, bssid string) (RoamStats, error) {
 			r.Message = "Target and final BSSID do not match"
 		}
 	}
+	r.CompletedAt = time.Now()
 	return r, nil
 }
 
