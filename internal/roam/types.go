@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"charm.land/lipgloss/v2"
@@ -100,6 +101,7 @@ type roamContext struct {
 	currentAP        scoredBSS
 	lastKnown        *ConnectionStatus
 	roamResultFlag   roamResultFlag
+	roamInProgress   bool
 	lastRoamStats    wpac.RoamStats
 	lastRoamAttempt  time.Time
 	hysteresisActive bool
@@ -118,6 +120,7 @@ type roamContext struct {
 	richByBSSID      map[string]wpac.RichBSS
 	bssPenalties     []bssPenalty
 	ipcChan          chan ipc.ProcessState
+	snapshot         atomic.Pointer[ipc.ProcessState]
 }
 
 type scanState struct {

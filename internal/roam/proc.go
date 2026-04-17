@@ -64,7 +64,10 @@ func Proc(
 		return fmt.Errorf("prepScanResults: %w", err)
 	}
 	rc.lastEvalTime = time.Now()
-	rc.shipProcessState() //updates IPC channel
+	rc.updateSnapshot()
+
+	//Start exporter for IPC. Runs as goroutine
+	rc.ipcShipper(ctx)
 
 	//Start polling signal stats
 	slog.Info("Starting signal polling...")
@@ -116,11 +119,11 @@ func Proc(
 			if rc.lastKnown == nil {
 				slog.Debug("last polled signal stats nil," +
 					" check again next cycle")
-				rc.shipProcessState()
+				rc.updateSnapshot()
 				continue
 			}
 			if rc.lastKnown.SSID != prevSSID && prevSSID != "" {
-				rc.shipProcessState()
+				rc.updateSnapshot()
 				_, err = rc.handleWpaSuppConfig(c)
 				if err != nil {
 					return fmt.Errorf("handleWpaSuppConfig: %w", err)
@@ -137,13 +140,13 @@ func Proc(
 			}
 			if con.WPAState != "COMPLETED" {
 				//if con.WPAState == "DISCONNECTED" {
-				//	rc.shipProcessState()
+				//	rc.updateSnapshot()
 				//	return fmt.Errorf(
 				//		"wpa_state is DISCONNECTED, exiting")
 				//}
 				slog.Info("wpa_state not COMPLETED, skipping poll",
 					"wpa_state", con.WPAState)
-				rc.shipProcessState()
+				rc.updateSnapshot()
 				continue
 			}
 			if rc.lastKnown.Freq != prevFreq && prevFreq != 0 {
@@ -160,7 +163,7 @@ func Proc(
 			if con.RSSI >= -1 {
 				slog.Debug(
 					"Invalid RSSI, skipping poll", "rssi", con.RSSI)
-				rc.shipProcessState()
+				rc.updateSnapshot()
 				continue
 			}
 			rssi := con.AvgRSSIBeacon
@@ -175,7 +178,7 @@ func Proc(
 				slog.Debug("Connection cooldown in effect",
 					"remaining",
 					cfg.ConnectionCooldown-time.Since(rc.lastConnChange))
-				rc.shipProcessState()
+				rc.updateSnapshot()
 				continue
 			}
 			if time.Since(rc.lastRoamAttempt) >= 2*time.Second {
@@ -184,13 +187,13 @@ func Proc(
 				slog.Debug("checkConnectionHealth skipped, backoff timer",
 					"time remaining",
 					2*time.Second-time.Since(rc.lastRoamAttempt))
-				rc.shipProcessState()
+				rc.updateSnapshot()
 				continue
 			}
 			//rssi hysteresis to prevent ping-pong roams at borderline
 			rc.checkRSSIHysteresis()
 			if rc.hysteresisActive {
-				rc.shipProcessState()
+				rc.updateSnapshot()
 				continue
 			}
 			//set roaming tier
@@ -224,7 +227,7 @@ func Proc(
 					return fmt.Errorf("handleCriticalRoam: %w", err)
 				}
 			}
-			rc.shipProcessState() //update IPC on every poll
+			rc.updateSnapshot() //update IPC on every poll
 
 		//error handling from scan and sig poll channels
 		case err = <-sigErrCh:

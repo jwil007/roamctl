@@ -31,7 +31,6 @@ type model struct {
 }
 
 type roamLog struct {
-	time        time.Time
 	status      string
 	fromBSSID   string
 	targetBSSID string
@@ -44,6 +43,7 @@ type roamLog struct {
 	finalRSSI   int
 	scoreDelta  int
 	duration    time.Duration
+	completedAt time.Time
 	message     string
 }
 

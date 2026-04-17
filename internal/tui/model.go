@@ -72,7 +72,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.roamLogs = append(m.roamLogs, m.lastRoam)
 		}
 		slices.SortFunc(m.roamLogs, func(a, b roamLog) int {
-			return int(b.time.Sub(a.time))
+			return int(b.completedAt.Sub(a.completedAt))
 		})
 		m.roamTable.SetRows(m.makeRoamTableRows())
 

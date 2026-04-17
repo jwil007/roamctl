@@ -147,7 +147,7 @@ func (m model) roamTableView() string {
 func (m model) isNewRoam() bool {
 	if m.lastRoam.targetBSSID == m.procState.RoamStats.TargetBSSID &&
 		m.lastRoam.status == m.procState.RoamResultFlag &&
-		m.lastRoam.duration == m.procState.RoamStats.Duration {
+		m.lastRoam.completedAt == m.procState.RoamStats.CompletedAt {
 		return false
 	}
 	if m.procState.RoamResultFlag == "success" ||
@@ -164,10 +164,13 @@ func (m model) logRoam() roamLog {
 	for _, b := range m.procState.BSSList {
 		bssidMap[b.BSSID] = b
 	}
+	completedAt := m.procState.RoamStats.CompletedAt
+	if m.procState.RoamStats.CompletedAt.IsZero() {
+		completedAt = time.Now()
+	}
 	fromBSS = bssidMap[m.lastBSSID]
 	toBSS = bssidMap[m.procState.RoamStats.FinalBSSID]
 	return roamLog{
-		time:        time.Now(),
 		status:      m.procState.RoamResultFlag,
 		fromBSSID:   m.lastBSSID,
 		targetBSSID: m.procState.RoamStats.TargetBSSID,
@@ -180,6 +183,7 @@ func (m model) logRoam() roamLog {
 		finalRSSI:   toBSS.RSSI,
 		scoreDelta:  toBSS.FinalScore - fromBSS.FinalScore,
 		duration:    m.procState.RoamStats.Duration,
+		completedAt: completedAt,
 		message:     m.procState.RoamStats.Message,
 	}
 }
@@ -187,14 +191,11 @@ func (m model) logRoam() roamLog {
 func (m model) makeRoamTableRows() []table.Row {
 	var rows []table.Row
 	for i, log := range m.roamLogs {
-		if log.fromBSSID == "" {
-			continue
-		}
 		row := make(table.Row, 5)
 		if i == m.roamTable.Cursor() {
-			row[0] = "[*] " + log.time.Format("15:04:05")
+			row[0] = "[*] " + log.completedAt.Format("15:04:05")
 		} else {
-			row[0] = "[ ] " + log.time.Format("15:04:05")
+			row[0] = "[ ] " + log.completedAt.Format("15:04:05")
 		}
 		switch log.status {
 		case "success":
@@ -272,6 +273,7 @@ func (m model) statePanelView() string {
 	firstRow := lipgloss.JoinHorizontal(
 		lipgloss.Left,
 		m.roamingTierContainer(),
+		m.roamStateContainer(),
 		m.roamResultContainer(),
 		m.scanModeContainer(),
 		m.scanFlagsContainer())
@@ -330,25 +332,37 @@ func (m model) scanModeContainer() string {
 }
 
 func (m model) roamResultContainer() string {
+	title := "Roam Result"
 	switch m.procState.RoamResultFlag {
 	case "unknown":
 		return containerStyle(lipgloss.Color("#808080")).Render(
 			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
-				"Last Roam Attempt"), "Unknown"))
+				title), "Unknown"))
 	case "success":
 		return containerStyle(lipgloss.Color("#00ff00")).Render(
 			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
-				"Last Roam Attempt"), "Success"))
+				title), "Success"))
 	case "failure":
 		return containerStyle(lipgloss.Color("#ff2200")).Render(
 			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
-				"Last Roam Attempt"), "Failure"))
+				title), "Failure"))
 	case "no_candidates":
 		return containerStyle(lipgloss.Color("#808080")).Render(
 			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
-				"Last Roam Attempt"), "No candidates"))
+				title), "No candidates"))
 	}
 	return ""
+}
+
+func (m model) roamStateContainer() string {
+	if m.procState.RoamInProgress {
+		return containerStyle(lipgloss.Color("#00aaff")).Render(
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Roam State"), "In progress"))
+	}
+	return containerStyle(lipgloss.Color("#808080")).Render(
+		lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+			"Roam State"), "Idle"))
 }
 
 func (m model) scanFlagsContainer() string {

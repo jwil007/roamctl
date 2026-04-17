@@ -189,9 +189,18 @@ func (rc *roamContext) prepScanResults(c *wpac.Client) error {
 				bp.SSID == rc.ssid &&
 				bp.Band == ap.band {
 				//check if last fail is old enough to reset
-				if time.Since(bp.LastFail) > 60*time.Minute {
+				var penaltyTimer time.Duration
+				//short timeout for single failures
+				if bp.FailCount == 1 {
+					penaltyTimer = 1 * time.Minute
+				}
+				//long timeout for repeated failures
+				if bp.FailCount > 1 {
+					penaltyTimer = 60 * time.Minute
+				}
+				if time.Since(bp.LastFail) > penaltyTimer {
 					slog.Info("BSS penalty timer expired,"+
-						" resetting fail count",
+						" removing BSS from penalty list",
 						"bssid", bp.BSSID)
 					rc.bssPenalties = slices.Delete(rc.bssPenalties, j, j+1)
 					err = rc.writeBSSPenaltyFile()

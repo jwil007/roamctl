@@ -1,10 +1,13 @@
 package roam
 
 import (
+	"context"
+	"time"
+
 	"github.com/jwil007/roamctl/internal/ipc"
 )
 
-func (rc *roamContext) shipProcessState() {
+func (rc *roamContext) updateSnapshot() {
 	bssList := rc.buildBSSForIPC()
 	connState := rc.buildConnStateForIPC()
 	roamStats := rc.buildRoamStatsForIPC()
@@ -16,7 +19,8 @@ func (rc *roamContext) shipProcessState() {
 		BSSListStable:  rc.scanState.bssListStable,
 	}
 	rc.scanState.mu.RUnlock()
-	state := ipc.ProcessState{
+
+	newState := ipc.ProcessState{
 		SSID:            rc.ssid,
 		BSSList:         bssList,
 		ConnState:       connState,
@@ -30,23 +34,32 @@ func (rc *roamContext) shipProcessState() {
 			EntryScannedCrit: rc.entryScannedCrit,
 			FullScannedCrit:  rc.fullScannedCrit,
 			UnhealthyConn:    rc.unhealthyConn,
+			RoamInProgress:   rc.roamInProgress,
 		},
 		ScanState: scS,
 	}
-	select {
-	case rc.ipcChan <- state:
-		// sent successfully
-	default:
-		// channel full - drain stale state and send current
-		select {
-		case <-rc.ipcChan:
-		default:
+	rc.snapshot.Store(&newState)
+}
+
+func (rc *roamContext) ipcShipper(ctx context.Context) {
+	go func() {
+		ticker := time.NewTicker(rc.cfg.SigPollInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if s := rc.snapshot.Load(); s != nil {
+					select {
+					case rc.ipcChan <- *s:
+					default:
+						// drop if channel full, stale data OK
+					}
+				}
+			}
 		}
-		select {
-		case rc.ipcChan <- state:
-		default:
-		}
-	}
+	}()
 }
 
 func (rc *roamContext) buildConnStateForIPC() ipc.ConnState {
@@ -80,7 +93,7 @@ func (rc *roamContext) buildRoamStatsForIPC() ipc.RoamStats {
 		FinalBSSID:  rc.lastRoamStats.FinalBSSID,
 		Duration:    rc.lastRoamStats.Duration,
 		Message:     rc.lastRoamStats.Message,
-		//CompletedAt: rc.lastRoamStats.CompletedAt,
+		CompletedAt: rc.lastRoamStats.CompletedAt,
 	}
 }
 

@@ -217,6 +217,8 @@ func (rc *roamContext) roamToCandidate(
 	if rc.candidateAP.bssid == "" {
 		return fmt.Errorf("roamToCandidate: roam aborted, empty BSSID")
 	}
+	rc.roamInProgress = true
+	rc.updateSnapshot()
 	result, err := c.Roam(ctx, rc.candidateAP.bssid)
 	if err != nil {
 		if strings.Contains(err.Error(), "timed out waiting for event") {
@@ -271,7 +273,7 @@ func (rc *roamContext) onRoamSuccess(result wpac.RoamStats) {
 	rc.lastRoamAttempt = time.Now()
 	rc.hysteresisActive = true
 	rc.lastTriggerRSSI = rc.lastKnown.RSSI
-	slog.Debug(
+	slog.Info(
 		"RSSI Hysteresis active. Signal change needed next roam attempt",
 		"current", rc.lastKnown.RSSI,
 		"upper", rc.lastTriggerRSSI+rc.cfg.RSSIHysteresisUp,
@@ -281,7 +283,8 @@ func (rc *roamContext) onRoamSuccess(result wpac.RoamStats) {
 		slog.Error("Error updating BSS Penalty file",
 			"err", err)
 	}
-	rc.shipProcessState()
+	rc.roamInProgress = false
+	rc.updateSnapshot()
 }
 
 func (rc *roamContext) onRoamFailure(result wpac.RoamStats) {
@@ -303,5 +306,6 @@ func (rc *roamContext) onRoamFailure(result wpac.RoamStats) {
 		slog.Error("Error updating BSS Penalty file",
 			"err", err)
 	}
-	rc.shipProcessState()
+	rc.roamInProgress = false
+	rc.updateSnapshot()
 }
