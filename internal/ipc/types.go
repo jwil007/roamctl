@@ -88,4 +88,5 @@ type ScanState struct {
 	ScanMode       string
 	ScanDuration   time.Duration
 	BSSListStable  bool
+	LastScanTime   time.Time
 }

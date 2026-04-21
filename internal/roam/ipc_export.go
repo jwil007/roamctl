@@ -17,6 +17,7 @@ func (rc *roamContext) updateSnapshot() {
 		ScanMode:       rc.scanState.scanMode.String(),
 		ScanDuration:   rc.scanState.scanDuration,
 		BSSListStable:  rc.scanState.bssListStable,
+		LastScanTime:   rc.scanState.lastScanTime,
 	}
 	rc.scanState.mu.RUnlock()
 

@@ -82,11 +82,19 @@ func (m model) connStatView() string {
 }
 
 func (m model) apTableView() string {
-	header := m.alignLeft().Render(titleStyle.Render(" SCAN DATA"))
-	footer := m.alignRight().Render(titleStyle.Render("* current AP"))
+	l := titleStyle.Render
+	header := m.alignLeft().Render(l(" SCAN DATA"))
+	footer := l("* current AP")
 	content := m.apTable.View()
+	detail := l(" Scan time: ") +
+		m.procState.LastScanTime.Format("15:04:05")
+
+	bottom := lipgloss.NewStyle().Width(tuiWidth).Render(
+		detail + lipgloss.NewStyle().Width(tuiWidth-lipgloss.Width(detail)-
+			lipgloss.Width(footer)).Render("") +
+			lipgloss.NewStyle().Faint(true).Render(footer))
 	return lipgloss.JoinVertical(lipgloss.Left, m.alignCenter().
-		Render(header), content, footer)
+		Render(header), content, bottom)
 }
 
 func (m model) rssiBarView() string {

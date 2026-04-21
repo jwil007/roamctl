@@ -126,6 +126,7 @@ func (rc *roamContext) executeScan(
 	mode := rc.scanState.scanMode
 	stable := rc.scanState.bssListStable
 	rc.scanState.mu.Unlock()
+	rc.updateSnapshot()
 	slog.Info("Scan dispatched",
 		"trigger_tier", rc.roamingTier,
 		"last_result", rc.roamResultFlag,
@@ -158,6 +159,7 @@ func (rc *roamContext) executeScan(
 	rc.scanState.lastScanTime = completeTime
 	rc.scanState.cond.Broadcast()
 	rc.scanState.mu.Unlock()
+	rc.updateSnapshot()
 	slog.Info(
 		"Scan completed", "scan_mode", mode, "duration", duration)
 	return nil
@@ -218,6 +220,7 @@ func (rc *roamContext) prepScanResults(c *wpac.Client) error {
 					bp.FailCount*rc.cfg.UnhealthyScoreMod
 			}
 		}
+		rc.updateSnapshot()
 	}
 
 	if rc.unhealthyConn {
