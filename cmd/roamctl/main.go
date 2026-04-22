@@ -93,7 +93,7 @@ func run() error {
 	}()
 
 	//check if process already running
-	running, pid, err := handlePIDFile()
+	running, pid, err := handlePIDFile(iface)
 	if err != nil {
 		return fmt.Errorf("checkPIDFromFile: %w", err)
 	}
@@ -126,13 +126,13 @@ func run() error {
 	}
 
 	//open wpa_supplicant control interface unix socket
-	c, err := wpac.Connect(cfg.Interface)
+	c, err := wpac.Connect(*iface)
 	if err != nil {
 		if strings.Contains(err.Error(), "no such file or directory") {
 			return fmt.Errorf("wpac.Connect: %w\n"+
 				"Interface name %s may be wrong. "+
-				"Rerun with -edit flag to edit interface name.",
-				err, cfg.Interface)
+				"Rerun with -iface flag to set interface name.",
+				err, *iface)
 		}
 		return fmt.Errorf("wpac.Connect %w", err)
 	}
@@ -150,7 +150,7 @@ func run() error {
 	defer cancel()
 
 	//start IPC
-	listener, cleanup, err := ipc.Listen()
+	listener, cleanup, err := ipc.Listen(iface)
 	if err != nil {
 		return fmt.Errorf("ipc.Listen: %w", err)
 	}
@@ -169,12 +169,13 @@ func run() error {
 	return nil
 }
 
-func handlePIDFile() (bool, int, error) {
+func handlePIDFile(iface *string) (bool, int, error) {
 	err := os.MkdirAll("/run/roamctl", 0755)
+	filename := *iface + ".pid"
 	if err != nil {
 		return false, 0, fmt.Errorf("os.MkdirAll: %w", err)
 	}
-	path := "/run/roamctl/roamctl.pid"
+	path := "/run/roamctl/" + filename
 	pid := os.Getpid()
 	if data, err := os.ReadFile(path); err == nil {
 		pidRead, err := strconv.Atoi(strings.TrimSpace(string(data)))

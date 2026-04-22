@@ -8,10 +8,6 @@ import (
 func (cfg *Config) Validate() error {
 	var errs []string
 
-	if cfg.Interface == "" {
-		errs = append(errs, "preferences.interface cannot be empty")
-	}
-
 	// RoamingTiers
 	if !validRSSI(cfg.RoamingTiers.ExcellentRSSI) {
 		errs = append(errs, fmt.Sprintf(

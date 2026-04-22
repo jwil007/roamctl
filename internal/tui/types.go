@@ -16,6 +16,7 @@ type client struct {
 }
 
 type model struct {
+	iface      *string
 	client     *client
 	scanner    *bufio.Scanner
 	procState  *ipc.ProcessState

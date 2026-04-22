@@ -15,8 +15,8 @@ type Config struct {
 }
 
 type Preferences struct {
-	Interface string `toml:"interface"`
-	EnableBTM bool   `toml:"enable_btm"`
+	//Interface string `toml:"interface"`
+	EnableBTM bool `toml:"enable_btm"`
 }
 
 type RoamingTiers struct {

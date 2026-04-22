@@ -10,8 +10,9 @@ import (
 	"time"
 )
 
-func Listen() (net.Listener, func(), error) {
-	path := "/run/roamctl/roamctl.sock"
+func Listen(iface *string) (net.Listener, func(), error) {
+	filename := *iface + ".sock"
+	path := "/run/roamctl/" + filename
 	_ = os.Remove(path)
 	listener, err := net.Listen("unix", path)
 	if err != nil {

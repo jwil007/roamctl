@@ -12,15 +12,15 @@ import (
 	"github.com/jwil007/roamctl/internal/ipc"
 )
 
-func Tui() error {
-	p := tea.NewProgram(initialModel())
+func Tui(iface *string) error {
+	p := tea.NewProgram(initialModel(iface))
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("tea.NewProgram: %w", err)
 	}
 	return nil
 }
 
-func initialModel() model {
+func initialModel(iface *string) model {
 	at := table.New(
 		table.WithColumns(apTableColumns),
 		table.WithStyles(apTableStyle()),
@@ -30,6 +30,7 @@ func initialModel() model {
 	)
 	rt.Focus()
 	return model{
+		iface:      iface,
 		ringBuffer: nil,
 		procState:  &ipc.ProcessState{},
 		apTable:    at,
@@ -39,7 +40,7 @@ func initialModel() model {
 }
 
 func (m model) Init() tea.Cmd {
-	return reconnectCmd()
+	return reconnectCmd(m.iface)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -83,7 +84,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, readCmd(m.scanner)
 	case reconnectMsg:
 		m.client.close()
-		return m, reconnectCmd()
+		return m, reconnectCmd(m.iface)
 	case clientMsg:
 		m.client = msg
 		m.scanner = bufio.NewScanner(m.client.conn)

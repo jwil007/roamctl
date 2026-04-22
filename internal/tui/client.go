@@ -11,9 +11,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-func connect() (*client, error) {
+func connect(iface *string) (*client, error) {
 	localPath := "/tmp/roamctl-tui_" + strconv.Itoa(os.Getpid())
-	remotePath := "/run/roamctl/roamctl.sock"
+	remotePath := "/run/roamctl/" + *iface + ".sock"
 	laddr := &net.UnixAddr{Name: localPath, Net: "unix"}
 	raddr := &net.UnixAddr{Name: remotePath, Net: "unix"}
 	_ = os.Remove(localPath)
@@ -44,10 +44,10 @@ func readCmd(scanner *bufio.Scanner) tea.Cmd {
 	}
 }
 
-func reconnectCmd() tea.Cmd {
+func reconnectCmd(iface *string) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(2 * time.Second)
-		c, err := connect()
+		c, err := connect(iface)
 		if err != nil {
 			return reconnectMsg(true)
 		}

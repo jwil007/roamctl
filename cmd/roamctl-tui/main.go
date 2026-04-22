@@ -21,13 +21,14 @@ func main() {
 func run() error {
 	versionFlag := flag.Bool("version", false,
 		"print version and exit")
+	iface := flag.String("iface", "wlan0", "interface to bind to")
 	flag.Parse()
 	if *versionFlag {
 		fmt.Println(version)
 		os.Exit(0)
 	}
 
-	err := tui.Tui()
+	err := tui.Tui(iface)
 	if err != nil {
 		return fmt.Errorf("tui.Tui: %w", err)
 	}

@@ -2,8 +2,6 @@ package config
 
 const defaultConfigTemplate = `
 [preferences]
-interface = "wlan0"
-
 # Toggle support for 802.11v (bss transition mgmt)
 enable_btm = true
 
