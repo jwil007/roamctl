@@ -129,8 +129,9 @@ func Proc(
 				if err != nil {
 					return fmt.Errorf("handleWpaSuppConfig: %w", err)
 				}
-				slog.Info("SSID change detected"+
-					" prev_ssid: %v, new_ssid: %v", prevSSID, rc.lastKnown.SSID)
+				slog.Info("SSID change detected",
+					"prev_ssid", "new_ssid", prevSSID, rc.lastKnown.SSID)
+				os.Exit(1)
 			}
 			if rc.lastKnown.BSSID != prevBSSID && prevBSSID != "" {
 				slog.Info("Connection change detected",
@@ -142,8 +143,8 @@ func Proc(
 			if con.WPAState != "COMPLETED" {
 				if con.WPAState == "DISCONNECTED" {
 					rc.updateSnapshot()
-					return fmt.Errorf(
-						"wpa_state is DISCONNECTED, exiting")
+					slog.Info("wpa_state is DISCONNECTED, exiting")
+					os.Exit(1)
 				}
 				slog.Info("wpa_state not COMPLETED, skipping poll",
 					"wpa_state", con.WPAState)

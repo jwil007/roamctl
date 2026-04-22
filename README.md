@@ -96,25 +96,37 @@ A number of stability guards are in place to prevent excessive roaming, scanning
 ## Usage
 
 ### Daemon mode
-Use the one-line install from [Quick Start](#Quick-Start) for automated setup. For manual setup, move the `roamctl.service` file into the `/etc/systemd/service/` directory, then run `sudo systemctl daemon-reload`.
-
+Use the one-line install from [Quick Start](#Quick-Start) for automated setup. For manual setup, move the `roamctl@.service` file into the `/etc/systemd/system/` directory, then run `sudo systemctl daemon-reload`.
+> [!NOTE]
+>roamctl has multi-interface support. When managing the service through systemctl, you need to append the interface name. For example `roamctl@wlan0`
 
 Start the service:
 ```
-sudo systemctl start roamctl
+sudo systemctl start roamctl@<iface>
 ```
 Stop the service:
 ```
-sudo systemctl stop roamctl
+sudo systemctl stop roamctl@<iface>
 ```
 View logs:
 ```
-journalctl -u roamctl -f
+journalctl -u roamctl@<iface> -f
 ```
 Enable at boot:
 ```
-sudo systemctl enable roamctl
+sudo systemctl enable roamctl@<iface>
 ```
+
+### Multi-interface
+roamctl supports running independent instances per wireless interface. Each instance has its own config, state, and IPC socket, keyed by interface name.
+
+To run multiple instances:
+```
+sudo systemctl start roamctl@wlan0
+sudo systemctl start roamctl@wlan1
+```
+
+Each instance is managed and logged independently. This is a power-user feature; the standard installation configures for a single interface automatically.
 
 ### Foreground mode
 Connect to an SSID. Run with `sudo roamctl`. Exit with `ctrl+c`.
@@ -128,35 +140,26 @@ Use these arguments to make configuration changes or view debug logs. Run with `
 
 `-level` : Set log level. Options are `info` or `debug`. Default is `info`
 
-`-template`: Select config template. Options are `base`, `macos`, and `ios`.
+`-template`: Select config template. Right now the only option is `base`. Other templates will be added in the future.
 
 ### Uninstall
 This one line command removes all system files and systemctl service configuration.
 ```
-sudo systemctl stop roamctl; sudo systemctl disable roamctl; sudo rm /etc/systemctl/system/roamctl.service; sudo rm -rf /etc/roamctl; sudo rm -rf /run/roamctl; sudo rm /usr/local/bin/roamctl; sudo rm /usr/local/bin/roamctl-tui
+sudo systemctl stop 'roamctl@*'; sudo systemctl disable 'roamctl@*'; sudo rm -f /etc/systemd/system/roamctl@.service; sudo rm -rf /etc/roamctl; sudo rm -rf /run/roamctl; sudo rm -f /usr/local/bin/roamctl; sudo rm -f /usr/local/bin/roamctl-tui
 ```
 
 
 ## A note on 6GHz
 The version of wpa_supplicant that ships with most Debian based distros (v2.10) may not reliably find 6GHz APs in the scan results. If you're testing 6GHz roaming, check your version with `wpa_supplicant -v`. If you have v2.11 or newer, 6GHz should be reliable.
 
-Upgrading from v2.10 to v2.11 on Debian based distros may require building from source. This GitHub repo contains a shell script to handle the build process for you: https://github.com/jwil007/wpas-v2.11-install-script/tree/main.
-
->[!WARNING]
-> The script replaces the distro-packaged wpa_supplicant binary in-place without going through the package manager. Future apt upgrade runs may overwrite it with the older distro version.
->
-> The script will restart wpa_supplicant when it is completed. This briefly disconnects Wi-Fi, which means that you may lose connection to the machine if accessing it remotely, and it is only Wi-Fi connected.
-
 
 ## Configuration
 
-All config parameters, including interface specification and scoring weights for the roaming algorithm, are set through the toml file at `~/.config/roamctl/config.toml`
+All config parameters, including interface specification and scoring weights for the roaming algorithm, are set through the toml file at `~/.config/roamctl/<iface>.toml`
 
 For convenience, running with the `-edit` flag opens a text editor to edit the file directly.
 
-The `-template` flag allows selection of pre-defined templates. The current options are `base` (default), `macos`, and `ios`.
 
-The macOS and iOS templates are meant to simulate Apple roaming behavior as documented in: https://support.apple.com/guide/deployment/wi-fi-roaming-support-dep98f116c0f/web
 
 >[!NOTE]
 >roamctl initializes with the params shown in the default config below.
@@ -164,7 +167,8 @@ The macOS and iOS templates are meant to simulate Apple roaming behavior as docu
 ## Default Config
 ```toml
 [preferences]
-interface = "wlan0"
+# Toggle support for 802.11v (bss transition mgmt)
+enable_btm = true
 
 [roaming_tiers]
 # These values set the floor of each RSSI tier, which dictate roaming logic
