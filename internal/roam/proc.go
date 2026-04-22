@@ -253,12 +253,18 @@ func (rc *roamContext) handleWpaSuppConfig(c *wpac.Client) (func(), error) {
 	if err != nil {
 		return nil, fmt.Errorf("c.GetConfig: %v", err)
 	}
+
+	//toggle btm (802.11v) based on user config
+	btmSetting := "0"
+	if !rc.cfg.EnableBTM {
+		btmSetting = "1"
+	}
 	//Disable bgscan to prevent autonomous roaming
 	noRoamConfig := wpac.WPAConfig{
 		SSID:       storedConf.SSID,
 		NetworkID:  storedConf.NetworkID,
 		BGScan:     "",
-		DisableBTM: "1",
+		DisableBTM: btmSetting,
 	}
 	//Only change config if needed
 	if storedConf.BGScan != noRoamConfig.BGScan ||

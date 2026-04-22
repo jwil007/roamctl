@@ -4,6 +4,9 @@ const defaultConfigTemplate = `
 [preferences]
 interface = "wlan0"
 
+# Toggle support for 802.11v (bss transition mgmt)
+enable_btm = true
+
 [roaming_tiers]
 # These values set the floor of each RSSI tier, which dictate roaming logic
 # i.e. if fair_rssi is -67, -68 is in the "degraded" tier.
