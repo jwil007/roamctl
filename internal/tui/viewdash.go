@@ -172,10 +172,6 @@ func (m model) logRoam() roamLog {
 	for _, b := range m.procState.BSSList {
 		bssidMap[b.BSSID] = b
 	}
-	completedAt := m.procState.RoamStats.CompletedAt
-	if m.procState.RoamStats.CompletedAt.IsZero() {
-		completedAt = time.Now()
-	}
 	fromBSS = bssidMap[m.lastBSSID]
 	toBSS = bssidMap[m.procState.RoamStats.FinalBSSID]
 	return roamLog{
@@ -191,7 +187,7 @@ func (m model) logRoam() roamLog {
 		finalRSSI:   toBSS.RSSI,
 		scoreDelta:  toBSS.FinalScore - fromBSS.FinalScore,
 		duration:    m.procState.RoamStats.Duration,
-		completedAt: completedAt,
+		completedAt: m.procState.RoamStats.CompletedAt,
 		message:     m.procState.RoamStats.Message,
 	}
 }

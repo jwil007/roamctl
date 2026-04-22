@@ -94,6 +94,7 @@ type bssPenalty struct {
 
 type roamContext struct {
 	cfg              *config.Config
+	iface            string
 	ssid             string
 	richBSSList      []wpac.RichBSS
 	scoredAPs        []scoredBSS

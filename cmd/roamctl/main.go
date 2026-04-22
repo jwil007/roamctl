@@ -40,7 +40,7 @@ func run() error {
 	edit := flag.Bool("edit", false,
 		"edit config file")
 	template := flag.String("template", "",
-		"select config template (base, macos, ios)")
+		"select config template (base)")
 	levelStr := flag.String("level", "info",
 		"log level (debug, info)")
 	iface := flag.String("iface", "wlan0",
@@ -50,12 +50,6 @@ func run() error {
 		fmt.Println(version)
 		os.Exit(0)
 	}
-	ifaceSet := false
-	flag.Visit(func(f *flag.Flag) {
-		if f.Name == "iface" {
-			ifaceSet = true
-		}
-	})
 
 	if flag.NArg() > 0 {
 		_, _ = fmt.Fprintf(os.Stderr,
@@ -118,7 +112,7 @@ func run() error {
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("cfg.Validate: %w", err)
 	}
-	if *edit == true || *template != "" || ifaceSet {
+	if *edit == true || *template != "" {
 		fmt.Println("Changes saved to file at /etc/roamctl/config.toml.\n" +
 			"If running roamctl as a daemon, " +
 			"apply changes with sudo systemctl restart roamctl")

@@ -23,6 +23,7 @@ func Proc(
 	//init roamContext - struct that holds all state for roamctl
 	slog.Info("Starting roamctl... exit with ctrl+c")
 	rc := &roamContext{}
+	rc.iface = c.Iface
 	rc.ipcChan = ipcChan
 	rc.richByBSSID = make(map[string]wpac.RichBSS)
 	rc.roamingTier = noRoam

@@ -224,6 +224,7 @@ func (rc *roamContext) roamToCandidate(
 		if strings.Contains(err.Error(), "timed out waiting for event") {
 			slog.Error("Roam attempt timed out")
 			result.Message = "Roam attempt timed out"
+			rc.lastRoamStats.CompletedAt = time.Now()
 			rc.onRoamFailure(result)
 			return nil
 		}

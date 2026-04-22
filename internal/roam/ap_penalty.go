@@ -12,7 +12,7 @@ import (
 )
 
 func (rc *roamContext) readBSSPenaltyFile() error {
-	path := "/run/roamctl/penalty.json"
+	path := "/run/roamctl/" + rc.iface + "_penalty.json"
 	f, err := os.Open(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -73,7 +73,7 @@ func (rc *roamContext) recordBSSPenalty(fail bool) error {
 }
 
 func (rc *roamContext) writeBSSPenaltyFile() error {
-	path := "/run/roamctl/penalty.json"
+	path := "/run/roamctl/" + rc.iface + "_penalty.json"
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return fmt.Errorf("os.OpenFile(%s): %w", path, err)
