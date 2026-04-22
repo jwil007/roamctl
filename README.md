@@ -251,8 +251,8 @@ max_snr = 50
 20mhz = 40
 40mhz = 40
 80mhz = 75
-160mhz = 75
-320mhz = 75
+160mhz = 85
+320mhz = 100
 
 [phy_scores]
 legacy = 0

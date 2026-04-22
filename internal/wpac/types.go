@@ -355,7 +355,7 @@ func (cw ChannelWidth) String() string {
 	case ChannelWidth80Plus80:
 		return "80+80MHz"
 	case ChannelWidth320:
-		return "320Mhz"
+		return "320MHz"
 	case ChannelWidthUnknown:
 		return "Unknown"
 	}
