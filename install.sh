@@ -72,7 +72,11 @@ else
   SELECTED=$(echo "$IFACES" | sed -n "${SELECTION}p")
   if [ -n "$SELECTED" ]; then
     echo "Initializing config for $SELECTED..."
-    sudo roamctl -iface "$SELECTED"
+    sudo roamctl -iface "$SELECTED" &
+    ROAMCTL_PID=$!
+    sleep 2
+    kill -INT "$ROAMCTL_PID" 2>/dev/null
+    wait "$ROAMCTL_PID" 2>/dev/null
   else
     echo "Invalid selection. You can configure one later with: sudo roamctl -iface <name>"
   fi
@@ -95,6 +99,12 @@ if [ "$INSTALL_SERVICE" = "y" ] || [ "$INSTALL_SERVICE" = "Y" ]; then
     if [ "$ENABLE_SERVICE" = "y" ] || [ "$ENABLE_SERVICE" = "Y" ]; then
       sudo systemctl enable "roamctl@$SELECTED"
       echo "roamctl@$SELECTED enabled at boot."
+    fi
+    printf "Start roamctl@%s now? [y/N]: " "$SELECTED"
+    read -r START_SERVICE
+    if [ "$START_SERVICE" = "y" ] || [ "$START_SERVICE" = "Y" ]; then
+      sudo systemctl start "roamctl@$SELECTED"
+      echo "roamctl@$SELECTED started."
     fi
   else
     echo "No interface selected — enable manually with: sudo systemctl enable roamctl@<iface>"
