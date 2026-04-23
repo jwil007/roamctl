@@ -14,7 +14,7 @@ The roaming algorithm allows optimizing roaming performance, or it can be used t
 ### TUI
  `roamctl-tui` is included, which shows the live state of roamctl in a clean and compact interface:
  
-![Screenshot](docs/screenshots/tui.png)
+![Screenshot](docs/screenshots/tui2.png)
 
 
 ## Quick Start
@@ -26,8 +26,10 @@ curl -fsSL https://raw.githubusercontent.com/jwil007/roamctl/master/install.sh -
 ```
 The one-line install provides the option to run roamctl as a systemctl service. If running as a service, start with:
 ```
-sudo systemctl start roamctl
+sudo systemctl start roamctl@<iface_name>
 ```
+Interface name must be specified when running as service. For example, `roamctl@wlan0`
+
 Launch TUI:
 ```
 sudo roamctl-tui
