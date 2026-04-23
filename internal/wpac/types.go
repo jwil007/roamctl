@@ -12,10 +12,12 @@ type Client struct {
 	CC             *net.UnixConn //CommandConnection
 	EC             *net.UnixConn //EventConnection
 	PC             *net.UnixConn //PollConnection
+	WC             *net.UnixConn //WatcherConnection
 	Iface          string
 	LocalPathCmd   string
 	LocalPathEvent string
 	LocalPathPoll  string
+	LocalPathWatch string
 }
 
 type WPAConfig struct {

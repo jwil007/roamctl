@@ -3,8 +3,10 @@ package wpac
 // This file contains the API surface
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -57,7 +59,7 @@ func (c *Client) Roam(ctx context.Context, bssid string) (RoamStats, error) {
 	case strings.Contains(ev, "CTRL-EVENT-CONNECTED"):
 		f := strings.Fields(ev)
 		for _, e := range f {
-			if isMACAddress(e) {
+			if IsMACAddress(e) {
 				r.FinalBSSID = e
 			}
 		}
@@ -178,4 +180,39 @@ func (c *Client) GetStatus() (Status, error) {
 		}
 	}
 	return status, nil
+}
+
+func (c *Client) WatchForEvents(
+	ctx context.Context) (<-chan string, <-chan error) {
+	events := make(chan string)
+	errc := make(chan error, 1)
+	go func() {
+		_, err := c.WC.Write([]byte("ATTACH"))
+		if err != nil {
+			errc <- err
+			return
+		}
+		buf := make([]byte, 65536)
+		for {
+			errDeadline := c.WC.SetReadDeadline(time.Now().Add(1 * time.Second))
+			if errDeadline != nil {
+				errc <- errDeadline
+				return
+			}
+			n, err := c.WC.Read(buf)
+			if err != nil {
+				if errors.Is(err, os.ErrDeadlineExceeded) {
+					continue
+				}
+				errc <- err
+				return
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case events <- string(buf[:n]):
+			}
+		}
+	}()
+	return events, errc
 }

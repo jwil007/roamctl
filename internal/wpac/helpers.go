@@ -76,7 +76,7 @@ func getBandandChanfromFreq(freq int) (Band, int, error) {
 		"failed to determine channel/band from freq: %v", freq)
 }
 
-func isMACAddress(s string) bool {
+func IsMACAddress(s string) bool {
 	if len(s) != 17 {
 		return false
 	}

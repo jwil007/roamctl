@@ -12,6 +12,7 @@ func Connect(iface string) (*Client, error) {
 	localPathCmd := "/tmp/wpa_ctrl_" + strconv.Itoa(os.Getpid()) + "command"
 	localPathEvent := "/tmp/wpa_ctrl_" + strconv.Itoa(os.Getpid()) + "event"
 	localPathPoll := "/tmp/wpa_ctrl_" + strconv.Itoa(os.Getpid()) + "poll"
+	localPathWatch := "/tmp/wpa_ctrl_" + strconv.Itoa(os.Getpid()) + "watch"
 
 	laddrC := &net.UnixAddr{
 		Name: localPathCmd,
@@ -23,6 +24,10 @@ func Connect(iface string) (*Client, error) {
 	}
 	laddrP := &net.UnixAddr{
 		Name: localPathPoll,
+		Net:  "unixgram",
+	}
+	laddrW := &net.UnixAddr{
+		Name: localPathWatch,
 		Net:  "unixgram",
 	}
 	raddr := &net.UnixAddr{
@@ -52,14 +57,26 @@ func Connect(iface string) (*Client, error) {
 		_ = cc.Close()
 		return nil, fmt.Errorf("net.DialUnix: %w", err)
 	}
+	wc, err := net.DialUnix("unixgram", laddrW, raddr)
+	if err != nil {
+		_ = os.Remove(localPathCmd)
+		_ = os.Remove(localPathEvent)
+		_ = os.Remove(localPathPoll)
+		_ = os.Remove(localPathWatch)
+		_ = cc.Close()
+		_ = ec.Close()
+		_ = pc.Close()
+	}
 	return &Client{
 		CC:             cc,
 		EC:             ec,
 		PC:             pc,
+		WC:             wc,
 		Iface:          iface,
 		LocalPathCmd:   localPathCmd,
 		LocalPathEvent: localPathEvent,
 		LocalPathPoll:  localPathPoll,
+		LocalPathWatch: localPathWatch,
 	}, nil
 }
 
@@ -76,6 +93,10 @@ func (c *Client) Close() error {
 	if err != nil {
 		return fmt.Errorf("c.PC.Close: %w", err)
 	}
+	err = c.WC.Close()
+	if err != nil {
+		return fmt.Errorf("c.WC.Close: %w", err)
+	}
 	err = os.Remove(c.LocalPathCmd)
 	if err != nil {
 		return fmt.Errorf("os.Remove %v: %w", c.LocalPathCmd, err)
@@ -87,6 +108,10 @@ func (c *Client) Close() error {
 	err = os.Remove(c.LocalPathPoll)
 	if err != nil {
 		return fmt.Errorf("os.Remove %v: %w", c.LocalPathPoll, err)
+	}
+	err = os.Remove(c.LocalPathWatch)
+	if err != nil {
+		return fmt.Errorf("os.Remove %v: %w", c.LocalPathWatch, err)
 	}
 	return nil
 }

@@ -14,6 +14,38 @@ import (
 	"github.com/jwil007/roamctl/internal/wpac"
 )
 
+type roamContext struct {
+	cfg              *config.Config
+	iface            string
+	ssid             string
+	richBSSList      []wpac.RichBSS
+	scoredAPs        []scoredBSS
+	candidateAP      scoredBSS
+	currentAP        scoredBSS
+	lastKnown        *ConnectionStatus
+	roamResultFlag   roamResultFlag
+	roamInProgress   bool
+	lastRoamStats    wpac.RoamStats
+	lastRoamAttempt  time.Time
+	hysteresisActive bool
+	lastTriggerRSSI  int
+	lastEvalTime     time.Time
+	entryScanned     bool
+	entryScannedCrit bool
+	fullScannedCrit  bool
+	roamingTier      roamingTier
+	scanState        scanState
+	unhealthyConn    bool
+	unhealthyLogged  bool
+	lastConnChange   time.Time
+	rssiRingBuffer   []int
+	rssiWriteIdx     int
+	richByBSSID      map[string]wpac.RichBSS
+	bssPenalties     []bssPenalty
+	ipcChan          chan ipc.ProcessState
+	snapshot         atomic.Pointer[ipc.ProcessState]
+	wpaDisconnect    bool
+}
 type scoredBSS struct {
 	bssid      string
 	freq       int
@@ -90,38 +122,6 @@ type bssPenalty struct {
 	Band      wpac.Band `json:"band"`
 	FailCount int       `json:"fail_count"`
 	LastFail  time.Time `json:"last_fail"`
-}
-
-type roamContext struct {
-	cfg              *config.Config
-	iface            string
-	ssid             string
-	richBSSList      []wpac.RichBSS
-	scoredAPs        []scoredBSS
-	candidateAP      scoredBSS
-	currentAP        scoredBSS
-	lastKnown        *ConnectionStatus
-	roamResultFlag   roamResultFlag
-	roamInProgress   bool
-	lastRoamStats    wpac.RoamStats
-	lastRoamAttempt  time.Time
-	hysteresisActive bool
-	lastTriggerRSSI  int
-	lastEvalTime     time.Time
-	entryScanned     bool
-	entryScannedCrit bool
-	fullScannedCrit  bool
-	roamingTier      roamingTier
-	scanState        scanState
-	unhealthyConn    bool
-	unhealthyLogged  bool
-	lastConnChange   time.Time
-	rssiRingBuffer   []int
-	rssiWriteIdx     int
-	richByBSSID      map[string]wpac.RichBSS
-	bssPenalties     []bssPenalty
-	ipcChan          chan ipc.ProcessState
-	snapshot         atomic.Pointer[ipc.ProcessState]
 }
 
 type scanState struct {

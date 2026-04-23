@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -72,6 +73,8 @@ func Proc(
 
 	//Start polling signal stats
 	slog.Info("Starting signal polling...")
+	//Start external roam monitor
+	go rc.monitorExternalRoams(c, ctx)
 	sigCh, sigErrCh := pollSignal(c, ctx, cfg.Timing.SigPollInterval)
 	var scErrCh <-chan error
 	cadenceTicker := time.NewTicker(cfg.BGScanInterval)
@@ -123,6 +126,19 @@ func Proc(
 				rc.updateSnapshot()
 				continue
 			}
+			if rc.wpaDisconnect {
+				if con.WPAState == "COMPLETED" {
+					slog.Info("Reconnected, handling wpa_supp config")
+					_, err = rc.handleWpaSuppConfig(c)
+					if err != nil {
+						if strings.Contains(err.Error(), "no connected ssid") {
+							continue
+						}
+						return fmt.Errorf("handleWpaSuppConfig: %w", err)
+					}
+					rc.wpaDisconnect = false
+				}
+			}
 			if rc.lastKnown.SSID != prevSSID && prevSSID != "" {
 				rc.updateSnapshot()
 				_, err = rc.handleWpaSuppConfig(c)
@@ -131,7 +147,7 @@ func Proc(
 				}
 				slog.Info("SSID change detected",
 					"prev_ssid", "new_ssid", prevSSID, rc.lastKnown.SSID)
-				os.Exit(1)
+				//os.Exit(1)
 			}
 			if rc.lastKnown.BSSID != prevBSSID && prevBSSID != "" {
 				slog.Info("Connection change detected",
@@ -143,10 +159,10 @@ func Proc(
 			if con.WPAState != "COMPLETED" {
 				if con.WPAState == "DISCONNECTED" {
 					rc.updateSnapshot()
-					slog.Info("wpa_state is DISCONNECTED, exiting")
-					os.Exit(1)
+					slog.Warn("wpa_state is DISCONNECTED")
+					rc.wpaDisconnect = true
 				}
-				slog.Info("wpa_state not COMPLETED, skipping poll",
+				slog.Debug("wpa_state not COMPLETED, skipping poll",
 					"wpa_state", con.WPAState)
 				rc.updateSnapshot()
 				continue
