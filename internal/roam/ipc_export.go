@@ -22,6 +22,7 @@ func (rc *roamContext) updateSnapshot() {
 	rc.scanState.mu.RUnlock()
 
 	newState := ipc.ProcessState{
+		Iface:           rc.iface,
 		SSID:            rc.ssid,
 		BSSList:         bssList,
 		ConnState:       connState,

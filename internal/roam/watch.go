@@ -13,13 +13,30 @@ func (rc *roamContext) monitorExternalRoams(
 	c *wpac.Client,
 	ctx context.Context) {
 	evCh, errCh := c.WatchForEvents(ctx)
+	// init local vars
 	var btmUsed bool
 	var beaconLoss bool
 	var watchingRoam bool
 	var start time.Time
 	var targetBSSID string
 	var finalBSSID string
-	message := "Spontaneous roam (not triggered by roamctl)"
+	var message string
+	// function log roam state and reset local vars
+	wrapUp := func() {
+		rc.lastRoamStats.TargetBSSID = targetBSSID
+		rc.lastRoamStats.FinalBSSID = finalBSSID
+		rc.lastRoamStats.Duration = time.Since(start)
+		rc.lastRoamStats.Message = message
+		rc.lastRoamStats.CompletedAt = time.Now()
+		targetBSSID = ""
+		finalBSSID = ""
+		message = "Spontaneous roam (not triggered by roamctl)"
+		btmUsed = false
+		beaconLoss = false
+		watchingRoam = false
+		rc.roamInProgress = false
+		rc.updateSnapshot()
+	}
 	for {
 		select {
 		case <-ctx.Done():
@@ -67,28 +84,15 @@ func (rc *roamContext) monitorExternalRoams(
 					}
 					var suc bool
 					if targetBSSID == finalBSSID {
-						suc = true
+						rc.lastRoamStats.Success = true
 						rc.roamResultFlag = success
 						rc.onConnectionChange()
 					} else {
-						suc = false
+						rc.lastRoamStats.Success = false
 						rc.roamResultFlag = failure
 					}
-					dur := time.Since(start)
 					rc.lastRoamStats.Success = suc
-					rc.lastRoamStats.TargetBSSID = targetBSSID
-					rc.lastRoamStats.FinalBSSID = finalBSSID
-					rc.lastRoamStats.Duration = dur
-					rc.lastRoamStats.Message = message
-					rc.lastRoamStats.CompletedAt = time.Now()
-					targetBSSID = ""
-					finalBSSID = ""
-					message = "Spontaneous roam (not triggered by roamctl)"
-					btmUsed = false
-					beaconLoss = false
-					watchingRoam = false
-					rc.roamInProgress = false
-					rc.updateSnapshot()
+					wrapUp()
 					continue
 				}
 				if strings.Contains(ev, "CTRL-EVENT-DISCONNECTED") {
@@ -96,19 +100,7 @@ func (rc *roamContext) monitorExternalRoams(
 					finalBSSID = ""
 					rc.roamResultFlag = failure
 					rc.lastRoamStats.Success = false
-					rc.lastRoamStats.TargetBSSID = targetBSSID
-					rc.lastRoamStats.FinalBSSID = finalBSSID
-					rc.lastRoamStats.Duration = time.Since(start)
-					rc.lastRoamStats.Message = message
-					rc.lastRoamStats.CompletedAt = time.Now()
-					targetBSSID = ""
-					finalBSSID = ""
-					message = "Spontaneous roam (not triggered by roamctl)"
-					btmUsed = false
-					beaconLoss = false
-					watchingRoam = false
-					rc.roamInProgress = false
-					rc.updateSnapshot()
+					wrapUp()
 					continue
 				}
 			}

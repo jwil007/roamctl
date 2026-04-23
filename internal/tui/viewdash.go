@@ -60,14 +60,14 @@ func (m model) connStatView() string {
 	l := titleStyle.Render
 
 	line1 := l("ssid: ") + fmt.Sprintf("%-15v", m.procState.SSID) +
-		l(" bssid: ") + fmt.Sprintf("%-19v", m.procState.ConnState.BSSID) +
-		l("Duration: ") + fmt.Sprintf("%-10v", m.procState.ConnState.ConnDuration)
+		l("iface: ") + fmt.Sprintf("%-10v", m.procState.Iface) +
+		l(" bssid: ") + fmt.Sprintf("%-19v", m.procState.ConnState.BSSID)
 
 	line2 := l("rssi: ") + fmt.Sprintf("%-5v", m.procState.ConnState.RSSI) +
 		l("channel: ") + fmt.Sprintf("%-5v", channel) +
 		l("width: ") + fmt.Sprintf("%-7v", m.procState.ConnState.ChannelWidth) +
-		l("band: ") + fmt.Sprintf("%-6v", band)
-
+		l("band: ") + fmt.Sprintf("%-6v", band) +
+		l("Duration: ") + fmt.Sprintf("%-10v", m.procState.ConnState.ConnDuration)
 	line3 := l("tx: ") + fmt.Sprintf(
 		"%-4v", m.procState.ConnState.TxBitrate/1000000) + l("Mbps  ") +
 		l("PHY: ") + fmt.Sprintf("%-4v", txPHY) +

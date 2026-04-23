@@ -5,6 +5,7 @@ import (
 )
 
 type ProcessState struct {
+	Iface   string
 	SSID    string
 	BSSList []BSS
 	ConnState
