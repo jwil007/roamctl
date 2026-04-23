@@ -36,7 +36,7 @@ sudo roamctl-tui
 ```
 View logs with:
 ```
-journalctl -u roamctl -f
+journalctl -u roamctl@<iface_name> -f
 ```
 Run in the foreground to see logs in stdout, or edit configuration settings by running `sudo roamctl` and appending any flags. See [Usage](#Usage) for details.
 ### Build from source
