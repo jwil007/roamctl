@@ -147,7 +147,7 @@ Use these arguments to make configuration changes or view debug logs. Run with `
 ### Uninstall
 This one line command removes all system files and systemctl service configuration.
 ```
-sudo systemctl stop 'roamctl@*'; sudo systemctl disable 'roamctl@*'; sudo rm -f /etc/systemd/system/roamctl@.service; sudo rm -rf /etc/roamctl; sudo rm -rf /run/roamctl; sudo rm -f /usr/local/bin/roamctl; sudo rm -f /usr/local/bin/roamctl-tui
+UNITS=$(systemctl list-units 'roamctl@*' --no-legend | awk '{print $1}'); [ -n "$UNITS" ] && sudo systemctl stop $UNITS && sudo systemctl disable $UNITS; sudo rm -f /etc/systemd/system/roamctl@.service; sudo systemctl daemon-reload; sudo rm -rf /etc/roamctl /run/roamctl /usr/local/bin/roamctl /usr/local/bin/roamctl-tui
 ```
 
 
