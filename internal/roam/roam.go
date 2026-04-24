@@ -146,6 +146,7 @@ func (rc *roamContext) checkRoam() bool {
 	}
 	if rc.currentAP.bssid == rc.candidateAP.bssid {
 		slog.Info("Current AP is best AP in scan data, skipping roam")
+		rc.roamResultFlag = noCandidates
 		return false
 	}
 	switch rc.roamingTier {

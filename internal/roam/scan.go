@@ -320,13 +320,11 @@ func (rc *roamContext) fullScanIfBSSIDsChanged() {
 	stable := rc.scanState.bssListStable
 	mode := rc.scanState.scanMode
 	rc.scanState.mu.RUnlock()
-	if rc.roamResultFlag == noCandidates {
-		if !stable && mode != fullScan {
-			slog.Info("BSS list has changed, requesting full channel scan",
-				"roam_tier", rc.roamingTier)
-			rc.scanState.mu.Lock()
-			rc.scanState.scanMode = fullScan
-			rc.scanState.mu.Unlock()
-		}
+	if !stable && mode != fullScan {
+		slog.Info("BSS list has changed, requesting full channel scan",
+			"roam_tier", rc.roamingTier)
+		rc.scanState.mu.Lock()
+		rc.scanState.scanMode = fullScan
+		rc.scanState.mu.Unlock()
 	}
 }
