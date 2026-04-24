@@ -31,6 +31,8 @@ func (rc *roamContext) smartScan(c *wpac.Client, ctx context.Context) error {
 	switch rc.scanState.scanMode {
 	case noScan:
 		return nil
+	case external:
+		return nil
 	case fastScan:
 		err := rc.runFastScan(c, ctx)
 		if err != nil {
@@ -159,9 +161,15 @@ func (rc *roamContext) executeScan(
 	rc.scanState.lastScanTime = completeTime
 	rc.scanState.cond.Broadcast()
 	rc.scanState.mu.Unlock()
-	rc.updateSnapshot()
 	slog.Info(
 		"Scan completed", "scan_mode", mode, "duration", duration)
+	slog.Info(
+		"Evaluating candidates", "roaming_tier", rc.roamingTier)
+	err = rc.prepScanResults(c)
+	if err != nil {
+		return fmt.Errorf("prepScanResults: %w", err)
+	}
+	rc.updateSnapshot()
 	return nil
 }
 
@@ -220,9 +228,7 @@ func (rc *roamContext) prepScanResults(c *wpac.Client) error {
 					bp.FailCount*rc.cfg.UnhealthyScoreMod
 			}
 		}
-		rc.updateSnapshot()
 	}
-
 	if rc.unhealthyConn {
 		slog.Info("Current AP connection unhealthy, penalizing its score",
 			"original_score", rc.currentAP.finalScore,
@@ -249,6 +255,8 @@ func (rc *roamContext) prepScanResults(c *wpac.Client) error {
 	rc.scanState.mu.Unlock()
 	slog.Debug("bssListStable", "bool", stable)
 	rc.candidateAP = rc.scoredAPs[0]
+	logScoredAPs(rc)
+	rc.updateSnapshot()
 	return nil
 }
 

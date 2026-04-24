@@ -45,10 +45,6 @@ func constructConnStatus(c *wpac.Client) (ConnectionStatus, error) {
 	if err != nil {
 		return ConnectionStatus{}, fmt.Errorf("c.getStatus: %w", err)
 	}
-	//signal, err := c.getSignal()
-	//if err != nil {
-	//	return ConnectionStatus{}, fmt.Errorf("c.getSignal(): %w", err)
-	//}
 	type staResult struct {
 		info netlink.STAInfo
 		err  error
@@ -103,7 +99,14 @@ func (rc *roamContext) evalTier() {
 		rc.roamingTier = noRoam
 		rc.scanState.mu.Lock()
 		if rc.scanState.scanMode != fullScan {
-			rc.scanState.scanMode = noScan
+			if rc.scanState.scanMode == external &&
+				!rc.scanState.scanInProgress {
+				rc.scanState.scanMode = noScan
+			}
+			if rc.scanState.scanMode == fastScan &&
+				!rc.scanState.scanInProgress {
+				rc.scanState.scanMode = noScan
+			}
 		}
 		rc.scanState.mu.Unlock()
 		slog.Debug("roaming tier noRoam",

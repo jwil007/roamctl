@@ -331,6 +331,10 @@ func (m model) scanModeContainer() string {
 		return containerStyle(lipgloss.Color("#aa00ff")).Render(
 			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
 				"Scan Mode"), "Full"))
+	case "external":
+		return containerStyle(lipgloss.Color("#ffee00")).Render(
+			lipgloss.JoinVertical(lipgloss.Left, headerStyle.Render(
+				"Scan Mode"), "External"))
 	}
 	return ""
 }

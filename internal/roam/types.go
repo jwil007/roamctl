@@ -142,6 +142,7 @@ const (
 	fastScan scanMode = iota
 	fullScan
 	noScan
+	external
 )
 
 func (s scanMode) String() string {
@@ -152,6 +153,8 @@ func (s scanMode) String() string {
 		return "full_scan"
 	case noScan:
 		return "scan_disabled"
+	case external:
+		return "external"
 	}
 	return ""
 }

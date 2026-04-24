@@ -100,14 +100,7 @@ func (rc *roamContext) evalAndAttemptRoam(
 	c *wpac.Client,
 	ctx context.Context) error {
 	if rc.checkIfNewScan() {
-		slog.Info(
-			"Evaluating candidates", "roaming_tier", rc.roamingTier)
-		err := rc.prepScanResults(c)
-		if err != nil {
-			return fmt.Errorf("prepScanResults: %w", err)
-		}
-		logScoredAPs(rc)
-		err = rc.attemptRoam(c, ctx)
+		err := rc.attemptRoam(c, ctx)
 		if err != nil {
 			return fmt.Errorf("attemptRoam: %w", err)
 		}
@@ -117,15 +110,17 @@ func (rc *roamContext) evalAndAttemptRoam(
 
 func (rc *roamContext) attemptRoam(c *wpac.Client, ctx context.Context) error {
 	if rc.checkRoam() {
-		err := rc.roamToCandidate(c, ctx)
-		if err != nil {
-			return fmt.Errorf("c.roamToCandidate: %w", err)
+		if !rc.roamInProgress {
+			err := rc.roamToCandidate(c, ctx)
+			if err != nil {
+				return fmt.Errorf("c.roamToCandidate: %w", err)
+			}
+		} else {
+			//no candidate APs
+			rc.roamResultFlag = noCandidates
+			//slog.Debug("No candidate AP above roaming threshold, returning")
+			return nil
 		}
-	} else {
-		//no candidate APs
-		rc.roamResultFlag = noCandidates
-		//slog.Debug("No candidate AP above roaming threshold, returning")
-		return nil
 	}
 	return nil
 }
