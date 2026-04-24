@@ -78,30 +78,6 @@ func initConfigFile(template *string, iface *string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("os.WriteFile: %w", err)
 		}
-		//case "macos":
-		//	slog.Info("Overwriting config.toml to MacOS template...")
-		//	err := os.WriteFile(configPath,
-		//		[]byte(strings.Replace(macOSTemplate, `"wlan0"`, `"`+iface+`"`, 1)), 0755)
-		//	if err != nil {
-		//		return "", fmt.Errorf("os.WriteFile: %w", err)
-		//	}
-		//case "ios":
-		//	slog.Info("Overwriting config.toml to iOS template...")
-		//	err := os.WriteFile(configPath,
-		//		[]byte(strings.Replace(iOSTemplate, `"wlan0"`, `"`+iface+`"`, 1)), 0755)
-		//	if err != nil {
-		//		return "", fmt.Errorf("os.WriteFile: %w", err)
-		//	}
-		//case "":
-		//	f, err := os.ReadFile(configPath)
-		//	if err != nil {
-		//		return "", fmt.Errorf("os.ReadFile: %w", err)
-		//	}
-		//	updated := strings.Replace(string(f), `"wlan0"`, `"`+iface+`"`, 1)
-		//	err = os.WriteFile(configPath, []byte(updated), 0755)
-		//	if err != nil {
-		//		return "", fmt.Errorf("os.WriteFile: %w", err)
-		//	}
 	}
 	return configPath, nil
 }
@@ -114,18 +90,3 @@ func parseConfig(configPath string) (*Config, error) {
 	}
 	return &cfg, nil
 }
-
-//func readIfaceFromFile(path string) string {
-//	var c struct {
-//		Preferences struct {
-//			Interface string
-//		}
-//	}
-//	if _, err := toml.DecodeFile(path, &c); err != nil {
-//		return "wlan0"
-//	}
-//	if c.Preferences.Interface == "" {
-//		return "wlan0"
-//	}
-//	return c.Preferences.Interface
-//}
