@@ -16,7 +16,7 @@ func pollSignal(
 	c *wpac.Client,
 	ctx context.Context,
 	interval time.Duration) (<-chan ConnectionStatus, <-chan error) {
-	connStatus := make(chan ConnectionStatus)
+	connStatus := make(chan ConnectionStatus, 1)
 	errc := make(chan error, 1)
 	go func() {
 		ticker := time.NewTicker(interval)
@@ -33,7 +33,10 @@ func pollSignal(
 					errc <- err
 					return
 				}
-				connStatus <- s
+				select {
+				case connStatus <- s:
+				default:
+				}
 			}
 		}
 	}()
