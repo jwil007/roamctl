@@ -118,7 +118,12 @@ func (rc *roamContext) evalTier() {
 		rc.roamingTier = opportunistic
 		rc.scanState.mu.Lock()
 		if rc.scanState.scanMode != fullScan {
-			rc.scanState.scanMode = fastScan
+			if rc.scanState.scanMode != fullScan {
+				if !(rc.scanState.scanMode == external &&
+					rc.scanState.scanInProgress) {
+					rc.scanState.scanMode = fastScan
+				}
+			}
 		}
 		rc.scanState.mu.Unlock()
 		slog.Debug("roaming tier opportunistic",
@@ -127,7 +132,12 @@ func (rc *roamContext) evalTier() {
 		rc.roamingTier = active
 		rc.scanState.mu.Lock()
 		if rc.scanState.scanMode != fullScan {
-			rc.scanState.scanMode = fastScan
+			if rc.scanState.scanMode != fullScan {
+				if !(rc.scanState.scanMode == external &&
+					rc.scanState.scanInProgress) {
+					rc.scanState.scanMode = fastScan
+				}
+			}
 		}
 		rc.scanState.mu.Unlock()
 		slog.Debug("roaming tier active",
@@ -136,7 +146,12 @@ func (rc *roamContext) evalTier() {
 		rc.roamingTier = critical
 		rc.scanState.mu.Lock()
 		if rc.scanState.scanMode != fullScan {
-			rc.scanState.scanMode = fastScan
+			if rc.scanState.scanMode != fullScan {
+				if !(rc.scanState.scanMode == external &&
+					rc.scanState.scanInProgress) {
+					rc.scanState.scanMode = fastScan
+				}
+			}
 		}
 		rc.scanState.mu.Unlock()
 		slog.Debug("roaming tier critical",
