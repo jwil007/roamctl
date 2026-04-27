@@ -51,6 +51,7 @@ func (rc *roamContext) monitorExternalEvents(
 			extScanRunning = false
 			rc.scanState.mu.Lock()
 			rc.scanState.scanInProgress = false
+			rc.scanState.cond.Broadcast()
 			rc.scanState.mu.Unlock()
 		case ev := <-evCh:
 			// logic for external scans
@@ -78,6 +79,7 @@ func (rc *roamContext) monitorExternalEvents(
 					rc.scanState.scanInProgress = false
 					rc.scanState.lastScanTime = time.Now()
 					rc.scanState.scanDuration = time.Since(scanStart)
+					rc.scanState.cond.Broadcast()
 					rc.scanState.mu.Unlock()
 					extScanRunning = false
 					rc.updateSnapshot()
