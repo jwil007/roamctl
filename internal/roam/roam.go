@@ -28,8 +28,8 @@ func (rc *roamContext) handleActiveRoam(
 	ctx context.Context) error {
 	//scan on entry if flag unset
 	if !rc.entryScanned {
-		slog.Info("Active roaming entered, running fast scan")
-		err := rc.runFastScan(c, ctx)
+		slog.Info("Active roaming entered, running scan...")
+		err := rc.smartScan(c, ctx)
 		if err != nil && !errors.Is(err, ErrScanRetryLimit) {
 			return fmt.Errorf("runFastScan: %w", err)
 		}
@@ -49,8 +49,8 @@ func (rc *roamContext) handleCriticalRoam(
 	ctx context.Context) error {
 	//scan on entry if flag unset
 	if !rc.entryScannedCrit {
-		slog.Info("Critical roaming entered, running fast scan")
-		err := rc.runFastScan(c, ctx)
+		slog.Info("Critical roaming entered, running scan...")
+		err := rc.smartScan(c, ctx)
 		if err != nil && !errors.Is(err, ErrScanRetryLimit) {
 			return fmt.Errorf("runFastScan: %w", err)
 		}

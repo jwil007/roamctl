@@ -112,7 +112,9 @@ func Proc(
 			var prevFreq int
 			if rc.lastKnown != nil {
 				prevBSSID = rc.lastKnown.BSSID
-				prevSSID = rc.lastKnown.SSID
+				if rc.lastKnown.SSID != "" {
+					prevSSID = rc.lastKnown.SSID
+				}
 				prevFreq = rc.lastKnown.Freq
 			}
 			if con.BSSID != "" && con.RSSI < -1 {
@@ -128,6 +130,18 @@ func Proc(
 				slog.Debug("SSID empty, skipping poll cycle")
 				rc.updateSnapshot()
 				continue
+			}
+			if rc.lastKnown.SSID != prevSSID {
+				slog.Info("SSID change detected",
+					"prev_ssid", prevSSID, "new_ssid", rc.lastKnown.SSID)
+				_, err = rc.handleWpaSuppConfig(c)
+				if err != nil {
+					return fmt.Errorf("handleWpaSuppConfig: %w", err)
+				}
+				rc.scanState.mu.Lock()
+				rc.scanState.scanMode = fullScan
+				rc.scanState.mu.Unlock()
+				rc.updateSnapshot()
 			}
 			if rc.lastKnown.WPAState != "COMPLETED" {
 				if rc.lastKnown.WPAState == "DISCONNECTED" {
@@ -152,15 +166,6 @@ func Proc(
 					}
 					rc.wpaDisconnect = false
 				}
-			}
-			if rc.lastKnown.SSID != prevSSID {
-				rc.updateSnapshot()
-				_, err = rc.handleWpaSuppConfig(c)
-				if err != nil {
-					return fmt.Errorf("handleWpaSuppConfig: %w", err)
-				}
-				slog.Info("SSID change detected",
-					"prev_ssid", prevSSID, "new_ssid", rc.lastKnown.SSID)
 			}
 			if rc.lastKnown.BSSID != prevBSSID && prevBSSID != "" {
 				slog.Info("Connection change detected",
