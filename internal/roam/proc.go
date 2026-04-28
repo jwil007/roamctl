@@ -117,7 +117,7 @@ func Proc(
 				}
 				prevFreq = rc.lastKnown.Freq
 			}
-			if con.BSSID != "" && con.RSSI < -1 {
+			if con.BSSID != "" && con.RSSI < -1 && con.SSID != "" {
 				rc.lastKnown = &con
 			}
 			if rc.lastKnown == nil {
