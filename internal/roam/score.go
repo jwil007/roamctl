@@ -22,19 +22,19 @@ func scoreAll(aps []wpac.RichBSS, cfg *config.Config) []scoredBSS {
 
 func score(bss wpac.RichBSS, cfg *config.Config) scoredBSS {
 	if bss.RSSI >= cfg.RSSIKnee {
-		rs := cfg.ScoreWeights.RSSI * scoreRSSI(bss.RSSI, cfg) / 100
-		ss := cfg.SNR * scoreSNR(bss.SNR, cfg) / 100
-		bs := cfg.Band * scoreBand(bss.Band, cfg) / 100
-		cws := cfg.ChannelWidth * scoreCW(bss.ChannelWidth, cfg) / 100
-		us := cfg.QBSSUtil * scoreUtil(bss.QBSSUtil) / 100
-		ps := cfg.PHYType * scorePhy(bss.PHYType, cfg) / 100
+		rs := cfg.ScoreWeights.RSSI * scoreRSSI(bss.RSSI, cfg)
+		ss := cfg.SNR * scoreSNR(bss.SNR, cfg)
+		bs := cfg.Band * scoreBand(bss.Band, cfg)
+		cws := cfg.ChannelWidth * scoreCW(bss.ChannelWidth, cfg)
+		us := cfg.QBSSUtil * scoreUtil(bss.QBSSUtil)
+		ps := cfg.PHYType * scorePhy(bss.PHYType, cfg)
 		totalWeight := cfg.ScoreWeights.RSSI +
 			cfg.SNR + cfg.Band + cfg.ChannelWidth + cfg.QBSSUtil + cfg.PHYType
 		scoreSum := rs + ss + bs + cws + us + ps
 		if totalWeight == 0 {
 			return scoredBSS{}
 		}
-		finalScore := scoreSum * 100 / totalWeight
+		finalScore := scoreSum * 100 / (totalWeight * 100)
 		return scoredBSS{
 			bssid:      bss.BSSID,
 			freq:       bss.Freq,
@@ -57,19 +57,19 @@ func score(bss wpac.RichBSS, cfg *config.Config) scoredBSS {
 	}
 	// below knee
 	rs := rssiMultiplier(bss.RSSI, cfg)
-	kneeRS := cfg.ScoreWeights.RSSI * scoreRSSI(cfg.RSSIKnee, cfg) / 100
-	ss := cfg.SNR * scoreSNR(bss.SNR, cfg) / 100
-	bs := cfg.Band * scoreBand(bss.Band, cfg) / 100
-	cws := cfg.ChannelWidth * scoreCW(bss.ChannelWidth, cfg) / 100
-	us := cfg.QBSSUtil * scoreUtil(bss.QBSSUtil) / 100
-	ps := cfg.PHYType * scorePhy(bss.PHYType, cfg) / 100
+	kneeRS := cfg.ScoreWeights.RSSI * scoreRSSI(cfg.RSSIKnee, cfg)
+	ss := cfg.SNR * scoreSNR(bss.SNR, cfg)
+	bs := cfg.Band * scoreBand(bss.Band, cfg)
+	cws := cfg.ChannelWidth * scoreCW(bss.ChannelWidth, cfg)
+	us := cfg.QBSSUtil * scoreUtil(bss.QBSSUtil)
+	ps := cfg.PHYType * scorePhy(bss.PHYType, cfg)
 	totalWeight := cfg.ScoreWeights.RSSI +
 		cfg.SNR + cfg.Band + cfg.ChannelWidth + cfg.QBSSUtil + cfg.PHYType
 	scoreSum := kneeRS + ss + bs + cws + us + ps
 	if totalWeight == 0 {
 		return scoredBSS{}
 	}
-	kneeCeiling := scoreSum * 100 / totalWeight
+	kneeCeiling := scoreSum * 100 / (totalWeight * 100)
 	finalScore := int(rs * float64(kneeCeiling))
 	return scoredBSS{
 		bssid:      bss.BSSID,
