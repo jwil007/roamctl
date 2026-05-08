@@ -164,7 +164,7 @@ var reasonCodes = map[int]string{
 	11: "Supported channels element is unacceptable",
 	12: "Disassociated due to BSS transition",
 	13: "Invalid information element",
-	14: "MIC failure (Michael)",
+	14: "MIC failure",
 	15: "4-Way handshake timed out",
 	16: "Group key update timed out",
 	17: "IE in 4-Way handshake differs from (re)association request",
