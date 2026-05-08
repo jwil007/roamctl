@@ -34,7 +34,7 @@ func score(bss wpac.RichBSS, cfg *config.Config) scoredBSS {
 		if totalWeight == 0 {
 			return scoredBSS{}
 		}
-		finalScore := scoreSum * totalWeight
+		finalScore := scoreSum / totalWeight
 		return scoredBSS{
 			bssid:      bss.BSSID,
 			freq:       bss.Freq,
