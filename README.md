@@ -59,6 +59,15 @@ The command below will add the path config for your default shell. After running
 
 </details>
 
+### Omarchy
+On [Omarchy](https://omarchy.org), install the [omarchy-roamctl](https://github.com/jwil007/omarchy-roamctl) bar widget:
+```
+omarchy plugin add https://github.com/jwil007/omarchy-roamctl.git
+```
+Open the widget's panel and click **Install roamctl**. It installs the latest release and the systemd service, and gives the `wheel` group read access to the IPC socket so neither the widget nor `roamctl-tui` needs sudo. From the panel you can start and stop roamctl, open the TUI, edit the config, and follow the logs. It also shows the live roaming tier, RSSI history, and scored APs, and sends a notification after each roam.
+
+<img src="https://raw.githubusercontent.com/jwil007/omarchy-roamctl/main/docs/panel.png" alt="roamctl Omarchy panel" width="360">
+
 ## Algorithm details
 The roaming algorithm consists continuous signal polling, concurrent background scanning, and four different tiers based on signal metrics to determine roaming behavior.
 
