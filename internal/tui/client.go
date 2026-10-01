@@ -4,26 +4,20 @@ import (
 	"bufio"
 	"fmt"
 	"net"
-	"os"
-	"strconv"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 )
 
 func connect(iface *string) (*client, error) {
-	localPath := "/tmp/roamctl-tui_" + strconv.Itoa(os.Getpid())
 	remotePath := "/run/roamctl/" + *iface + ".sock"
-	laddr := &net.UnixAddr{Name: localPath, Net: "unix"}
 	raddr := &net.UnixAddr{Name: remotePath, Net: "unix"}
-	_ = os.Remove(localPath)
-	c, err := net.DialUnix("unix", laddr, raddr)
+	c, err := net.DialUnix("unix", nil, raddr)
 	if err != nil {
 		return nil, fmt.Errorf("net.DialUnix: %w", err)
 	}
 	return &client{
-		conn:      c,
-		localPath: localPath,
+		conn: c,
 	}, nil
 }
 
@@ -32,7 +26,6 @@ func (c *client) close() {
 		return
 	}
 	_ = c.conn.Close()
-	_ = os.Remove(c.localPath)
 }
 
 func readCmd(scanner *bufio.Scanner) tea.Cmd {

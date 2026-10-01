@@ -65,7 +65,7 @@ func handleConnections(ctx context.Context, l net.Listener) <-chan net.Conn {
 				return
 			}
 			if err != nil {
-				slog.Error("Listener Accept err:", err)
+				slog.Error("Listener Accept error", "err", err)
 				continue
 			}
 			connCh <- conn
