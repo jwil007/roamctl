@@ -109,9 +109,14 @@ func (rc *roamContext) evalAndAttemptRoam(
 }
 
 func (rc *roamContext) attemptRoam(c *wpac.Client, ctx context.Context) error {
-	if rc.checkRoam() {
+	// Take one consistent view of the scored APs. A scan goroutine may rescore
+	// (and replace candidateAP) at any time, including during the roam below.
+	rc.apMu.Lock()
+	current, candidate := rc.currentAP, rc.candidateAP
+	rc.apMu.Unlock()
+	if rc.checkRoam(current, candidate) {
 		if !rc.roamInProgress {
-			err := rc.roamToCandidate(c, ctx)
+			err := rc.roamToCandidate(c, ctx, candidate)
 			if err != nil {
 				return fmt.Errorf("c.roamToCandidate: %w", err)
 			}
@@ -125,16 +130,16 @@ func (rc *roamContext) attemptRoam(c *wpac.Client, ctx context.Context) error {
 	return nil
 }
 
-func (rc *roamContext) checkRoam() bool {
+func (rc *roamContext) checkRoam(current, candidate scoredBSS) bool {
 	//various checks to gate roam attempt
 	rc.checkRSSIHysteresis()
 	if rc.hysteresisActive {
 		return false
 	}
-	if rc.candidateAP.finalScore-rc.currentAP.finalScore >= rc.cfg.FairDelta*2 {
+	if candidate.finalScore-current.finalScore >= rc.cfg.FairDelta*2 {
 		slog.Info("Score delta overrides hysteresis, roam attempt allowed",
 			"measured_delta",
-			rc.candidateAP.finalScore-rc.currentAP.finalScore,
+			candidate.finalScore-current.finalScore,
 			"override_threshold", rc.cfg.FairDelta*2)
 		rc.hysteresisActive = false
 	} else if rc.hysteresisActive {
@@ -144,7 +149,7 @@ func (rc *roamContext) checkRoam() bool {
 			"lower_bound", rc.lastTriggerRSSI-rc.cfg.RSSIHysteresisDown)
 		return false
 	}
-	if rc.currentAP.bssid == rc.candidateAP.bssid {
+	if current.bssid == candidate.bssid {
 		slog.Info("Current AP is best AP in scan data, skipping roam")
 		rc.roamResultFlag = noCandidates
 		return false
@@ -153,51 +158,51 @@ func (rc *roamContext) checkRoam() bool {
 	case unknownTier:
 	case noRoam:
 	case opportunistic:
-		if rc.candidateAP.finalScore-rc.cfg.FairDelta >=
-			rc.currentAP.finalScore {
+		if candidate.finalScore-rc.cfg.FairDelta >=
+			current.finalScore {
 			slog.Info("Score delta above threshold, attempting roam...",
-				"candidate_bssid", rc.candidateAP.bssid,
+				"candidate_bssid", candidate.bssid,
 				"measured_delta",
-				rc.candidateAP.finalScore-rc.currentAP.finalScore,
+				candidate.finalScore-current.finalScore,
 				"required_delta", rc.cfg.FairDelta)
 			return true
 		}
 		slog.Info("Score delta below threshold, no roam",
-			"candidate_bssid", rc.candidateAP.bssid,
+			"candidate_bssid", candidate.bssid,
 			"measured_delta",
-			rc.candidateAP.finalScore-rc.currentAP.finalScore,
+			candidate.finalScore-current.finalScore,
 			"required_delta", rc.cfg.FairDelta)
 		return false
 	case active:
-		if rc.candidateAP.finalScore-rc.cfg.DegradedDelta >=
-			rc.currentAP.finalScore {
+		if candidate.finalScore-rc.cfg.DegradedDelta >=
+			current.finalScore {
 			slog.Info("Score delta above threshold, attempting roam...",
-				"candidate_bssid", rc.candidateAP.bssid,
+				"candidate_bssid", candidate.bssid,
 				"measured_delta",
-				rc.candidateAP.finalScore-rc.currentAP.finalScore,
+				candidate.finalScore-current.finalScore,
 				"required_delta", rc.cfg.DegradedDelta)
 			return true
 		}
 		slog.Info("Score delta below threshold, no roam",
-			"candidate_bssid", rc.candidateAP.bssid,
+			"candidate_bssid", candidate.bssid,
 			"measured_delta",
-			rc.candidateAP.finalScore-rc.currentAP.finalScore,
+			candidate.finalScore-current.finalScore,
 			"required_delta", rc.cfg.DegradedDelta)
 		return false
 	case critical:
-		if rc.candidateAP.finalScore-rc.cfg.CriticalDelta >=
-			rc.currentAP.finalScore {
+		if candidate.finalScore-rc.cfg.CriticalDelta >=
+			current.finalScore {
 			slog.Info("Score delta above threshold, attempting roam...",
-				"candidate_bssid", rc.candidateAP.bssid,
+				"candidate_bssid", candidate.bssid,
 				"measured_delta",
-				rc.candidateAP.finalScore-rc.currentAP.finalScore,
+				candidate.finalScore-current.finalScore,
 				"required_delta",
 				rc.cfg.CriticalDelta)
 			return true
 		}
 		slog.Info("Score delta below threshold, no roam",
-			"candidate_bssid", rc.candidateAP.bssid,
-			"measured_delta", rc.candidateAP.finalScore-rc.currentAP.finalScore,
+			"candidate_bssid", candidate.bssid,
+			"measured_delta", candidate.finalScore-current.finalScore,
 			"required_delta", rc.cfg.CriticalDelta)
 		return false
 	default:
@@ -209,31 +214,32 @@ func (rc *roamContext) checkRoam() bool {
 func (rc *roamContext) roamToCandidate(
 	c *wpac.Client,
 	ctx context.Context,
+	candidate scoredBSS,
 ) error {
-	if rc.candidateAP.bssid == "" {
+	if candidate.bssid == "" {
 		return fmt.Errorf("roamToCandidate: roam aborted, empty BSSID")
 	}
 	rc.roamInProgress = true
 	rc.updateSnapshot()
-	result, err := c.Roam(ctx, rc.candidateAP.bssid)
+	result, err := c.Roam(ctx, candidate.bssid)
 	if err != nil {
 		if strings.Contains(err.Error(), "timed out waiting for event") {
 			slog.Error("Roam attempt timed out")
 			result.Message = "Roam attempt timed out"
 			rc.lastRoamStats.CompletedAt = time.Now()
-			rc.onRoamFailure(result)
+			rc.onRoamFailure(result, candidate)
 			return nil
 		}
 		rc.roamResultFlag = unknown
 		rc.unhealthyConn = false
-		return fmt.Errorf("c.Roam(%v): %w", rc.candidateAP.bssid, err)
+		return fmt.Errorf("c.Roam(%v): %w", candidate.bssid, err)
 	}
 	switch result.Success {
 	case true:
-		rc.onRoamSuccess(result)
+		rc.onRoamSuccess(result, candidate)
 		return nil
 	case false:
-		rc.onRoamFailure(result)
+		rc.onRoamFailure(result, candidate)
 		return nil
 	default:
 		panic(fmt.Sprintf(
@@ -256,12 +262,12 @@ func (rc *roamContext) checkRSSIHysteresis() {
 	return
 }
 
-func (rc *roamContext) onRoamSuccess(result wpac.RoamStats) {
+func (rc *roamContext) onRoamSuccess(result wpac.RoamStats, candidate scoredBSS) {
 	slog.Info(green.Render("ROAM SUCCESS"),
-		"bssid", rc.candidateAP.bssid,
-		"rssi", rc.candidateAP.rssi,
-		"band", rc.candidateAP.band,
-		"score", rc.candidateAP.finalScore,
+		"bssid", candidate.bssid,
+		"rssi", candidate.rssi,
+		"band", candidate.band,
+		"score", candidate.finalScore,
 		"duration", result.Duration,
 		"message", result.Message)
 	rc.lastRoamStats = result
@@ -275,7 +281,7 @@ func (rc *roamContext) onRoamSuccess(result wpac.RoamStats) {
 		"current", rc.lastKnown.RSSI,
 		"upper", rc.lastTriggerRSSI+rc.cfg.RSSIHysteresisUp,
 		"lower", rc.lastTriggerRSSI-rc.cfg.RSSIHysteresisDown)
-	err := rc.recordBSSPenalty(false)
+	err := rc.recordBSSPenalty(false, candidate)
 	if err != nil {
 		slog.Error("Error updating BSS Penalty file",
 			"err", err)
@@ -284,12 +290,12 @@ func (rc *roamContext) onRoamSuccess(result wpac.RoamStats) {
 	rc.updateSnapshot()
 }
 
-func (rc *roamContext) onRoamFailure(result wpac.RoamStats) {
+func (rc *roamContext) onRoamFailure(result wpac.RoamStats, candidate scoredBSS) {
 	slog.Warn(red.Render("ROAM FAILURE"),
-		"bssid", rc.candidateAP.bssid,
-		"rssi", rc.candidateAP.rssi,
-		"band", rc.candidateAP.band,
-		"score", rc.candidateAP.finalScore,
+		"bssid", candidate.bssid,
+		"rssi", candidate.rssi,
+		"band", candidate.band,
+		"score", candidate.finalScore,
 		"duration", result.Duration,
 		"message", result.Message)
 	rc.lastRoamStats = result
@@ -297,8 +303,8 @@ func (rc *roamContext) onRoamFailure(result wpac.RoamStats) {
 	rc.lastRoamAttempt = time.Now()
 	rc.unhealthyConn = false
 	slog.Info("Logging failed roam attempt",
-		"bssid", rc.candidateAP.bssid)
-	err := rc.recordBSSPenalty(true)
+		"bssid", candidate.bssid)
+	err := rc.recordBSSPenalty(true, candidate)
 	if err != nil {
 		slog.Error("Error updating BSS Penalty file",
 			"err", err)

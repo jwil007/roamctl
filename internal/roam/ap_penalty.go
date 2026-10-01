@@ -37,12 +37,16 @@ func (rc *roamContext) readBSSPenaltyFile() error {
 	return nil
 }
 
-func (rc *roamContext) recordBSSPenalty(fail bool) error {
+// recordBSSPenalty records (fail) or clears a roam failure for candidate, the
+// AP the roam was actually attempted to.
+func (rc *roamContext) recordBSSPenalty(fail bool, candidate scoredBSS) error {
+	rc.apMu.Lock()
+	defer rc.apMu.Unlock()
 	matched := false
 	for i, bp := range rc.bssPenalties {
-		if bp.BSSID == rc.candidateAP.bssid &&
+		if bp.BSSID == candidate.bssid &&
 			bp.SSID == rc.ssid &&
-			bp.Band == rc.candidateAP.band {
+			bp.Band == candidate.band {
 			if fail {
 				rc.bssPenalties[i].FailCount++
 				rc.bssPenalties[i].LastFail = time.Now()
@@ -58,9 +62,9 @@ func (rc *roamContext) recordBSSPenalty(fail bool) error {
 	}
 	if !matched && fail {
 		rc.bssPenalties = append(rc.bssPenalties, bssPenalty{
-			BSSID:     rc.candidateAP.bssid,
+			BSSID:     candidate.bssid,
 			SSID:      rc.ssid,
-			Band:      rc.candidateAP.band,
+			Band:      candidate.band,
 			FailCount: 1,
 			LastFail:  time.Now(),
 		})
