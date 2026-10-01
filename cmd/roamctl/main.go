@@ -83,7 +83,7 @@ func run() error {
 		logLevel = slog.LevelInfo
 	}
 	defer func() {
-		_ = os.Remove("/run/roamctl/roamctl.pid")
+		_ = os.Remove("/run/roamctl/" + *iface + ".pid")
 	}()
 
 	//check if process already running
@@ -93,7 +93,7 @@ func run() error {
 	}
 	if running {
 		fmt.Printf("roamctl daemon is already running at PID %d.\n"+
-			"Stop it first with sudo systemctl stop roamctl", pid)
+			"Stop it first with sudo systemctl stop roamctl@%s\n", pid, *iface)
 		os.Exit(0)
 	}
 
@@ -113,9 +113,9 @@ func run() error {
 		return fmt.Errorf("cfg.Validate: %w", err)
 	}
 	if *edit == true || *template != "" {
-		fmt.Println("Changes saved to file at /etc/roamctl/config.toml.\n" +
-			"If running roamctl as a daemon, " +
-			"apply changes with sudo systemctl restart roamctl")
+		fmt.Printf("Changes saved to file at /etc/roamctl/%s.toml.\n"+
+			"If running roamctl as a daemon, "+
+			"apply changes with sudo systemctl restart roamctl@%s\n", *iface, *iface)
 		os.Exit(0)
 	}
 

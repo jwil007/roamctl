@@ -171,7 +171,7 @@ The version of wpa_supplicant that ships with most Debian based distros (v2.10) 
 
 ## Configuration
 
-All config parameters, including interface specification and scoring weights for the roaming algorithm, are set through the toml file at `~/.config/roamctl/<iface>.toml`
+All config parameters, including interface specification and scoring weights for the roaming algorithm, are set through the toml file at `/etc/roamctl/<iface>.toml`
 
 For convenience, running with the `-edit` flag opens a text editor to edit the file directly.
 

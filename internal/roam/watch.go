@@ -132,7 +132,6 @@ func (rc *roamContext) monitorExternalEvents(
 							finalBSSID = fld
 						}
 					}
-					var suc bool
 					if targetBSSID == finalBSSID {
 						rc.lastRoamStats.Success = true
 						rc.roamResultFlag = success
@@ -141,7 +140,6 @@ func (rc *roamContext) monitorExternalEvents(
 						rc.lastRoamStats.Success = false
 						rc.roamResultFlag = failure
 					}
-					rc.lastRoamStats.Success = suc
 					wrapUp()
 					continue
 				}

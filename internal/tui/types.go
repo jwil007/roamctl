@@ -11,8 +11,7 @@ import (
 )
 
 type client struct {
-	conn      *net.UnixConn
-	localPath string
+	conn *net.UnixConn
 }
 
 type model struct {

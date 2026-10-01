@@ -28,7 +28,10 @@ func (rc *roamContext) runScanConcurrent(
 }
 
 func (rc *roamContext) smartScan(c *wpac.Client, ctx context.Context) error {
-	switch rc.scanState.scanMode {
+	rc.scanState.mu.RLock()
+	mode := rc.scanState.scanMode
+	rc.scanState.mu.RUnlock()
+	switch mode {
 	case noScan:
 		return nil
 	case external:
@@ -44,7 +47,7 @@ func (rc *roamContext) smartScan(c *wpac.Client, ctx context.Context) error {
 			return fmt.Errorf("rc.runFullScan: %w", err)
 		}
 	default:
-		panic(fmt.Sprintf("unknown scan mode: %d", rc.scanState.scanMode))
+		panic(fmt.Sprintf("unknown scan mode: %d", mode))
 	}
 	return nil
 }
