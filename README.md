@@ -64,7 +64,12 @@ On [Omarchy](https://omarchy.org), install the [omarchy-roamctl](https://github.
 ```
 omarchy plugin add https://github.com/jwil007/omarchy-roamctl.git
 ```
-Open the widget's panel and click **Install roamctl**. It installs the latest release and the systemd service, and gives the `wheel` group read access to the IPC socket so neither the widget nor `roamctl-tui` needs sudo. From the panel you can start and stop roamctl, open the TUI, edit the config, and follow the logs. It also shows the live roaming tier, RSSI history, and scored APs, and sends a notification after each roam.
+Open the widget's panel and click **Install roamctl**. It installs the latest release and the systemd service, and sets up permissions so neither the widget nor `roamctl-tui` needs sudo. From the bar you get:
+
+- the live roaming tier, RSSI history with your tier floors, and every scored candidate AP
+- one-click enable/disable, the TUI, and logs
+- in-panel tuning of tier floors, score deltas, and band preference, validated against roamctl's rules and applied with an automatic restart
+- a CSV export of every roam with the scored scan list roamctl decided from and roamctl's own log lines for that roam
 
 <img src="https://raw.githubusercontent.com/jwil007/omarchy-roamctl/main/docs/panel.png" alt="roamctl Omarchy panel" width="360">
 
