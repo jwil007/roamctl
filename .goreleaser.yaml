@@ -40,6 +40,12 @@ archives:
     name_template: >-
       roamctl_
       {{- .Arch }}
+    # Ship the unit inside the checksummed archive so installers don't have
+    # to fetch it separately, unverified.
+    files:
+      - LICENSE
+      - README.md
+      - systemd/roamctl@.service
   - id: roamctl-tui
     ids: [roamctl-tui]
     formats: [tar.gz]
