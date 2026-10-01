@@ -155,25 +155,32 @@ func (rc *roamContext) executeScan(
 	}
 	duration := time.Since(start)
 	completeTime := time.Now()
+	slog.Info(
+		"Scan completed", "scan_mode", mode, "duration", duration)
+	slog.Info(
+		"Evaluating candidates", "roaming_tier", rc.roamingTier)
+	// Score before marking the scan complete: waiters in executeScan and the
+	// main loop's checkIfNewScan act on lastScanTime, and must not see the
+	// new scan until candidateAP/currentAP reflect it.
+	prepErr := rc.prepScanResults(c)
 	rc.scanState.mu.Lock()
 	rc.scanState.scanInProgress = false
 	rc.scanState.scanDuration = duration
 	rc.scanState.lastScanTime = completeTime
 	rc.scanState.cond.Broadcast()
 	rc.scanState.mu.Unlock()
-	slog.Info(
-		"Scan completed", "scan_mode", mode, "duration", duration)
-	slog.Info(
-		"Evaluating candidates", "roaming_tier", rc.roamingTier)
-	err = rc.prepScanResults(c)
-	if err != nil {
-		return fmt.Errorf("prepScanResults: %w", err)
-	}
 	rc.updateSnapshot()
+	if prepErr != nil {
+		return fmt.Errorf("prepScanResults: %w", prepErr)
+	}
 	return nil
 }
 
+// prepScanResults scores the latest scan results and updates the AP state
+// under apMu. It runs on scan goroutines, concurrently with the main loop.
 func (rc *roamContext) prepScanResults(c *wpac.Client) error {
+	rc.apMu.Lock()
+	defer rc.apMu.Unlock()
 	rc.currentAP = scoredBSS{}
 	err := rc.readBSSPenaltyFile()
 	if err != nil {
@@ -256,7 +263,6 @@ func (rc *roamContext) prepScanResults(c *wpac.Client) error {
 	slog.Debug("bssListStable", "bool", stable)
 	rc.candidateAP = rc.scoredAPs[0]
 	logScoredAPs(rc)
-	rc.updateSnapshot()
 	return nil
 }
 

@@ -75,18 +75,20 @@ func (rc *roamContext) monitorExternalEvents(
 				if strings.Contains(ev, "CTRL-EVENT-SCAN-RESULTS") {
 					slog.Info("External scan finished, processing results...")
 					timeout.Stop()
-					rc.scanState.mu.Lock()
-					rc.scanState.scanInProgress = false
-					rc.scanState.lastScanTime = time.Now()
-					rc.scanState.scanDuration = time.Since(scanStart)
-					rc.scanState.cond.Broadcast()
-					rc.scanState.mu.Unlock()
-					extScanRunning = false
-					rc.updateSnapshot()
+					completeTime := time.Now()
+					// Score before publishing lastScanTime (see executeScan).
 					err := rc.prepScanResults(c)
 					if err != nil {
 						slog.Error(err.Error())
 					}
+					rc.scanState.mu.Lock()
+					rc.scanState.scanInProgress = false
+					rc.scanState.lastScanTime = completeTime
+					rc.scanState.scanDuration = completeTime.Sub(scanStart)
+					rc.scanState.cond.Broadcast()
+					rc.scanState.mu.Unlock()
+					extScanRunning = false
+					rc.updateSnapshot()
 				}
 			}
 			// logic for external roams

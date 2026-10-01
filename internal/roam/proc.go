@@ -26,7 +26,6 @@ func Proc(
 	rc := &roamContext{}
 	rc.iface = c.Iface
 	rc.ipcChan = ipcChan
-	rc.richByBSSID = make(map[string]wpac.RichBSS)
 	rc.roamingTier = noRoam
 	rc.lastRoamAttempt = time.Now()
 	rc.cfg = cfg

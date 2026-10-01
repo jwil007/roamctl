@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jwil007/roamctl/internal/ipc"
+	"github.com/jwil007/roamctl/internal/wpac"
 )
 
 func (rc *roamContext) updateSnapshot() {
@@ -100,13 +101,19 @@ func (rc *roamContext) buildRoamStatsForIPC() ipc.RoamStats {
 }
 
 func (rc *roamContext) buildBSSForIPC() []ipc.BSS {
-	clear(rc.richByBSSID)
-	for _, r := range rc.richBSSList {
-		rc.richByBSSID[r.BSSID] = r
+	// updateSnapshot runs on several goroutines, so build from a locked copy
+	// with a local lookup map rather than shared state.
+	rc.apMu.Lock()
+	richBSSList := rc.richBSSList
+	scoredAPs := rc.scoredAPs
+	rc.apMu.Unlock()
+	richByBSSID := make(map[string]wpac.RichBSS, len(richBSSList))
+	for _, r := range richBSSList {
+		richByBSSID[r.BSSID] = r
 	}
 	var bssList []ipc.BSS
-	for _, scored := range rc.scoredAPs {
-		rich := rc.richByBSSID[scored.bssid]
+	for _, scored := range scoredAPs {
+		rich := richByBSSID[scored.bssid]
 		var isCurrentAP bool
 		if rc.lastKnown.BSSID == scored.bssid {
 			isCurrentAP = true

@@ -15,9 +15,13 @@ import (
 )
 
 type roamContext struct {
-	cfg              *config.Config
-	iface            string
-	ssid             string
+	cfg   *config.Config
+	iface string
+	ssid  string
+	// apMu guards the scan-derived AP state below. prepScanResults runs on
+	// scan goroutines (background and external scans) while the main loop
+	// evaluates and roams, so readers must take a consistent copy.
+	apMu             sync.Mutex
 	richBSSList      []wpac.RichBSS
 	scoredAPs        []scoredBSS
 	candidateAP      scoredBSS
@@ -40,8 +44,7 @@ type roamContext struct {
 	lastConnChange   time.Time
 	rssiRingBuffer   []int
 	rssiWriteIdx     int
-	richByBSSID      map[string]wpac.RichBSS
-	bssPenalties     []bssPenalty
+	bssPenalties     []bssPenalty // guarded by apMu
 	ipcChan          chan ipc.ProcessState
 	snapshot         atomic.Pointer[ipc.ProcessState]
 	wpaDisconnect    bool
